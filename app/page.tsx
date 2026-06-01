@@ -47,10 +47,10 @@ const TESTIMONIALS = [
 ];
 
 const PRICING = [
-  { name: "Free", price: "$0", period: "", tagline: "Try the convergence map.", cta: "Start free", features: ["Basic convergence map", "Up to 3 people", "One session, one day", "Public gallery"] },
-  { name: "Full protocol", price: "$250", period: "/ group", tagline: "About $50 a person.", cta: "Run a sprint", featured: true, features: ["Up to 5 people", "Full 72-hour protocol", "Complete venture birth certificate", "30-day agent follow-up"] },
-  { name: "Quarterly", price: "€1,000", period: "/ quarter", tagline: "For teams running sprints often.", cta: "Talk to us", features: ["Unlimited sessions", "Everything in Full protocol", "Custom options"] },
-  { name: "Studio", price: "$3,000", period: "/ month", tagline: "White-label for networks.", cta: "Talk to us", features: ["Run cohorts across your network", "Multi-cohort orchestration", "Analytics dashboards", "White-label branding"] },
+  { name: "Free", price: "$0", period: "", tagline: "Try the convergence map.", cta: "Start free", href: "/demo/free", features: ["Basic convergence map", "Up to 3 people", "One session, one day", "Public gallery"] },
+  { name: "Full protocol", price: "$250", period: "/ group", tagline: "About $50 a person.", cta: "Run a sprint", href: "/demo", featured: true, features: ["Up to 5 people", "Full 72-hour protocol", "Complete venture birth certificate", "30-day agent follow-up"] },
+  { name: "Quarterly", price: "€1,000", period: "/ quarter", tagline: "For teams running sprints often.", cta: "Talk to us", href: "/demo", features: ["Unlimited sessions", "Everything in Full protocol", "Custom options"] },
+  { name: "Studio", price: "$3,000", period: "/ month", tagline: "White-label for networks.", cta: "Talk to us", href: "/demo", features: ["Run cohorts across your network", "Multi-cohort orchestration", "Analytics dashboards", "White-label branding"] },
 ];
 
 const FAQS = [
@@ -214,7 +214,7 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href="/demo" className={`mt-6 inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-bold transition-colors ${t.featured ? "bg-sage text-white hover:bg-sage-dark" : "border border-slate-200 text-foreground hover:bg-slate-50"}`}>{t.cta}</a>
+                <a href={t.href} className={`mt-6 inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-bold transition-colors ${t.featured ? "bg-sage text-white hover:bg-sage-dark" : "border border-slate-200 text-foreground hover:bg-slate-50"}`}>{t.cta}</a>
               </div>
             ))}
           </div>
