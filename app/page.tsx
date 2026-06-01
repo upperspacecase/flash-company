@@ -3,6 +3,7 @@ import Image from "next/image";
 const NAV = [
   { label: "How it works", href: "#how" },
   { label: "What you get", href: "#deliverables" },
+  { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
 ];
 
@@ -43,6 +44,13 @@ const TESTIMONIALS = [
   { quote: "We'd been circling the same idea in a chat for a year. Three days here and we had a real plan and a page to test.", who: "Pilot team" },
   { quote: "The part that worked was contributing on my own time. No meetings, and somehow we still ended up aligned.", who: "Pilot participant" },
   { quote: "It picked the venture none of us would have landed on alone, and told us how to test it first.", who: "Pilot team" },
+];
+
+const PRICING = [
+  { name: "Free", price: "$0", period: "", tagline: "Try the convergence map.", cta: "Start free", features: ["Basic convergence map", "Up to 3 people", "One session, one day", "Public gallery"] },
+  { name: "Full protocol", price: "$250", period: "/ group", tagline: "About $50 a person.", cta: "Run a sprint", featured: true, features: ["Up to 5 people", "Full 72-hour protocol", "Complete venture birth certificate", "30-day agent follow-up"] },
+  { name: "Quarterly", price: "€1,000", period: "/ quarter", tagline: "For teams running sprints often.", cta: "Talk to us", features: ["Unlimited sessions", "Everything in Full protocol", "Custom options"] },
+  { name: "Studio", price: "$3,000", period: "/ month", tagline: "White-label for networks.", cta: "Talk to us", features: ["Run cohorts across your network", "Multi-cohort orchestration", "Analytics dashboards", "White-label branding"] },
 ];
 
 const FAQS = [
@@ -183,6 +191,34 @@ export default function Home() {
               </figure>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* PRICING */}
+      <section id="pricing" className="border-y border-slate-100 bg-slate-50/60">
+        <div className="mx-auto w-full max-w-7xl px-6 py-20 sm:px-10">
+          <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Pricing that runs on buy-in.</h2>
+          <p className="mt-3 max-w-xl text-lg text-slate-600">Everyone chips into the kitty, so everyone has skin in the game.</p>
+          <div className="mt-10 grid gap-6 lg:grid-cols-4">
+            {PRICING.map((t) => (
+              <div key={t.name} className={`relative flex flex-col rounded-3xl border bg-white p-7 ${t.featured ? "border-sage ring-1 ring-sage" : "border-slate-200"}`}>
+                {t.featured && <span className="absolute -top-3 left-7 rounded-full bg-sage px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Most popular</span>}
+                <p className="font-bold text-foreground">{t.name}</p>
+                <p className="mt-3"><span className="text-3xl font-bold text-foreground">{t.price}</span> <span className="text-sm text-slate-500">{t.period}</span></p>
+                <p className="mt-1 text-sm text-slate-500">{t.tagline}</p>
+                <ul className="mt-5 flex-1 space-y-2.5">
+                  {t.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-sage" aria-hidden="true"><path d="m5 12 5 5L20 7" /></svg>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="/demo" className={`mt-6 inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-bold transition-colors ${t.featured ? "bg-sage text-white hover:bg-sage-dark" : "border border-slate-200 text-foreground hover:bg-slate-50"}`}>{t.cta}</a>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-sm text-slate-400">Draft pricing from the working session — not final.</p>
         </div>
       </section>
 
