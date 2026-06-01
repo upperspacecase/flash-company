@@ -33,7 +33,7 @@ export default function Home() {
           </p>
 
           <a
-            href="#"
+            href="/demo"
             className="group mt-10 inline-flex h-14 items-center gap-3 rounded-2xl bg-sage px-8 text-lg font-bold text-white shadow-lg shadow-sage/30 transition-colors hover:bg-sage-dark"
           >
             Run a sprint
