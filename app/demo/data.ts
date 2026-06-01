@@ -207,7 +207,7 @@ export const DECISION_FRAMEWORK = [
 export const BIRTH_CERTIFICATE = {
   thesis: {
     defineDifferentiate: {
-      intro: "Day 1 — uncovering the truth behind the assumptions.",
+      intro: "Uncovering the truth behind the assumptions.",
       points: [
         { icon: "user" as IconName, label: "Real customer", text: "Mothers returning after a 1–3 year career break — reached today through Maya's 4,000-member community. Not 'parents' broadly; specifically those who paused and want back in." },
         { icon: "alert" as IconName, label: "Exact problem (worth solving?)", text: "Re-entry is cold and confidence-eroding, and employers quietly screen out gaps. Worth solving: these returners are skilled and motivated but underserved, and the pain is acute and recurring — 30+ DMs a week." },
@@ -215,22 +215,13 @@ export const BIRTH_CERTIFICATE = {
         { icon: "sparkle" as IconName, label: "Radical differentiation", text: "The only path pairing a trusted community (distribution + safety), a structured 8-week cohort (ops moat), and measured outcomes (data moat). Not a job board — a guided way back." },
       ],
     },
-    findApproach: {
-      intro: "Day 2 — how to deliver the best solution.",
-      points: [
-        { icon: "refresh" as IconName, label: "Paths explored", text: "Explored three forms: a self-serve product, a done-for-you service, and an employer-side integration." },
-        { icon: "sparkle" as IconName, label: "Magic Lenses applied", text: "Stress-tested the shortlist through the Magic Lenses to pressure-check demand, founder fit, and defensibility before committing." },
-        { icon: "target" as IconName, label: "Chosen opportunity", text: "The guided returnship cohort, service-first — fastest to revenue and the best fit for the team's distribution and ops." },
-      ],
+    approach: {
+      title: "The approach we agreed on",
+      intro: "The chosen path — and the venture we're committing to.",
+      chosen: "Relaunch — a guided returnship cohort, service-first. The fastest path to revenue and the best fit for the team's distribution and ops.",
       hypothesis: "We believe returning parents will pay for a guided cohort if it delivers community, real employer intros, and measurable confidence gains within 8 weeks.",
     },
   },
-  charter: [
-    "We move at sprint speed and ship before we feel ready.",
-    "Returners are members, not leads — we build with them.",
-    "Disagree in the open, commit once decided.",
-    "Outcomes (placements, confidence) beat vanity metrics.",
-  ],
   roadmap: [
     { week: "Week 1", text: "Recruit 12 parents from Maya's community into a paid pilot cohort." },
     { week: "Week 2", text: "Run weeks 1–2 of the cohort; Sam baselines confidence and goals." },
@@ -289,12 +280,11 @@ export const COMMITMENTS: Commitment[] = [
 
 export const OUTPUT_MENU: { id: string; label: string; icon: IconName }[] = [
   { id: "thesis", label: "Thesis", icon: "bolt" },
-  { id: "charter", label: "Team charter", icon: "people" },
+  { id: "landing", label: "Landing page", icon: "laptop" },
   { id: "roles", label: "Roles & equity", icon: "scale" },
   { id: "decisions", label: "Decision framework", icon: "check" },
   { id: "roadmap", label: "30-day roadmap", icon: "calendar" },
   { id: "deck", label: "Pitch deck", icon: "chart" },
-  { id: "landing", label: "Landing page", icon: "laptop" },
   { id: "outreach", label: "Outreach copy", icon: "message" },
   { id: "validation", label: "Validation report", icon: "target" },
   { id: "commitments", label: "Commitment ritual", icon: "play" },

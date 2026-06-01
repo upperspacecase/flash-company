@@ -532,7 +532,6 @@ function OutputPhase({ recorded, onRecord, onNext }: { recorded: Record<string, 
 function SectionBody({ id, recorded, onRecord }: { id: string; recorded: Record<string, boolean>; onRecord: (id: string) => void }) {
   const b = BIRTH_CERTIFICATE;
   if (id === "thesis") return <Thesis />;
-  if (id === "charter") return <ul className="space-y-2">{b.charter.map((c) => <li key={c} className="flex gap-2 text-foreground"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{c}</li>)}</ul>;
   if (id === "roles") return (
     <>
       <div className="space-y-2">{ROLES.map((r) => { const m = memberById(r.memberId); return (
@@ -589,22 +588,21 @@ function Thesis() {
   return (
     <div className="space-y-6">
       <div>
-        <ThesisHeader day="Day 1" title="Define & Differentiate" intro={t.defineDifferentiate.intro} />
+        <ThesisHeader title="Define & Differentiate" intro={t.defineDifferentiate.intro} />
         <div className="mt-3 grid gap-3 sm:grid-cols-2">{t.defineDifferentiate.points.map((p) => <SubCard key={p.label} icon={p.icon} label={p.label} text={p.text} />)}</div>
       </div>
       <div>
-        <ThesisHeader day="Day 2" title="Find the Right Approach" intro={t.findApproach.intro} />
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">{t.findApproach.points.map((p) => <SubCard key={p.label} icon={p.icon} label={p.label} text={p.text} />)}</div>
-        <div className="mt-3 rounded-xl bg-sage-tint/30 p-4"><p className="text-xs font-bold uppercase tracking-wide text-sage-dark">Testable hypothesis</p><p className="mt-1 text-foreground">{t.findApproach.hypothesis}</p></div>
+        <ThesisHeader title={t.approach.title} intro={t.approach.intro} />
+        <div className="mt-3 rounded-xl border border-sage/30 bg-sage-tint/20 p-4"><p className="font-semibold text-foreground">{t.approach.chosen}</p></div>
+        <div className="mt-3 rounded-xl bg-sage-tint/30 p-4"><p className="text-xs font-bold uppercase tracking-wide text-sage-dark">Testable hypothesis</p><p className="mt-1 text-foreground">{t.approach.hypothesis}</p></div>
       </div>
     </div>
   );
 }
 
-function ThesisHeader({ day, title, intro }: { day: string; title: string; intro: string }) {
+function ThesisHeader({ title, intro }: { title: string; intro: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="rounded-md bg-sage px-2 py-0.5 text-[10px] font-bold uppercase text-white">{day}</span>
       <span className="font-bold text-foreground">{title}</span>
       <span className="text-sm text-slate-500">— {intro}</span>
     </div>
