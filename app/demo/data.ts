@@ -1,759 +1,290 @@
-// Canned content for the Flash Company sprint demo.
-// Narrative: Maya, Alex & Priya use the sprint to find their own strongest
-// venture. Flow: Basics -> Shared inputs -> Opportunity map -> Approaches -> Output.
-
-export const TAGLINE = "Build together. Start clearly.";
+// Clickable prototype content for Flash Company — built from the PRD.
+// One sprint: a 5-person cohort dumps input, converges, forms a venture
+// ("Relaunch"), ships a venture birth certificate, then follows through.
+// Phases: Cohort -> Convergence -> Formation -> Output -> Follow-through.
 
 export type IconName =
-  | "people"
-  | "question"
-  | "bulb"
-  | "folder"
-  | "scale"
-  | "alert"
-  | "sparkle"
-  | "minus"
-  | "group"
-  | "user"
-  | "doc"
-  | "laptop"
-  | "store"
-  | "flask"
-  | "clock"
-  | "chart"
-  | "shield"
-  | "gear"
-  | "dollar"
-  | "star"
-  | "check"
-  | "tag";
+  | "people" | "group" | "user" | "bolt" | "alert" | "sparkle" | "link" | "mic"
+  | "image" | "doc" | "laptop" | "store" | "building" | "target" | "check"
+  | "star" | "clock" | "calendar" | "scale" | "chart" | "thumb" | "lock"
+  | "play" | "coins" | "message" | "minus" | "send" | "pause" | "refresh";
+
+export const AGENT_NAME = "Flash";
+export const TAGLINE = "Build together. Start clearly.";
+
+export const SPRINT = {
+  windowHours: 72,
+  days: 3,
+  buyInTotal: "$250",
+  buyInPer: "~$50",
+};
 
 export type Member = {
   id: string;
   name: string;
   initials: string;
-  lead?: boolean;
-  tags: string[];
+  role: string;
+  skills: string;
   network: string;
-  contributed: string;
-  ring: string; // avatar circle classes
+  accepted: boolean;
+  ring: string;
   dot: string;
 };
 
-export const MEMBERS: Member[] = [
-  {
-    id: "maya",
-    name: "Maya",
-    initials: "MA",
-    lead: true,
-    tags: ["product", "ops", "research"],
-    network: "early builders",
-    contributed: "15 min ago",
-    ring: "bg-emerald-100 text-emerald-700",
-    dot: "bg-emerald-500",
-  },
-  {
-    id: "alex",
-    name: "Alex",
-    initials: "AL",
-    tags: ["engineering", "technical", "ops"],
-    network: "dev partners",
-    contributed: "12 min ago",
-    ring: "bg-sky-100 text-sky-700",
-    dot: "bg-sky-500",
-  },
-  {
-    id: "priya",
-    name: "Priya",
-    initials: "PR",
-    tags: ["design", "community", "sales"],
-    network: "creator communities",
-    contributed: "8 min ago",
-    ring: "bg-amber-100 text-amber-700",
-    dot: "bg-amber-500",
-  },
+// "You" are Maya for the purposes of the data-dump chat.
+export const COHORT: Member[] = [
+  { id: "maya", name: "Maya", initials: "MA", role: "Community & GTM", skills: "Product, UX, audience", network: "Runs a 4k-member community for new parents", accepted: true, ring: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  { id: "alex", name: "Alex", initials: "AL", role: "Product & Eng", skills: "Full-stack, ex-fintech", network: "Engineering leaders", accepted: true, ring: "bg-sky-100 text-sky-700", dot: "bg-sky-500" },
+  { id: "priya", name: "Priya", initials: "PR", role: "Brand & Content", skills: "Design, content, creators", network: "Creator communities", accepted: true, ring: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
+  { id: "jordan", name: "Jordan", initials: "JO", role: "Ops & Delivery", skills: "Cohort programs, logistics", network: "Ops & partnerships", accepted: true, ring: "bg-violet-100 text-violet-700", dot: "bg-violet-500" },
+  { id: "sam", name: "Sam", initials: "SA", role: "Research & Outcomes", skills: "Data, healthcare", network: "Clinicians & researchers", accepted: false, ring: "bg-rose-100 text-rose-700", dot: "bg-rose-500" },
 ];
 
-export const memberById = (id: string) => MEMBERS.find((m) => m.id === id)!;
+export const YOU = "maya";
+export const memberById = (id: string) => COHORT.find((m) => m.id === id)!;
 
-export const STAGES = [
-  { id: "basics", label: "Basics" },
-  { id: "shared", label: "Shared Inputs" },
-  { id: "map", label: "Opportunity Map" },
-  { id: "approaches", label: "Approaches" },
-  { id: "output", label: "Output" },
+export const PHASES = [
+  { id: "cohort", label: "Cohort", day: "Kick-off", blurb: "Invite 3–5 people you trust and open the 72-hour window." },
+  { id: "convergence", label: "Convergence", day: "Day 1", blurb: "Everyone dumps input separately. The agent finds the patterns." },
+  { id: "formation", label: "Formation", day: "Day 2", blurb: "Ranked venture hypotheses, roles, and equity — you vote and commit." },
+  { id: "output", label: "Output", day: "Day 3", blurb: "Walk away with a venture birth certificate ready to share." },
+  { id: "followthrough", label: "Follow-through", day: "Day 7–30", blurb: "The agent goes quiet, returning only at day 7, 14, 21 and 30." },
 ] as const;
 
-// ---------------------------------------------------------------------------
-// Stage 1 — Basics
-// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------- Cohort
 
-export const BASICS_QUESTIONS: { icon: IconName; q: string; a: string }[] = [
-  {
-    icon: "people",
-    q: "Who are we building for?",
-    a: "2–5 person groups (friends, colleagues, co-founders) who want to build something together but lack clarity on where to start.",
-  },
-  {
-    icon: "question",
-    q: "What problem keeps showing up?",
-    a: "They have energy, ideas, and relationships, but no structured way to turn them into a focused opportunity.",
-  },
-  {
-    icon: "bulb",
-    q: "What do we already know?",
-    a: "People iterate better when they have shared context and outside perspectives. Without structure, ideas stall.",
-  },
-  {
-    icon: "folder",
-    q: "What assets do we have?",
-    a: "Experience building products, design sprints, a founder network, an early community of builders, and a tooling stack.",
-  },
-  {
-    icon: "scale",
-    q: "What constraints matter?",
-    a: "Limited time, low budget, testing phase, no full-time commitment yet.",
-  },
+export const SUGGESTED_CONTACTS = [
+  { name: "Nadia K.", reason: "HR lead in your contacts — could open employer doors later." },
+  { name: "Tom R.", reason: "Built two marketplaces; strong if you go two-sided." },
+  { name: "Deb L.", reason: "Returned to work herself — a perfect first tester." },
 ];
 
-export const SHARED_CONTEXT: Record<string, string[]> = {
-  maya: ["Focus on groups, not individuals", "Fast path to first clarity matters"],
-  alex: ["Leverage async + automation", "Keep the tool stack simple"],
-  priya: ["Community feedback early", "Tell the story through examples"],
+export const COHORT_READINESS = [
+  { label: "Cohort invited (4 of 5 in)", done: true },
+  { label: "Buy-in agreed", done: true },
+  { label: "72-hour window opened", done: true },
+  { label: "Everyone accepted", done: false },
+];
+
+// ----------------------------------------------------------- Convergence
+
+export const AGENT_INTRO =
+  "Welcome to your 72-hour sprint. Don't structure anything yet — just dump. Problems you keep seeing, people you know, things you're weirdly good at, links, voice notes. I'll read across all five of you and find the patterns.";
+
+export type DumpKind = "text" | "voice" | "link" | "image" | "doc";
+
+export type Dump = {
+  kind: DumpKind;
+  label: string; // bubble content / attachment label
+  agent: string; // agent's reflection after this dump
 };
 
-export const CONSTRAINTS = [
-  "2 days / week",
-  "Low budget",
-  "Want to test fast",
-  "No full-time commitment yet",
+// "You" (Maya) dump these one at a time. Clickable in the prototype.
+export const DUMPS: Dump[] = [
+  { kind: "text", label: "Half my parents community asks the same thing: how do I go back to work after a long break without starting from zero?", agent: "Noted — 'returning to work after a break' is the third time that's surfaced across the group." },
+  { kind: "voice", label: "Voice memo · 0:42 — \"employers ghost them the second they see a two-year gap…\"", agent: "Tension logged: strong demand from parents vs. employer hesitancy about gaps." },
+  { kind: "link", label: "Link · article — \"The motherhood penalty costs returners ~20% of salary\"", agent: "Market signal added — the timing pressure is real and external." },
+  { kind: "image", label: "Photo · screenshot of 30 DMs all asking the same thing", agent: "That's hard evidence of repeated, specific demand. Flagging it." },
+  { kind: "text", label: "I'm not interested in building another job board. That's been done to death.", agent: "Constraint noted — not a job board. I'll keep proposals away from that shape." },
 ];
 
-export const FOUNDATION = {
-  customer:
-    "2–5 person groups who want to build something together but lack clarity.",
-  problem:
-    "They have energy, ideas, and relationships, but no structured way to turn them into a focused opportunity.",
-  matters:
-    "Helping groups move from scattered ideas to a clear, testable path increases the chances of building something real.",
-  edge: ["shared context", "multiple perspectives", "fast synthesis"],
-  readiness: ["Customer named", "Problem articulated", "Constraints captured"],
+// What the rest of the cohort has already dumped (async).
+export const COHORT_DUMPS: Record<string, { count: number; sample: string; kinds: DumpKind[] }> = {
+  alex: { count: 6, sample: "Built matching infra before — wary of two-sided cold starts.", kinds: ["text", "link", "doc"] },
+  priya: { count: 5, sample: "Creators love a 'comeback story' angle — I could make a content engine for it.", kinds: ["text", "image", "voice"] },
+  jordan: { count: 4, sample: "I've run 8-week cohort programs. The ops is where the moat is.", kinds: ["text", "doc"] },
+  sam: { count: 5, sample: "I have outcome data on confidence and re-employment after breaks.", kinds: ["text", "link", "doc"] },
 };
 
-// ---------------------------------------------------------------------------
-// Stage 2 — Shared inputs
-// ---------------------------------------------------------------------------
+export type Signal = { icon: IconName; kind: string; tone: "good" | "warn"; text: string };
 
-export const SHARED_PROMPTS: { icon: IconName; q: string }[] = [
-  { icon: "alert", q: "What problems do you keep seeing?" },
-  { icon: "question", q: "What do people ask you for help with?" },
-  { icon: "group", q: "What communities do you have access to?" },
-  { icon: "sparkle", q: "What would you be weirdly well-positioned to build?" },
-  { icon: "minus", q: "What do you not want to build?" },
+// Revealed progressively as you dump (one per dump sent).
+export const CONVERGENCE_SIGNALS: Signal[] = [
+  { icon: "group", kind: "Overlap", tone: "good", text: "Returning to work after a break surfaced independently by Maya, Priya and Sam." },
+  { icon: "alert", kind: "Tension", tone: "warn", text: "Parents want back in; employers hesitate at career gaps." },
+  { icon: "minus", kind: "Gap", tone: "good", text: "No trusted, supportive path back — only cold job boards." },
+  { icon: "sparkle", kind: "Hidden complementarity", tone: "good", text: "Maya's community (distribution) + Jordan's cohort ops + Sam's outcome data + Alex's platform + Priya's brand." },
+  { icon: "chart", kind: "Market signal", tone: "good", text: "Motherhood penalty + the rise of returnships means timing is on your side." },
 ];
 
-// answers[memberId][promptIndex]
-export const SHARED_ANSWERS: Record<string, string[]> = {
-  maya: [
-    "Small groups struggle to turn loose ideas into action.",
-    "How to get aligned and move forward with confidence.",
-    "Early-stage founders and product communities.",
-    "A lightweight way to turn ideas into testable next steps.",
-    "Another project management tool.",
-  ],
-  alex: [
-    "Too many tools fragment decision-making.",
-    "Choosing the right tools and simplifying the stack.",
-    "Engineering leaders and tech operator networks.",
-    "A decision layer that cuts through tool chaos.",
-    "A heavy, all-in-one platform.",
-  ],
-  priya: [
-    "People want clearer ways to collaborate before committing.",
-    "Building community and engaging early users.",
-    "Design communities and creator networks.",
-    "A community-driven validation and feedback engine.",
-    "Anything that competes with existing communities.",
-  ],
-};
+// ------------------------------------------------------------- Formation
 
-export const CROSS_NOTES: Record<string, string[]> = {
-  maya: ["Early alignment is a core pain", "People need simple next steps", "Trust and clarity matter most"],
-  alex: ["Tool fatigue is real", "Decision support > more features", "Simplicity creates leverage"],
-  priya: ["Community is a force multiplier", "Validation before building", "Build with, not for, communities"],
-};
+export type Vote = { approve: number; challenge: number; pivot: number };
+export type HypothesisStatus = "approved" | "tumble" | "folded" | "proposed";
 
-export type Signal = { icon: IconName; title: string; text: string };
-
-export const SIGNALS: Signal[] = [
-  {
-    icon: "alert",
-    title: "Repeated problem",
-    text: "Small teams struggle to turn ideas into action and are overwhelmed by fragmented tools.",
-  },
-  {
-    icon: "group",
-    title: "Strong customer access",
-    text: "You have direct access to early-stage builders, engineering leaders, and creator communities.",
-  },
-  {
-    icon: "sparkle",
-    title: "Unique overlap",
-    text: "You can combine lightweight action, decision clarity, and community validation in one flow.",
-  },
-  {
-    icon: "minus",
-    title: "Tension to resolve",
-    text: "Builders want simplicity and guidance, not another heavy or all-in-one platform.",
-  },
-  {
-    icon: "people",
-    title: "Potential customer groups",
-    text: "Early-stage founders, product teams, engineering leaders, and design/creator communities.",
-  },
-];
-
-export const PATTERN_CHIPS = [
-  "collaboration",
-  "early-stage builders",
-  "fragmented tools",
-  "small-group decisions",
-  "validation",
-];
-
-export const SYNTHESIS_READINESS = [
-  { label: "Inputs collected", done: true },
-  { label: "Overlaps visible", done: true },
-  { label: "Tensions noted", done: true },
-  { label: "Ready to map opportunities", done: false },
-];
-
-// ---------------------------------------------------------------------------
-// Stage 3 — Opportunity map (the centrepiece)
-// ---------------------------------------------------------------------------
-
-export const MAP_INGREDIENTS: { icon: IconName; label: string; sub: string }[] = [
-  { icon: "user", label: "Customer", sub: "Who is the opportunity for?" },
-  { icon: "alert", label: "Problem", sub: "What painful problem are we solving?" },
-  { icon: "sparkle", label: "Why us", sub: "Why are we uniquely positioned?" },
-  { icon: "doc", label: "Evidence", sub: "What signals support this opportunity?" },
-  { icon: "shield", label: "Risk", sub: "What could prevent success?" },
-];
-
-export type ScoreBar = { label: string; value: number }; // value 0–5
-
-export type Quote = { memberId: string; text: string };
-
-// ---------------------------------------------------------------------------
-// Stage 4 — Approaches
-// ---------------------------------------------------------------------------
-
-export const SNAP_LABELS = [
-  "Ease to test",
-  "Speed to revenue",
-  "Founder fit",
-  "Market size",
-  "Defensibility",
-  "Operational complexity",
-  "Margin potential",
-  "Overall score",
-] as const;
-
-export type SnapTile = { label: string; score: number; note: string };
-
-export type Approach = {
-  icon: IconName;
-  type: string; // "Service", "Software"...
-  title: string;
-  badge: string;
-  badgeTone: "good" | "warn" | "info" | "neutral";
-  desc: string;
-  recommended?: boolean;
-  howItWorks: string[];
-  whyItWorks: string[];
-  snapshot: SnapTile[]; // length 8, last = Overall score
-  firstTest: string;
-};
-
-function snap(scores: number[], notes: string[]): SnapTile[] {
-  return SNAP_LABELS.map((label, i) => ({ label, score: scores[i], note: notes[i] }));
-}
-
-export type Output = {
-  summary: string; // "Opportunity summary" (was one-liner)
-  page: {
-    nav: string[];
-    headline: string;
-    subhead: string;
-    cta: string;
-    proofCount: string;
-    proofAudience: string;
-    proofNote: string;
-  };
-  outreach: { linkedin: string; dm: string; email: string; whatsapp: string };
-  testPlan: { hypothesis: string; firstTest: string; metrics: string[]; decisionRule: string };
-  deck: { title: string; body: string }[];
-};
-
-export type Opportunity = {
+export type Hypothesis = {
   id: string;
-  num: number;
+  rank: number;
   title: string;
-  fitBadge: string;
-  level: string;
-  levelTone: "good" | "warn" | "info";
-  // map card
+  score: number;
   customer: string;
   problem: string;
-  whyUs: string;
-  evidence: string[];
-  risk: string;
-  // right panel
-  panel: {
-    customer: string;
-    problem: string;
-    alternative: string;
-    whyGroup: string;
-    quotes: Quote[];
-    uncertainty: string;
-    bars: ScoreBar[];
-    overall: number;
-    overallLabel: string;
-  };
-  approaches: Approach[];
-  output: Output;
+  whyTeam: string;
+  validation: string;
+  votes: Vote;
+  status: HypothesisStatus;
+  note: string;
 };
 
-export const OPPORTUNITIES: Opportunity[] = [
+export const HYPOTHESES: Hypothesis[] = [
   {
-    id: "sprint",
-    num: 1,
-    title: "Flash Company Sprint",
-    fitBadge: "Strongest fit",
-    level: "High",
-    levelTone: "good",
-    customer: "2–5 person groups of founders, operators, or creators.",
-    problem: "They have ideas and energy but lack a structured path to converge on one testable venture.",
-    whyUs: "We combine guided structure, expert signals, and peer context to help small groups make real progress fast.",
-    evidence: [
-      "Repeated pain across all inputs",
-      "Early alignment on need for structure",
-      "Demand for a lightweight, guided flow",
-    ],
-    risk: "Groups may not pay for structure before they have a final idea.",
-    panel: {
-      customer: "2–5 person groups of founders, operators, or creators who want to build together.",
-      problem: "They have ideas and energy but lack a structured path to converge on one testable venture.",
-      alternative: "Group chats, Notion docs, ad hoc calls, and random brainstorming.",
-      whyGroup: "Shared context, complementary skills, direct access to early-stage builders, and fast synthesis.",
-      quotes: [
-        { memberId: "maya", text: "We need a clear path from ideas to action." },
-        { memberId: "alex", text: "Small teams lack structured decision-making." },
-        { memberId: "priya", text: "They want guidance, not another tool." },
-      ],
-      uncertainty: "Whether groups will pay for structure before they have a final business idea.",
-      bars: [
-        { label: "Desirability", value: 5 },
-        { label: "Founder fit", value: 5 },
-        { label: "Speed to test", value: 4.5 },
-        { label: "Access", value: 5 },
-      ],
-      overall: 8.7,
-      overallLabel: "High potential",
-    },
-    approaches: [
-      {
-        icon: "people",
-        type: "Service",
-        title: "Service: Guided Sprint",
-        badge: "Strongest path",
-        badgeTone: "good",
-        desc: "Run a 2-day facilitated sprint that takes a small group from scattered ideas to one testable venture.",
-        recommended: true,
-        howItWorks: ["Facilitated workshop with the group", "Diagnose the current state", "Co-create the opportunity map", "Leave with clear next steps"],
-        whyItWorks: ["Fast to launch", "High willingness to pay", "Leverages human facilitation", "Builds strong relationships"],
-        snapshot: snap([9, 9, 9, 7, 6, 4, 8, 7.6], ["Very easy", "1–2 weeks", "Strong", "Large", "Moderate", "Low", "High", "Strong"]),
-        firstTest: "Offer 3 pilot sprints to small builder groups and measure willingness to pay, plan implementation, and referrals.",
-      },
-      {
-        icon: "laptop",
-        type: "Software",
-        title: "Software: Sprint OS",
-        badge: "High upside",
-        badgeTone: "warn",
-        desc: "A SaaS platform with the guided flow, tools, templates, and rituals built in.",
-        howItWorks: ["Self-serve guided flow", "Templates & rituals", "Async team inputs", "AI synthesis of inputs"],
-        whyItWorks: ["Scales without facilitators", "Recurring revenue", "Compounding data", "Low marginal cost"],
-        snapshot: snap([6, 5, 7, 9, 7, 6, 9, 7.1], ["Moderate", "1–3 months", "Good", "Very large", "Building", "Medium", "Very high", "Strong"]),
-        firstTest: "Ship a clickable guided flow to 10 groups and measure activation and week-two retention.",
-      },
-      {
-        icon: "store",
-        type: "Marketplace",
-        title: "Marketplace: Sprint Facilitators",
-        badge: "Medium effort",
-        badgeTone: "info",
-        desc: "Connect groups with vetted sprint facilitators and operators.",
-        howItWorks: ["Vet facilitators", "Match them to groups", "Handle scheduling & payments", "Collect outcomes"],
-        whyItWorks: ["Light to start", "Two-sided network", "Trusted supply", "Word-of-mouth growth"],
-        snapshot: snap([5, 4, 5, 7, 6, 3, 6, 5.3], ["Slow", "Slower", "Mixed", "Large", "Moderate", "High", "Medium", "Mixed"]),
-        firstTest: "Hand-match 5 groups to 3 facilitators and measure repeat bookings.",
-      },
-      {
-        icon: "people",
-        type: "Community",
-        title: "Community: Builder Circle",
-        badge: "Low effort",
-        badgeTone: "good",
-        desc: "A membership community with cohorts, events, and peer accountability.",
-        howItWorks: ["Run cohorts", "Host events", "Peer accountability", "Share playbooks"],
-        whyItWorks: ["Cheap to test", "Recurring membership", "Strong retention", "Built-in distribution"],
-        snapshot: snap([7, 6, 7, 6, 7, 5, 7, 6.4], ["Easy", "Weeks", "Good", "Medium", "Building", "Medium", "High", "Solid"]),
-        firstTest: "Open a paid pilot cohort to 20 builders and measure completion and renewal intent.",
-      },
-      {
-        icon: "doc",
-        type: "Content",
-        title: "Content Engine",
-        badge: "Quick test",
-        badgeTone: "neutral",
-        desc: "Newsletters, resources, and kits that attract and educate small builder groups.",
-        howItWorks: ["Publish playbooks", "Give away a free sprint kit", "Build a list", "Convert to product"],
-        whyItWorks: ["Fastest to test", "Builds an audience", "Low cost", "Feeds every other path"],
-        snapshot: snap([9, 3, 6, 9, 3, 8, 7, 6.0], ["Very easy", "Slow revenue", "Good", "Very large", "Low", "Very low", "High", "Solid"]),
-        firstTest: "Publish a sprint playbook + free kit and measure signups and replies.",
-      },
-    ],
-    output: {
-      summary:
-        "Flash Company Sprint is a guided 2-day sprint for 2–5 person groups of founders, operators, and creators. It takes a group from scattered ideas and energy to one clear, testable venture — pairing structured facilitation with expert signals and peer context so they converge fast and leave with a plan they can act on.",
-      page: {
-        nav: ["Why it works", "How it runs", "What you get", "FAQs"],
-        headline: "Turn a promising group chat into a testable business.",
-        subhead:
-          "A 2-day AI-guided sprint that helps small groups find their strongest shared opportunity, define the customer and problem, and launch a simple validation page.",
-        cta: "Run a sprint",
-        proofCount: "12 pilot teams",
-        proofAudience: "founders, operators, creators",
-        proofNote: "Early testers are seeing clarity and momentum.",
-      },
-      outreach: {
-        linkedin:
-          "Most group chats full of 'we should build something' never become anything.\n\nNot because the people are wrong — because there's no structure to turn energy into one testable venture.\n\nWe run a guided 2-day sprint that fixes exactly that. Piloting with a few small groups now. Comment 'sprint' if you want in.",
-        dm:
-          "Hey {name} — you and your group keep talking about building something, right? We run a guided 2-day sprint that gets a small team from scattered ideas to one testable venture. Want the 1-pager?",
-        email:
-          "Subject: turn the group chat into something testable\n\nHi {name},\n\nYou've got the people, the ideas, and the energy — what's missing is a structured way to converge on one thing worth testing.\n\nWe run a guided 2-day sprint that does exactly that, end to end. We're taking on a few pilot groups.\n\nWorth a quick call this week?\n\nMaya, Alex & Priya — Flash Company",
-        whatsapp:
-          "Hi {name}! We run a guided 2-day sprint that takes a small group from 'we should build something' to one testable venture + a validation page. Taking a few pilot groups — keen?",
-      },
-      testPlan: {
-        hypothesis:
-          "We believe small builder groups will pay for a guided sprint if it takes them from scattered ideas to one validated, testable venture in two days.",
-        firstTest: "Offer 3 pilot sprints to small builder groups and measure willingness to pay, plan implementation, and referrals.",
-        metrics: ["Pilot sprints booked", "Paid conversions", "Plans actually implemented", "Referrals generated"],
-        decisionRule:
-          "If 8 of the first 30 groups book a pilot sprint and 3 pay within two weeks, we continue. If fewer than 2 pay, we revisit the wedge.",
-      },
-      deck: [
-        { title: "The problem", body: "Small groups have energy and ideas but no structured path to a testable venture." },
-        { title: "The customer", body: "2–5 person groups of founders, operators, and creators ready to build." },
-        { title: "The solution", body: "A guided 2-day sprint: scattered ideas in, one testable venture out." },
-        { title: "Why us", body: "Shared context, complementary skills, and direct access to early builders." },
-        { title: "How it runs", body: "Basics → shared inputs → opportunity map → approaches → output." },
-        { title: "First test", body: "3 pilot sprints, measured on willingness to pay and implementation." },
-        { title: "The ask", body: "Run 3 pilots in the next 30 days and convert 3 to paid." },
-      ],
-    },
+    id: "relaunch",
+    rank: 1,
+    title: "Relaunch",
+    score: 8.6,
+    customer: "Parents (especially mothers) returning to work after a career break.",
+    problem: "Re-entry is cold and confidence-eroding, and employers are wary of gaps.",
+    whyTeam: "Maya's community for distribution, Jordan's cohort ops, Sam's outcome data, Alex's platform, Priya's brand.",
+    validation: "Run a paid pilot cohort recruited from Maya's community; land 5 employer intros.",
+    votes: { approve: 5, challenge: 0, pivot: 0 },
+    status: "approved",
+    note: "An 8-week guided returnship cohort. Strongest fit — distribution, ops and outcomes already in the room.",
   },
   {
-    id: "pods",
-    num: 2,
-    title: "Builder Pods",
-    fitBadge: "Promising",
-    level: "Medium",
-    levelTone: "warn",
-    customer: "Engineering leaders and product teams building internal or new ventures.",
-    problem: "Need trusted peers to test ideas and make decisions without long cycles.",
-    whyUs: "We provide curated pods, shared context, and decision tools to accelerate alignment and validation.",
-    evidence: [
-      "Strong interest in peer collaboration",
-      "Value in cross-functional diversity",
-      "Willingness to try the pod model",
-    ],
-    risk: "Matching and sustaining active pods at early stages.",
-    panel: {
-      customer: "Engineering leaders and product teams building internal tools or new ventures.",
-      problem: "They need trusted peers to pressure-test ideas and make decisions without slow, lonely cycles.",
-      alternative: "Ad hoc Slack groups, accelerator cohorts, and one-off intros.",
-      whyGroup: "Curated matching, shared context, and decision tools tuned for early teams.",
-      quotes: [
-        { memberId: "alex", text: "Small teams lack structured decision-making." },
-        { memberId: "maya", text: "Peers make better calls together." },
-        { memberId: "priya", text: "Community keeps people accountable." },
-      ],
-      uncertainty: "Whether we can match and sustain active pods at the earliest stages.",
-      bars: [
-        { label: "Desirability", value: 4 },
-        { label: "Founder fit", value: 3.5 },
-        { label: "Speed to test", value: 3.5 },
-        { label: "Access", value: 4 },
-      ],
-      overall: 6.8,
-      overallLabel: "Medium potential",
-    },
-    approaches: [
-      {
-        icon: "people",
-        type: "Service",
-        title: "Service: Facilitated Pods",
-        badge: "Strongest path",
-        badgeTone: "good",
-        desc: "Hand-run small builder pods with a facilitator and decision rituals.",
-        recommended: true,
-        howItWorks: ["Curate 4–5 person pods", "Run weekly decision rituals", "Facilitate accountability", "Track outcomes"],
-        whyItWorks: ["Fast to start", "High-touch trust", "Clear weekly value", "Strong word of mouth"],
-        snapshot: snap([8, 7, 7, 6, 6, 4, 7, 6.7], ["Easy", "Weeks", "Good", "Medium", "Moderate", "Medium", "High", "Solid"]),
-        firstTest: "Run 3 facilitated pods for 4 weeks and measure renewal and referrals.",
-      },
-      {
-        icon: "laptop",
-        type: "Software",
-        title: "Software: Pod OS",
-        badge: "High upside",
-        badgeTone: "warn",
-        desc: "A platform that forms pods, runs rituals, and captures decisions.",
-        howItWorks: ["Self-serve pod formation", "Built-in decision rituals", "Async check-ins", "Decision log"],
-        whyItWorks: ["Scales matching", "Recurring revenue", "Compounding data", "Low marginal cost"],
-        snapshot: snap([5, 5, 6, 8, 7, 6, 9, 6.8], ["Moderate", "1–3 months", "Good", "Large", "Building", "Medium", "Very high", "Solid"]),
-        firstTest: "Ship pod formation + ritual templates to 8 pods and measure weekly active use.",
-      },
-      {
-        icon: "store",
-        type: "Marketplace",
-        title: "Marketplace: Pod Match",
-        badge: "Medium effort",
-        badgeTone: "info",
-        desc: "Match builders into pods and with facilitators on demand.",
-        howItWorks: ["Vet members & facilitators", "Match by stage & goal", "Handle logistics", "Collect feedback"],
-        whyItWorks: ["Light to start", "Network effects", "Trusted supply", "Organic growth"],
-        snapshot: snap([5, 4, 5, 7, 6, 3, 6, 5.3], ["Slow", "Slower", "Mixed", "Large", "Moderate", "High", "Medium", "Mixed"]),
-        firstTest: "Hand-match 10 builders into 2 pods and measure 4-week retention.",
-      },
-      {
-        icon: "people",
-        type: "Community",
-        title: "Community: Pod Collective",
-        badge: "Low effort",
-        badgeTone: "good",
-        desc: "A membership community organised around recurring pods.",
-        howItWorks: ["Run rolling cohorts", "Host events", "Pod accountability", "Shared resource library"],
-        whyItWorks: ["Cheap to test", "Recurring membership", "High retention", "Built-in distribution"],
-        snapshot: snap([7, 6, 6, 6, 7, 5, 7, 6.3], ["Easy", "Weeks", "Good", "Medium", "Building", "Medium", "High", "Solid"]),
-        firstTest: "Open a paid pilot collective to 25 builders and measure pod activity and renewal.",
-      },
-      {
-        icon: "doc",
-        type: "Content",
-        title: "Content Engine",
-        badge: "Quick test",
-        badgeTone: "neutral",
-        desc: "Playbooks and templates on running effective builder pods.",
-        howItWorks: ["Publish pod playbooks", "Give away ritual templates", "Build a list", "Convert to pods"],
-        whyItWorks: ["Fastest to test", "Builds audience", "Low cost", "Feeds the other paths"],
-        snapshot: snap([9, 3, 6, 8, 3, 8, 6, 5.8], ["Very easy", "Slow revenue", "Good", "Large", "Low", "Very low", "High", "Mixed"]),
-        firstTest: "Publish a pod playbook + templates and measure signups and pod starts.",
-      },
-    ],
-    output: {
-      summary:
-        "Builder Pods gives engineering leaders and product teams a curated pod of trusted peers, with shared context and decision rituals, so they pressure-test ideas and make calls fast — without slow, lonely cycles.",
-      page: {
-        nav: ["Why pods", "How it runs", "What you get", "FAQs"],
-        headline: "Build with peers who actually move your decisions forward.",
-        subhead:
-          "A curated pod of builders, shared context, and weekly decision rituals — so your team tests ideas and makes calls without long, lonely cycles.",
-        cta: "Join a pod",
-        proofCount: "9 pilot pods",
-        proofAudience: "eng leaders, product teams",
-        proofNote: "Early pods report faster, more confident decisions.",
-      },
-      outreach: {
-        linkedin:
-          "Building alone is slow. Building with the wrong people is slower.\n\nWe're forming small builder pods — curated peers, shared context, weekly decision rituals — to help teams test ideas and decide faster. Comment 'pod' if you want in.",
-        dm:
-          "Hey {name} — would a small pod of trusted builders help you make decisions faster? We're forming a few curated pods now. Want the details?",
-        email:
-          "Subject: a pod of peers to move your decisions faster\n\nHi {name},\n\nMost builders don't lack ideas — they lack a trusted few to pressure-test them with. We're forming small, curated pods with weekly decision rituals.\n\nWant in on the next one?\n\nMaya, Alex & Priya — Flash Company",
-        whatsapp:
-          "Hi {name}! Forming small builder pods — curated peers + weekly decision rituals to help you move faster. Want a spot in the next pod?",
-      },
-      testPlan: {
-        hypothesis:
-          "We believe builders will pay to join a curated pod if it measurably speeds up their decisions and keeps them accountable over four weeks.",
-        firstTest: "Run 3 facilitated pods for 4 weeks and measure renewal and referrals.",
-        metrics: ["Pods filled", "4-week retention", "Paid renewals", "Referrals"],
-        decisionRule:
-          "If all 3 pilot pods stay active for 4 weeks and at least 2 renew paid, we continue. If pods stall, the matching model isn't ready.",
-      },
-      deck: [
-        { title: "The problem", body: "Builders make slow, lonely decisions without trusted peers." },
-        { title: "The customer", body: "Engineering leaders and product teams at the early stage." },
-        { title: "The solution", body: "Curated pods with shared context and weekly decision rituals." },
-        { title: "Why us", body: "Access to builders plus tools tuned for early-team decisions." },
-        { title: "How it runs", body: "Match → ritual → accountability → outcomes." },
-        { title: "First test", body: "3 facilitated pods over 4 weeks, measured on renewal." },
-        { title: "The ask", body: "Fill and retain 3 pods, convert 2 to paid renewals." },
-      ],
-    },
+    id: "flexmatch",
+    rank: 2,
+    title: "FlexMatch",
+    score: 6.9,
+    customer: "Returning parents and employers offering flexible roles.",
+    problem: "Returners can't find genuinely flexible roles; employers can't find vetted returners.",
+    whyTeam: "Alex has built matching infra; Maya has supply-side trust.",
+    validation: "Concierge-match 10 returners to roles by hand before building anything.",
+    votes: { approve: 2, challenge: 0, pivot: 3 },
+    status: "tumble",
+    note: "Marketplace. Parked — Alex flagged the two-sided cold-start risk. In the tumble dryer for now.",
   },
   {
-    id: "copilot",
-    num: 3,
-    title: "Validation Co-pilot",
-    fitBadge: "Exploratory",
-    level: "Medium–Low",
-    levelTone: "info",
-    customer: "Founders and operators validating ideas before incorporating or fundraising.",
-    problem: "Unclear which validation steps matter most and how to interpret signals.",
-    whyUs: "We distill expert tactics and community feedback into a smart co-pilot.",
-    evidence: [
-      "Need for simple validation guidance",
-      "Interest in AI-assisted synthesis",
-      "Early appetite for automation",
-    ],
-    risk: "AI trust and accuracy for early venture contexts.",
-    panel: {
-      customer: "Founders and operators validating an idea before incorporating or fundraising.",
-      problem: "They don't know which validation steps matter most, or how to read the signals they get back.",
-      alternative: "Generic blog posts, scattered advice threads, and gut feel.",
-      whyGroup: "We turn expert validation tactics and community feedback into clear, guided next steps.",
-      quotes: [
-        { memberId: "priya", text: "People want clearer ways to validate before committing." },
-        { memberId: "alex", text: "Early appetite for AI-assisted synthesis is real." },
-        { memberId: "maya", text: "They need to know which steps actually matter." },
-      ],
-      uncertainty: "Whether founders will trust AI guidance enough to act on it this early.",
-      bars: [
-        { label: "Desirability", value: 4 },
-        { label: "Founder fit", value: 3 },
-        { label: "Speed to test", value: 3.5 },
-        { label: "Access", value: 3 },
-      ],
-      overall: 5.9,
-      overallLabel: "Worth a probe",
-    },
-    approaches: [
-      {
-        icon: "people",
-        type: "Service",
-        title: "Service: Validation Concierge",
-        badge: "Strongest path",
-        badgeTone: "good",
-        desc: "Guide founders through validation by hand, step by step.",
-        recommended: true,
-        howItWorks: ["Map the riskiest assumption", "Design the validation step", "Run it with them", "Interpret the signals"],
-        whyItWorks: ["Fast to start", "Builds trust early", "Teaches what to automate", "High willingness to pay"],
-        snapshot: snap([8, 6, 6, 6, 5, 4, 7, 6.0], ["Easy", "Weeks", "Good", "Medium", "Low", "Medium", "High", "Solid"]),
-        firstTest: "Concierge 5 founders through one validation cycle and measure perceived value.",
-      },
-      {
-        icon: "laptop",
-        type: "Software",
-        title: "Software: Co-pilot App",
-        badge: "High upside",
-        badgeTone: "warn",
-        desc: "An AI co-pilot that recommends validation steps and reads the results.",
-        howItWorks: ["Surface riskiest assumptions", "Recommend validation steps", "Capture results", "Interpret signals"],
-        whyItWorks: ["Scales guidance", "Recurring revenue", "Compounding data", "Low marginal cost"],
-        snapshot: snap([5, 5, 6, 8, 6, 6, 9, 6.4], ["Moderate", "1–3 months", "Good", "Large", "Building", "Medium", "Very high", "Solid"]),
-        firstTest: "Ship a guided validation flow to 10 founders and measure completion and trust.",
-      },
-      {
-        icon: "store",
-        type: "Marketplace",
-        title: "Marketplace: Validator Network",
-        badge: "Medium effort",
-        badgeTone: "info",
-        desc: "Match founders with vetted validation experts.",
-        howItWorks: ["Vet validators", "Match by idea stage", "Handle logistics", "Collect outcomes"],
-        whyItWorks: ["Light to start", "Two-sided network", "Expert trust", "Organic growth"],
-        snapshot: snap([4, 4, 4, 6, 6, 3, 6, 4.9], ["Slow", "Slower", "Mixed", "Medium", "Moderate", "High", "Medium", "Mixed"]),
-        firstTest: "Hand-match 5 founders to 3 validators and measure repeat use.",
-      },
-      {
-        icon: "people",
-        type: "Community",
-        title: "Community: Validators Guild",
-        badge: "Low effort",
-        badgeTone: "good",
-        desc: "A community where founders validate together and share signals.",
-        howItWorks: ["Run validation cohorts", "Share live experiments", "Peer feedback", "Pattern library"],
-        whyItWorks: ["Cheap to test", "Recurring membership", "Peer trust", "Built-in distribution"],
-        snapshot: snap([7, 5, 6, 6, 6, 5, 7, 5.9], ["Easy", "Weeks", "Good", "Medium", "Building", "Medium", "High", "Mixed"]),
-        firstTest: "Open a paid validation cohort to 20 founders and measure participation.",
-      },
-      {
-        icon: "doc",
-        type: "Content",
-        title: "Content Engine",
-        badge: "Quick test",
-        badgeTone: "neutral",
-        desc: "Guides and templates that teach founders how to validate.",
-        howItWorks: ["Publish validation guides", "Give away templates", "Build a list", "Convert to product"],
-        whyItWorks: ["Fastest to test", "Builds audience", "Low cost", "Feeds other paths"],
-        snapshot: snap([9, 3, 6, 8, 3, 8, 6, 5.7], ["Very easy", "Slow revenue", "Good", "Large", "Low", "Very low", "High", "Mixed"]),
-        firstTest: "Publish a validation guide + templates and measure signups and replies.",
-      },
-    ],
-    output: {
-      summary:
-        "Validation Co-pilot helps founders and operators validate an idea before they incorporate or fundraise — distilling expert tactics and community feedback into clear, guided steps and a read on what the signals actually mean.",
-      page: {
-        nav: ["Why it works", "How it runs", "What you get", "FAQs"],
-        headline: "Validate your idea before you bet a year on it.",
-        subhead:
-          "A co-pilot that tells you which validation steps matter most, runs them with you, and helps you read the signals — before you incorporate or raise.",
-        cta: "Start validating",
-        proofCount: "10 pilot founders",
-        proofAudience: "pre-incorporation founders",
-        proofNote: "Early users report clearer next steps and fewer dead ends.",
-      },
-      outreach: {
-        linkedin:
-          "Most founders validate by vibes — then wonder why the signals lied.\n\nWe're building a co-pilot that tells you which validation steps actually matter and helps you read the results. Comment 'validate' for early access.",
-        dm:
-          "Hey {name} — validating an idea right now? We're piloting a co-pilot that picks the right validation steps and helps you read the signals. Want a look?",
-        email:
-          "Subject: validate before you bet a year on it\n\nHi {name},\n\nThe hardest part of early validation isn't running tests — it's knowing which ones matter and what the results mean.\n\nWe're piloting a co-pilot that does both. Want early access?\n\nMaya, Alex & Priya — Flash Company",
-        whatsapp:
-          "Hi {name}! Piloting a validation co-pilot — it picks the right steps and helps you read the signals before you incorporate/raise. Want early access?",
-      },
-      testPlan: {
-        hypothesis:
-          "We believe early founders will pay for guided validation if it gives them clearer next steps and a trustworthy read on their signals.",
-        firstTest: "Concierge 5 founders through one validation cycle and measure perceived value.",
-        metrics: ["Founders guided", "Steps completed", "Trust in the read", "Willingness to pay"],
-        decisionRule:
-          "If 4 of 5 concierge founders complete a cycle and rate the guidance highly, we continue. If trust is low, the AI read isn't ready.",
-      },
-      deck: [
-        { title: "The problem", body: "Founders don't know which validation steps matter or how to read the signals." },
-        { title: "The customer", body: "Founders and operators validating before incorporating or raising." },
-        { title: "The solution", body: "A co-pilot that picks the right steps and interprets the results." },
-        { title: "Why us", body: "Expert tactics plus community feedback distilled into guidance." },
-        { title: "How it runs", body: "Find the risk → run the step → read the signal → decide." },
-        { title: "First test", body: "Concierge 5 founders through one validation cycle." },
-        { title: "The ask", body: "Guide 5 founders and earn high trust ratings." },
-      ],
-    },
+    id: "comeback",
+    rank: 3,
+    title: "The Comeback",
+    score: 6.2,
+    customer: "Career returners across all fields.",
+    problem: "No brand tells the comeback story or builds the returner community.",
+    whyTeam: "Priya's content engine + Maya's audience.",
+    validation: "Publish comeback-story content and measure list growth.",
+    votes: { approve: 1, challenge: 3, pivot: 1 },
+    status: "folded",
+    note: "Content + community brand. Folded into Relaunch as its top-of-funnel rather than run standalone.",
   },
+  {
+    id: "employer",
+    rank: 4,
+    title: "Returnships-as-a-Service",
+    score: 5.5,
+    customer: "Employers who want to hire returners but lack a programme.",
+    problem: "Companies want the talent but have no structured returnship to run.",
+    whyTeam: "Jordan's programme ops; Sam's outcome reporting.",
+    validation: "Pitch one employer a paid pilot returnship.",
+    votes: { approve: 1, challenge: 1, pivot: 2 },
+    status: "tumble",
+    note: "B2B and slower. Parked for after consumer traction.",
+  },
+];
+
+export const CHOSEN_ID = "relaunch";
+
+export type Role = { memberId: string; title: string; responsibilities: string; equity: number };
+
+export const ROLES: Role[] = [
+  { memberId: "maya", title: "CEO · Community & GTM", responsibilities: "Recruits cohorts from her community; owns brand voice.", equity: 28 },
+  { memberId: "alex", title: "CTO · Product & Eng", responsibilities: "Builds the cohort platform and intro flow.", equity: 26 },
+  { memberId: "jordan", title: "COO · Ops & Delivery", responsibilities: "Runs the 8-week cohort and employer partnerships.", equity: 22 },
+  { memberId: "priya", title: "CMO · Brand & Content", responsibilities: "Runs the comeback-story content engine.", equity: 14 },
+  { memberId: "sam", title: "Head of Research · Outcomes", responsibilities: "Measures confidence and re-employment; owns the data moat.", equity: 10 },
+];
+
+export const EQUITY_NOTE = "Equity is embedded in role and is a starting framework — revisit at the day-30 review.";
+
+export const DECISION_FRAMEWORK = [
+  "The lead of each function decides within it.",
+  "Any spend over €500 or any hire needs 3 of 5.",
+  "A change to the core thesis needs 4 of 5.",
+  "The day-30 review can rebalance roles and equity.",
+];
+
+// --------------------------------------------------------------- Output
+
+export const BIRTH_CERTIFICATE = {
+  thesis:
+    "Relaunch is an 8-week guided returnship cohort that gets parents back to work — with a community that gets it, real employer intros, and rebuilt confidence. We win because the founders already hold the distribution, the cohort ops, and the outcome data.",
+  charter: [
+    "We move at sprint speed and ship before we feel ready.",
+    "Returners are members, not leads — we build with them.",
+    "Disagree in the open, commit once decided.",
+    "Outcomes (placements, confidence) beat vanity metrics.",
+  ],
+  roadmap: [
+    { week: "Week 1", text: "Recruit 12 parents from Maya's community into a paid pilot cohort." },
+    { week: "Week 2", text: "Run weeks 1–2 of the cohort; Sam baselines confidence and goals." },
+    { week: "Week 3", text: "Land 5 employer intros for placements; Priya ships comeback content." },
+    { week: "Week 4", text: "Measure interviews, placements and confidence lift; decide go / no-go." },
+  ],
+  deck: [
+    { title: "Problem", body: "Parents who pause their careers face a cold, confidence-eroding path back, and employer bias against gaps." },
+    { title: "Customer", body: "Parents returning to work after a break — reachable through Maya's 4k-member community." },
+    { title: "Solution", body: "An 8-week guided returnship cohort: community, employer intros, and rebuilt confidence." },
+    { title: "Why us", body: "Distribution, cohort ops, outcome data, platform and brand already in the founding team." },
+    { title: "How it runs", body: "Recruit a cohort → 8-week programme → employer intros → measured outcomes." },
+    { title: "Traction plan", body: "Paid pilot cohort of 12 from the community, plus 5 employer intros, inside 30 days." },
+    { title: "The ask", body: "Run the pilot, hit the day-30 decision gate, then open cohort two." },
+  ],
+  landing: {
+    headline: "Your career didn't end. It paused.",
+    subhead: "Relaunch is an 8-week guided cohort that gets parents back to work — with a community that gets it, real employer intros, and your confidence rebuilt.",
+    cta: "Join the next cohort",
+  },
+  outreach: {
+    linkedin: "If you paused your career to raise kids, going back can feel like starting from zero. It shouldn't.\n\nWe're piloting Relaunch — an 8-week guided cohort that gets parents back to work with community, real employer intros, and rebuilt confidence. Comment 'relaunch' for a spot.",
+    dm: "Hey {name} — you mentioned wanting to go back to work but not knowing where to start. We're running a small guided cohort for exactly that — community, employer intros, confidence. Want the details?",
+    email: "Subject: a guided way back to work\n\nHi {name},\n\nGoing back to work after a break is hard — cold job boards and employer bias don't help. Relaunch is an 8-week guided cohort built for returning parents: community, real employer intros, and rebuilt confidence.\n\nWe're taking a small pilot cohort. Want in?\n\nMaya — Relaunch",
+    whatsapp: "Hi {name}! We're running a small 8-week cohort for parents going back to work — community + employer intros + confidence. Pilot spots are limited. Keen?",
+  },
+  validation: {
+    tests: [
+      "Landing page shared to Maya's community",
+      "20 warm DMs to parents who've asked",
+      "5 employer intros for placement demand",
+    ],
+    resultsNote: "Results populate during follow-through (day 7+). Nothing here is filled in yet — this is the plan, not measured outcomes.",
+    decisionRule: "If 12 join the paid pilot and 3 employers commit to interviews within two weeks, we continue.",
+  },
+  nextSteps: [
+    "Send the landing page and outreach to your first 10 by day 4.",
+    "Record your commitments below.",
+    "The agent goes quiet until day 7 — the work is yours.",
+  ],
+};
+
+export type Commitment = { memberId: string; task: string; due: string; recorded: boolean };
+
+export const COMMITMENTS: Commitment[] = [
+  { memberId: "maya", task: "Recruit 12 parents into the pilot cohort", due: "Day 7", recorded: true },
+  { memberId: "alex", task: "Ship the cohort signup + intro flow", due: "Day 7", recorded: true },
+  { memberId: "jordan", task: "Line up 5 employer intros", due: "Day 10", recorded: false },
+  { memberId: "priya", task: "Publish 3 comeback-story posts", due: "Day 7", recorded: true },
+  { memberId: "sam", task: "Set the confidence baseline survey", due: "Day 5", recorded: false },
 ];
 
 export const OUTPUT_MENU: { id: string; label: string; icon: IconName }[] = [
-  { id: "summary", label: "Opportunity summary", icon: "doc" },
-  { id: "page", label: "Landing page", icon: "laptop" },
-  { id: "outreach", label: "Outreach copy", icon: "people" },
-  { id: "testplan", label: "Test plan", icon: "check" },
+  { id: "thesis", label: "Thesis", icon: "bolt" },
+  { id: "charter", label: "Team charter", icon: "people" },
+  { id: "roles", label: "Roles & equity", icon: "scale" },
+  { id: "decisions", label: "Decision framework", icon: "check" },
+  { id: "roadmap", label: "30-day roadmap", icon: "calendar" },
   { id: "deck", label: "Pitch deck", icon: "chart" },
+  { id: "landing", label: "Landing page", icon: "laptop" },
+  { id: "outreach", label: "Outreach copy", icon: "message" },
+  { id: "validation", label: "Validation report", icon: "target" },
+  { id: "commitments", label: "Commitment ritual", icon: "play" },
+];
+
+// -------------------------------------------------------- Follow-through
+
+export type Checkpoint = { day: string; status: "active" | "locked"; title: string; asks: string[]; due: string };
+
+export const CHECKPOINTS: Checkpoint[] = [
+  { day: "Day 7", status: "active", title: "First pulse", asks: ["Did the pilot cohort fill?", "What surprised you about the first returners?"], due: "Cohort recruited; signup live." },
+  { day: "Day 14", status: "locked", title: "Mid-cohort", asks: ["How are interviews and placements tracking?", "Where is the cohort getting stuck?"], due: "Weeks 1–2 of the cohort run." },
+  { day: "Day 21", status: "locked", title: "Outcomes check", asks: ["What's the confidence lift?", "Any churn, and why?"], due: "Sam's outcome data in." },
+  { day: "Day 30", status: "locked", title: "Go / no-go", asks: ["Continue, pivot or stop?", "Rebalance roles and equity?"], due: "Decision gate + role review." },
 ];

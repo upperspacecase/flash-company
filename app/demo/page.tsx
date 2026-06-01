@@ -1,90 +1,97 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useState } from "react";
 import {
-  BASICS_QUESTIONS,
-  CONSTRAINTS,
-  CROSS_NOTES,
-  FOUNDATION,
-  MAP_INGREDIENTS,
-  MEMBERS,
-  OPPORTUNITIES,
+  AGENT_INTRO,
+  AGENT_NAME,
+  BIRTH_CERTIFICATE,
+  CHECKPOINTS,
+  CHOSEN_ID,
+  COHORT,
+  COHORT_DUMPS,
+  COHORT_READINESS,
+  COMMITMENTS,
+  CONVERGENCE_SIGNALS,
+  DECISION_FRAMEWORK,
+  DUMPS,
+  EQUITY_NOTE,
+  HYPOTHESES,
   OUTPUT_MENU,
-  PATTERN_CHIPS,
-  SHARED_ANSWERS,
-  SHARED_CONTEXT,
-  SHARED_PROMPTS,
-  SIGNALS,
-  STAGES,
-  SYNTHESIS_READINESS,
+  PHASES,
+  ROLES,
+  SPRINT,
+  SUGGESTED_CONTACTS,
   TAGLINE,
+  YOU,
   memberById,
-  type Approach,
+  type DumpKind,
+  type Hypothesis,
+  type HypothesisStatus,
   type IconName,
   type Member,
-  type Opportunity,
 } from "./data";
 
-/* ------------------------------------------------------------------ icons */
+/* ---------------------------------------------------------------- icons */
 
 function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
-  const p = (d: string) => (
+  const D: Record<IconName, string> = {
+    people: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M22 21v-2a4 4 0 0 0-3-3.87|M16 3.13A4 4 0 0 1 16 11",
+    group: "M17 21v-2a4 4 0 0 0-3-3.87|M7 21v-2a4 4 0 0 1 3-3.87|M12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6|M5 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5|M19 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5",
+    user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2|M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8",
+    bolt: "M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z",
+    alert: "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4|M12 17h.01",
+    sparkle: "M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z",
+    link: "M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1|M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1",
+    mic: "M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z|M19 10a7 7 0 0 1-14 0|M12 19v3",
+    image: "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z|M8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3|M21 15l-5-5L5 21",
+    doc: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z|M14 2v6h6|M8 13h8|M8 17h6",
+    laptop: "M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v11H3z|M2 20h20|M9 20l.5-2h5l.5 2",
+    store: "M3 9l1.5-5h15L21 9|M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9|M3 9h18|M9 20v-6h6v6",
+    building: "M3 21h18|M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16|M15 21V9h2a2 2 0 0 1 2 2v10|M8 7h2|M8 11h2",
+    target: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18|M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10|M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2",
+    check: "M9 11l3 3L22 4|M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
+    star: "M12 2l3 6.5 7 .9-5 4.8 1.3 7L12 18l-6.6 3.2L6.7 14l-5-4.8 7-.9z",
+    clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18|M12 7v5l3 2",
+    calendar: "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z|M16 2v4|M8 2v4|M3 10h18",
+    scale: "M12 3v18|M7 7h10|M3 7l4 10H3zM3 7l4-3 4 3|M21 7l-4 10h4zM21 7l-4-3-4 3",
+    chart: "M3 3v18h18|M7 15l3-3 3 2 4-5",
+    thumb: "M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z|M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 6A2 2 0 0 1 17 21H7",
+    lock: "M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z|M8 11V7a4 4 0 0 1 8 0v4",
+    play: "M8 5v14l11-7z",
+    coins: "M2 8c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z|M2 8v5c0 1.7 3.6 3 8 3s8-1.3 8-3V8",
+    message: "M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z",
+    minus: "M5 12h14|M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
+    send: "M22 2 11 13|M22 2l-7 20-4-9-9-4z",
+    pause: "M8 5v14|M16 5v14",
+    refresh: "M21 12a9 9 0 1 1-3-6.7L21 7|M21 3v4h-4",
+  };
+  return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      {d.split("|").map((seg, i) => (
-        <path key={i} d={seg} />
-      ))}
+      {D[name].split("|").map((seg, i) => <path key={i} d={seg} />)}
     </svg>
   );
-  switch (name) {
-    case "people": return p("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M22 21v-2a4 4 0 0 0-3-3.87|M16 3.13A4 4 0 0 1 16 11");
-    case "group": return p("M17 21v-2a4 4 0 0 0-3-3.87|M7 21v-2a4 4 0 0 1 3-3.87|M12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6|M5 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5|M19 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5");
-    case "user": return p("M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2|M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8");
-    case "question": return p("M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3|M12 17h.01|M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0");
-    case "bulb": return p("M9 18h6|M10 22h4|M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1h6c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2");
-    case "folder": return p("M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z");
-    case "scale": return p("M12 3v18|M7 7h10|M3 7l4 10H3zM3 7l4-3 4 3|M21 7l-4 10h4zM21 7l-4-3-4 3");
-    case "alert": return p("M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4|M12 17h.01");
-    case "sparkle": return p("M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z|M19 15l.6 1.6L21 17l-1.4.4L19 19l-.6-1.6L17 17l1.4-.4z");
-    case "minus": return p("M5 12h14|M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0");
-    case "doc": return p("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z|M14 2v6h6|M8 13h8|M8 17h6");
-    case "laptop": return p("M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v11H3z|M2 20h20|M9 20l.5-2h5l.5 2");
-    case "store": return p("M3 9l1.5-5h15L21 9|M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9|M3 9h18|M9 20v-6h6v6");
-    case "flask": return p("M9 3h6|M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3|M7 16h10");
-    case "clock": return p("M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18|M12 7v5l3 2");
-    case "chart": return p("M3 3v18h18|M7 15l3-3 3 2 4-5");
-    case "shield": return p("M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z");
-    case "gear": return p("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6|M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z");
-    case "dollar": return p("M12 1v22|M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6");
-    case "star": return p("M12 2l3 6.5 7 .9-5 4.8 1.3 7L12 18l-6.6 3.2L6.7 14l-5-4.8 7-.9z");
-    case "check": return p("M9 11l3 3L22 4|M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11");
-    case "tag": return p("M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8z|M7 7h.01");
-  }
 }
 
-/* ------------------------------------------------------- shared primitives */
+const KIND_ICON: Record<DumpKind, IconName> = { text: "message", voice: "mic", link: "link", image: "image", doc: "doc" };
+
+/* -------------------------------------------------------- primitives */
 
 function Avatar({ m, size = "h-8 w-8 text-xs" }: { m: Member; size?: string }) {
-  return (
-    <span className={`flex ${size} items-center justify-center rounded-full font-bold ring-2 ring-white ${m.ring}`}>
-      {m.initials}
-    </span>
-  );
+  return <span className={`flex ${size} items-center justify-center rounded-full font-bold ring-2 ring-white ${m.ring}`}>{m.initials}</span>;
 }
-
-function RailCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`rounded-2xl border border-slate-200 bg-white p-4 ${className}`}>{children}</div>;
 }
-
 function Chip({ children }: { children: React.ReactNode }) {
   return <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{children}</span>;
 }
-
 function SageChip({ children }: { children: React.ReactNode }) {
   return <span className="rounded-md bg-sage-tint px-2.5 py-1 text-xs font-medium text-sage-dark">{children}</span>;
 }
-
+function RailIcon({ name }: { name: IconName }) {
+  return <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sage-tint text-sage-dark"><Icon name={name} className="h-4 w-4" /></span>;
+}
 function CheckRow({ label, done = true }: { label: string; done?: boolean }) {
   return (
     <li className="flex items-center gap-2 text-sm">
@@ -95,46 +102,6 @@ function CheckRow({ label, done = true }: { label: string; done?: boolean }) {
     </li>
   );
 }
-
-function RailIcon({ name }: { name: IconName }) {
-  return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sage-tint text-sage-dark">
-      <Icon name={name} className="h-4 w-4" />
-    </span>
-  );
-}
-
-function ScoreDots({ value }: { value: number }) {
-  return (
-    <span className="flex gap-1">
-      {[0, 1, 2, 3, 4].map((i) => {
-        const full = i + 1 <= Math.floor(value);
-        const half = !full && i < value;
-        return (
-          <span
-            key={i}
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ background: full ? "var(--sage)" : half ? "linear-gradient(90deg, var(--sage) 50%, #e2e8f0 50%)" : "#e2e8f0" }}
-          />
-        );
-      })}
-    </span>
-  );
-}
-
-const BADGE_TONE: Record<Approach["badgeTone"], string> = {
-  good: "bg-emerald-100 text-emerald-700",
-  warn: "bg-amber-100 text-amber-700",
-  info: "bg-sky-100 text-sky-700",
-  neutral: "bg-slate-100 text-slate-600",
-};
-
-const LEVEL_DOT: Record<Opportunity["levelTone"], string> = {
-  good: "bg-emerald-500",
-  warn: "bg-amber-400",
-  info: "bg-amber-400",
-};
-
 function Columns({ left, center, right }: { left: React.ReactNode; center: React.ReactNode; right: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -144,809 +111,593 @@ function Columns({ left, center, right }: { left: React.ReactNode; center: React
     </div>
   );
 }
-
 function CenterHead({ title, sub, right }: { title: string; sub: string; right?: React.ReactNode }) {
   return (
     <div className="mb-6 flex items-start justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
-        <p className="mt-1 text-slate-500">{sub}</p>
-      </div>
+      <div><h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1><p className="mt-1 text-slate-500">{sub}</p></div>
       {right}
     </div>
   );
 }
-
-function Continue({ label, onClick }: { label: string; onClick: () => void }) {
+function PrimaryBtn({ label, onClick, icon = "send" }: { label: string; onClick: () => void; icon?: IconName }) {
   return (
     <button onClick={onClick} className="inline-flex h-12 items-center gap-2 rounded-xl bg-sage px-6 text-sm font-bold text-white transition-colors hover:bg-sage-dark">
-      {label}
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      {label}<Icon name={icon} className="h-4 w-4" />
     </button>
   );
 }
+function RailTitle({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{children}</p>;
+}
 
-/* --------------------------------------------------------------- the page */
+/* ------------------------------------------------------------ the page */
 
 export default function Demo() {
-  const [step, setStep] = useState(0);
-  const [oppId, setOppId] = useState(OPPORTUNITIES[0].id);
-  const [approachIdx, setApproachIdx] = useState(
-    OPPORTUNITIES[0].approaches.findIndex((a) => a.recommended)
+  const [phase, setPhase] = useState(0);
+  const [dumps, setDumps] = useState(0);
+  const [hypId, setHypId] = useState(CHOSEN_ID);
+  const [statuses, setStatuses] = useState<Record<string, HypothesisStatus>>(
+    Object.fromEntries(HYPOTHESES.map((h) => [h.id, h.status]))
   );
-  const [outputView, setOutputView] = useState("page");
-
-  const opp = OPPORTUNITIES.find((o) => o.id === oppId)!;
-  const approach = opp.approaches[approachIdx] ?? opp.approaches[0];
-
-  function selectOpp(id: string) {
-    setOppId(id);
-    const o = OPPORTUNITIES.find((x) => x.id === id)!;
-    setApproachIdx(Math.max(0, o.approaches.findIndex((a) => a.recommended)));
-  }
+  const [section, setSection] = useState("thesis");
+  const [recorded, setRecorded] = useState<Record<string, boolean>>(
+    Object.fromEntries(COMMITMENTS.map((c) => [c.memberId, c.recorded]))
+  );
+  const [checkpoint, setCheckpoint] = useState("Day 7");
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50/70">
-      {/* header */}
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-4 px-5 py-3">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-sage"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
-            <span className="text-lg font-bold tracking-tight text-foreground">Flash Company</span>
-            <span className="hidden text-sm font-medium italic text-sage md:inline">{TAGLINE}</span>
-          </Link>
-
-          <Stepper step={step} onJump={setStep} />
-
-          <div className="flex shrink-0 items-center gap-3">
-            <div className="hidden items-center -space-x-2 sm:flex">
-              {MEMBERS.map((m) => <Avatar key={m.id} m={m} />)}
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 ring-2 ring-white">+2</span>
-            </div>
-            <button className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              <Icon name="group" className="h-4 w-4" /> Share
-            </button>
-            <button className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 sm:flex">···</button>
-          </div>
-        </div>
-      </header>
-
-      {/* content */}
+      <Header phase={phase} />
+      <Timeline phase={phase} onJump={setPhase} />
       <main className="mx-auto w-full max-w-[1500px] flex-1 px-5 py-6">
-        {step === 0 && <Basics onNext={() => setStep(1)} />}
-        {step === 1 && <Shared onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-        {step === 2 && <MapStage opp={opp} onSelect={selectOpp} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-        {step === 3 && (
-          <Approaches
-            opp={opp}
-            idx={approachIdx}
-            approach={approach}
-            onPick={setApproachIdx}
-            onSelect={() => setStep(4)}
-          />
-        )}
-        {step === 4 && (
-          <OutputStage
-            opp={opp}
-            view={outputView}
-            onView={setOutputView}
-            onBack={() => setStep(3)}
-          />
-        )}
+        {phase === 0 && <CohortPhase onNext={() => setPhase(1)} />}
+        {phase === 1 && <ConvergencePhase dumps={dumps} onDump={() => setDumps((d) => Math.min(DUMPS.length, d + 1))} onNext={() => setPhase(2)} />}
+        {phase === 2 && <FormationPhase hypId={hypId} onSelect={setHypId} statuses={statuses} setStatuses={setStatuses} onNext={() => setPhase(3)} />}
+        {phase === 3 && <OutputPhase section={section} onSection={setSection} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(4)} />}
+        {phase === 4 && <FollowThroughPhase active={checkpoint} onSelect={setCheckpoint} recorded={recorded} />}
       </main>
     </div>
   );
 }
 
-/* ----------------------------------------------------------------- stepper */
-
-function Stepper({ step, onJump }: { step: number; onJump: (n: number) => void }) {
-  const arrow = "polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%, 13px 50%)";
-  const first = "polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%)";
-  const lastShape = "polygon(0 0, 100% 0, 100% 100%, 0 100%, 13px 50%)";
+function Header({ phase }: { phase: number }) {
+  const p = PHASES[phase];
   return (
-    <ol className="hidden items-stretch overflow-hidden rounded-xl border border-slate-200 bg-slate-100 lg:flex">
-      {STAGES.map((s, i) => {
-        const active = i === step;
-        const clip = i === 0 ? first : i === STAGES.length - 1 ? lastShape : arrow;
-        return (
-          <li key={s.id}>
-            <button
-              onClick={() => onJump(i)}
-              style={{ clipPath: clip, marginLeft: i ? -13 : 0 }}
-              className={`flex items-center gap-2 py-2.5 pl-5 pr-6 text-sm font-semibold transition-colors ${
-                active ? "bg-sage text-white" : "bg-white text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <span className={active ? "text-white/80" : "text-slate-400"}>{i + 1}</span>
-              {s.label}
-            </button>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-/* -------------------------------------------------------------- 1. Basics */
-
-function Basics({ onNext }: { onNext: () => void }) {
-  return (
-    <Columns
-      left={
-        <div className="space-y-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Team snapshot</p>
-          {MEMBERS.map((m) => (
-            <RailCard key={m.id}>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="font-bold text-foreground">{m.name}</span>
-                {m.lead && <span className="rounded bg-sage-tint px-1.5 py-0.5 text-[10px] font-bold uppercase text-sage-dark">Lead</span>}
-              </div>
-              <div className="mb-2 flex flex-wrap gap-1.5">{m.tags.map((t) => <Chip key={t}>{t}</Chip>)}</div>
-              <p className="flex items-center gap-1.5 text-xs text-slate-500"><Icon name="group" className="h-3.5 w-3.5" /> Network: {m.network}</p>
-            </RailCard>
-          ))}
-          <RailCard>
-            <p className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="alert" className="h-4 w-4 text-amber-500" /> Constraints</p>
-            <ul className="space-y-1.5 text-sm text-slate-600">
-              {CONSTRAINTS.map((c) => <li key={c} className="flex gap-2"><span className="text-slate-300">•</span>{c}</li>)}
-            </ul>
-          </RailCard>
-        </div>
-      }
-      center={
-        <RailCard className="p-6">
-          <CenterHead title="Basics intake" sub="Capture the raw material before exploring ideas." />
-          <div className="space-y-3">
-            {BASICS_QUESTIONS.map((item, i) => (
-              <div key={i} className="flex gap-4 rounded-xl border border-slate-200 p-4">
-                <RailIcon name={item.icon} />
-                <div className="grid flex-1 gap-1 sm:grid-cols-[1fr_1.4fr] sm:gap-4">
-                  <p className="font-semibold text-foreground">{i + 1}. {item.q}</p>
-                  <p className="text-sm text-slate-600">{item.a}</p>
-                </div>
-              </div>
-            ))}
+    <header className="border-b border-slate-200 bg-white">
+      <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-4 px-5 py-3">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-sage"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
+          <span className="text-lg font-bold tracking-tight text-foreground">Flash Company</span>
+          <span className="hidden text-sm font-medium italic text-sage md:inline">{TAGLINE}</span>
+        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="hidden items-center gap-2 rounded-full bg-sage-tint px-3 py-1.5 text-xs font-semibold text-sage-dark sm:flex">
+            <Icon name="clock" className="h-3.5 w-3.5" /> {SPRINT.windowHours}h sprint · {p.day}
+          </span>
+          <div className="hidden items-center -space-x-2 sm:flex">
+            {COHORT.map((m) => <Avatar key={m.id} m={m} />)}
           </div>
-          <div className="mt-4 rounded-xl bg-slate-50 p-4">
-            <p className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="people" className="h-4 w-4 text-sage" /> Shared context</p>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {MEMBERS.map((m) => (
-                <div key={m.id}>
-                  <p className="mb-1.5 text-xs font-bold text-slate-500">{m.name}</p>
-                  <ul className="space-y-1 text-xs text-slate-600">
-                    {SHARED_CONTEXT[m.id].map((t) => <li key={t} className="flex gap-1.5"><span className={`mt-1.5 h-1 w-1 shrink-0 rounded-full ${m.dot}`} />{t}</li>)}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end"><Continue label="Continue to shared inputs" onClick={onNext} /></div>
-        </RailCard>
-      }
-      right={
-        <div className="space-y-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Foundation summary</p>
-          <SummaryCard icon="user" title="Emerging customer" text={FOUNDATION.customer} />
-          <SummaryCard icon="alert" title="Core problem" text={FOUNDATION.problem} />
-          <SummaryCard icon="star" title="Why this matters" text={FOUNDATION.matters} />
-          <RailCard>
-            <p className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="sparkle" className="h-4 w-4 text-sage" /> Our edge</p>
-            <div className="flex flex-wrap gap-1.5">{FOUNDATION.edge.map((e) => <SageChip key={e}>{e}</SageChip>)}</div>
-          </RailCard>
-          <RailCard className="bg-sage-tint/30">
-            <p className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="check" className="h-4 w-4 text-sage" /> Readiness check</p>
-            <ul className="space-y-1.5">{FOUNDATION.readiness.map((r) => <CheckRow key={r} label={r} />)}</ul>
-          </RailCard>
-        </div>
-      }
-    />
-  );
-}
-
-function SummaryCard({ icon, title, text }: { icon: IconName; title: string; text: string }) {
-  return (
-    <RailCard>
-      <div className="flex gap-3">
-        <RailIcon name={icon} />
-        <div>
-          <p className="font-bold text-foreground">{title}</p>
-          <p className="mt-0.5 text-sm text-slate-600">{text}</p>
-        </div>
-      </div>
-    </RailCard>
-  );
-}
-
-/* ------------------------------------------------------- 2. Shared inputs */
-
-function Shared({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
-  return (
-    <Columns
-      left={
-        <div className="space-y-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Team inputs</p>
-          {MEMBERS.map((m) => (
-            <RailCard key={m.id}>
-              <div className="mb-2 flex items-center gap-2">
-                <Avatar m={m} size="h-7 w-7 text-[10px]" />
-                <span className="font-bold text-foreground">{m.name}</span>
-                {m.lead && <span className="rounded bg-sage-tint px-1.5 py-0.5 text-[10px] font-bold uppercase text-sage-dark">Lead</span>}
-              </div>
-              <div className="mb-2 flex flex-wrap gap-1.5">{m.tags.map((t) => <Chip key={t}>{t}</Chip>)}</div>
-              <p className="flex items-center gap-1.5 text-xs text-sage-dark"><Icon name="check" className="h-3.5 w-3.5" /> Contributed · {m.contributed}</p>
-            </RailCard>
-          ))}
-          <RailCard>
-            <p className="mb-2 text-sm font-bold text-foreground">Prompt themes</p>
-            <ul className="space-y-2">
-              {SHARED_PROMPTS.map((pr) => (
-                <li key={pr.q} className="flex items-center gap-2 text-sm text-slate-600"><Icon name={pr.icon} className="h-4 w-4 text-slate-400" />{shortPrompt(pr.q)}</li>
-              ))}
-            </ul>
-          </RailCard>
-          <button onClick={onBack} className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-white">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
-            Back to basics
+          <button className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <Icon name="group" className="h-4 w-4" /> Share
           </button>
         </div>
-      }
-      center={
-        <RailCard className="p-6">
-          <CenterHead title="Shared inputs" sub="Collect separate perspectives before the group converges." />
-          <div className="space-y-3">
-            {SHARED_PROMPTS.map((pr, i) => (
-              <div key={i} className="rounded-xl border border-slate-200 p-4">
-                <p className="mb-3 flex items-center gap-2 font-semibold text-foreground"><RailIcon name={pr.icon} /> {i + 1}. {pr.q}</p>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {MEMBERS.map((m) => (
-                    <div key={m.id}>
-                      <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-500"><span className={`h-2 w-2 rounded-full ${m.dot}`} />{m.name}</p>
-                      <p className="text-sm text-slate-600">{SHARED_ANSWERS[m.id][i]}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 rounded-xl bg-slate-50 p-4">
-            <p className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="group" className="h-4 w-4 text-sage" /> Cross-team notes</p>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {MEMBERS.map((m) => (
-                <div key={m.id}>
-                  <p className="mb-1.5 text-xs font-bold text-slate-500">{m.name}</p>
-                  <ul className="space-y-1 text-xs text-slate-600">
-                    {CROSS_NOTES[m.id].map((t) => <li key={t} className="flex gap-1.5"><span className={`mt-1.5 h-1 w-1 shrink-0 rounded-full ${m.dot}`} />{t}</li>)}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end"><Continue label="Continue to opportunity map" onClick={onNext} /></div>
-        </RailCard>
-      }
-      right={
-        <div className="space-y-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Signals emerging</p>
-          {SIGNALS.map((s) => <SummaryCard key={s.title} icon={s.icon} title={s.title} text={s.text} />)}
-          <RailCard>
-            <p className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="tag" className="h-4 w-4 text-sage" /> Patterns detected</p>
-            <div className="flex flex-wrap gap-1.5">{PATTERN_CHIPS.map((c) => <SageChip key={c}>{c}</SageChip>)}</div>
-          </RailCard>
-          <RailCard className="bg-sage-tint/30">
-            <p className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="check" className="h-4 w-4 text-sage" /> Synthesis readiness</p>
-            <ul className="space-y-1.5">{SYNTHESIS_READINESS.map((r) => <CheckRow key={r.label} label={r.label} done={r.done} />)}</ul>
-          </RailCard>
-        </div>
-      }
-    />
+      </div>
+    </header>
   );
 }
 
-function shortPrompt(q: string) {
-  return q.replace(/^What /, "").replace(/\?$/, "");
+function Timeline({ phase, onJump }: { phase: number; onJump: (n: number) => void }) {
+  return (
+    <nav className="border-b border-slate-200 bg-white">
+      <ol className="mx-auto flex w-full max-w-[1500px] gap-2 overflow-x-auto px-5 py-3">
+        {PHASES.map((p, i) => {
+          const active = i === phase;
+          const done = i < phase;
+          return (
+            <li key={p.id} className="flex flex-1 items-center gap-2">
+              <button onClick={() => onJump(i)} className={`flex flex-1 items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${active ? "border-sage bg-sage-tint/40" : "border-transparent hover:bg-slate-50"}`}>
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${active ? "bg-sage text-white" : done ? "bg-sage/20 text-sage-dark" : "bg-slate-100 text-slate-400"}`}>{i + 1}</span>
+                <span className="min-w-0">
+                  <span className="block whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-slate-400">{p.day}</span>
+                  <span className={`block whitespace-nowrap text-sm font-semibold ${active ? "text-sage-dark" : "text-slate-600"}`}>{p.label}</span>
+                </span>
+              </button>
+              {i < PHASES.length - 1 && <span className="hidden text-slate-300 lg:block">›</span>}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
 }
 
-/* ----------------------------------------------------- 3. Opportunity map */
+/* -------------------------------------------------------- 0. Cohort */
 
-function MapStage({ opp, onSelect, onNext, onBack }: { opp: Opportunity; onSelect: (id: string) => void; onNext: () => void; onBack: () => void }) {
+function CohortPhase({ onNext }: { onNext: () => void }) {
   return (
     <Columns
       left={
         <div className="space-y-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Signals to map</p>
-          {SIGNALS.map((s) => <SummaryCard key={s.title} icon={s.icon} title={s.title} text={s.text} />)}
-          <RailCard>
-            <p className="mb-3 text-sm font-bold text-foreground">Inputs used</p>
+          <RailTitle>Why this works</RailTitle>
+          <Card>
+            <p className="flex items-center gap-2 font-bold text-foreground"><Icon name="sparkle" className="h-4 w-4 text-sage" /> Invitation-driven trust</p>
+            <p className="mt-1.5 text-sm text-slate-600">Someone you trust sends it: &ldquo;you&rsquo;re in, I&rsquo;m in, let&rsquo;s bring in a third.&rdquo; Low bar on time and input.</p>
+          </Card>
+          <Card>
+            <p className="flex items-center gap-2 font-bold text-foreground"><Icon name="clock" className="h-4 w-4 text-sage" /> Time-boxed on purpose</p>
+            <p className="mt-1.5 text-sm text-slate-600">A fixed {SPRINT.windowHours}-hour window forces action — the constraint is the feature.</p>
+            <p className="mt-3 rounded-lg bg-sage-tint/40 px-3 py-2 text-center text-lg font-bold text-sage-dark">71:48 left</p>
+          </Card>
+        </div>
+      }
+      center={
+        <Card className="p-6">
+          <CenterHead title="Open the sprint" sub="Invite 3–5 people you trust. Each contributes individually — no group chat." />
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="mb-3 text-sm font-bold text-foreground">Your cohort</p>
             <ul className="space-y-2.5">
-              {MEMBERS.map((m) => (
-                <li key={m.id} className="flex items-center gap-2">
-                  <Icon name="check" className="h-4 w-4 text-sage" />
-                  <span className="text-sm font-semibold text-foreground">{m.name}</span>
-                  <span className="flex flex-wrap gap-1">{m.tags.slice(0, 2).map((t) => <Chip key={t}>{t}</Chip>)}</span>
+              {COHORT.map((m) => (
+                <li key={m.id} className="flex items-center gap-3">
+                  <Avatar m={m} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-foreground">{m.name} {m.id === YOU && <span className="text-xs font-normal text-slate-400">(you)</span>}</p>
+                    <p className="truncate text-xs text-slate-500">{m.role} · {m.network}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${m.accepted ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{m.accepted ? "In" : "Invited"}</span>
                 </li>
               ))}
             </ul>
-          </RailCard>
-          <button onClick={onBack} className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-white">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
-            Back to shared inputs
-          </button>
-        </div>
-      }
-      center={
-        <RailCard className="p-6">
-          <CenterHead title="Opportunity map" sub="Turn shared signals into specific opportunities." />
-          <div className="space-y-3">
-            {OPPORTUNITIES.map((o) => {
-              const active = o.id === opp.id;
-              return (
-                <button
-                  key={o.id}
-                  onClick={() => onSelect(o.id)}
-                  className={`block w-full rounded-xl border p-4 text-left transition-colors ${active ? "border-sage bg-sage-tint/30 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}
-                >
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="font-bold text-foreground">{o.num}. {o.title}</span>
-                    {o.id === OPPORTUNITIES[0].id && <span className="rounded-full bg-sage-tint px-2 py-0.5 text-[10px] font-bold uppercase text-sage-dark">{o.fitBadge}</span>}
-                    <span className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-slate-500">{o.level}<span className={`h-2.5 w-2.5 rounded-full ${LEVEL_DOT[o.levelTone]}`} /></span>
-                  </div>
-                  <div className="grid gap-4 text-sm sm:grid-cols-2">
-                    <dl className="space-y-1.5">
-                      <MapField label="Customer" value={o.customer} />
-                      <MapField label="Problem" value={o.problem} />
-                      <MapField label="Why us" value={o.whyUs} />
-                    </dl>
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-bold text-slate-400">Evidence</p>
-                      <ul className="space-y-1 text-slate-600">{o.evidence.map((e) => <li key={e} className="flex gap-1.5"><span className="text-sage">•</span>{e}</li>)}</ul>
-                      <p className="pt-1 text-xs font-bold text-slate-400">Risk</p>
-                      <p className="text-slate-600">{o.risk}</p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
           </div>
-          <div className="mt-5 rounded-xl bg-slate-50 p-4">
-            <p className="mb-3 text-sm font-bold text-sage-dark">Opportunity ingredients (map logic)</p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-              {MAP_INGREDIENTS.map((ing, i) => (
-                <div key={ing.label} className="flex flex-1 items-center gap-2">
-                  <div className="flex-1 rounded-lg border border-slate-200 bg-white p-2.5">
-                    <p className="flex items-center gap-1.5 text-xs font-bold text-foreground"><Icon name={ing.icon} className="h-3.5 w-3.5 text-sage" />{ing.label}</p>
-                    <p className="mt-0.5 text-[11px] leading-tight text-slate-500">{ing.sub}</p>
-                  </div>
-                  {i < MAP_INGREDIENTS.length - 1 && <span className="hidden text-slate-300 sm:block">→</span>}
-                </div>
-              ))}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 p-4">
+              <p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="coins" className="h-4 w-4 text-sage" /> Buy-in</p>
+              <p className="mt-1.5 text-sm text-slate-600">{SPRINT.buyInTotal} total into the kitty ({SPRINT.buyInPer} each). Everyone has skin in the game.</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-4">
+              <p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="message" className="h-4 w-4 text-sage" /> Individual input</p>
+              <p className="mt-1.5 text-sm text-slate-600">Everyone feeds one shared agent separately. Group chats are a plague — not here.</p>
             </div>
           </div>
-        </RailCard>
+          <div className="mt-6 flex justify-end"><PrimaryBtn label="Start convergence" onClick={onNext} icon="bolt" /></div>
+        </Card>
       }
-      right={<SelectedOpportunity opp={opp} onNext={onNext} />}
+      right={
+        <div className="space-y-4">
+          <RailTitle>Suggested from your contacts</RailTitle>
+          {SUGGESTED_CONTACTS.map((c) => (
+            <Card key={c.name}>
+              <div className="flex gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">{c.name.split(" ").map((s) => s[0]).join("")}</span>
+                <div><p className="font-semibold text-foreground">{c.name}</p><p className="mt-0.5 text-xs text-slate-500">{c.reason}</p></div>
+              </div>
+            </Card>
+          ))}
+          <p className="px-1 text-xs text-slate-400">Not a matching service — it works from who&rsquo;s already in the space, then suggests people you could test with.</p>
+          <Card className="bg-sage-tint/30">
+            <p className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="check" className="h-4 w-4 text-sage" /> Readiness</p>
+            <ul className="space-y-1.5">{COHORT_READINESS.map((r) => <CheckRow key={r.label} label={r.label} done={r.done} />)}</ul>
+          </Card>
+        </div>
+      }
     />
   );
 }
 
-function MapField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex gap-2">
-      <dt className="w-16 shrink-0 text-xs font-bold text-slate-400">{label}</dt>
-      <dd className="text-slate-600">{value}</dd>
-    </div>
-  );
-}
+/* --------------------------------------------------- 1. Convergence */
 
-function SelectedOpportunity({ opp, onNext }: { opp: Opportunity; onNext: () => void }) {
-  const p = opp.panel;
+function ConvergencePhase({ dumps, onDump, onNext }: { dumps: number; onDump: () => void; onNext: () => void }) {
+  const next = DUMPS[dumps];
+  const done = dumps >= DUMPS.length;
+  const signals = CONVERGENCE_SIGNALS.slice(0, dumps);
   return (
-    <div className="lg:sticky lg:top-4 lg:self-start">
-      <div className="space-y-4 rounded-2xl border border-sage/40 bg-white p-4">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Selected opportunity</p>
-          <span className="flex items-center gap-1 rounded-full bg-sage-tint px-2 py-0.5 text-xs font-semibold text-sage-dark">{opp.num}. {opp.title} <Icon name="star" className="h-3 w-3" /></span>
-        </div>
-        <PanelRow icon="user" title="Customer" text={p.customer} />
-        <PanelRow icon="alert" title="Problem" text={p.problem} />
-        <PanelRow icon="chart" title="Current alternative" text={p.alternative} />
-        <PanelRow icon="sparkle" title="Why this group can solve it" text={p.whyGroup} />
-        <div className="flex gap-3">
-          <RailIcon name="doc" />
-          <div className="flex-1">
-            <p className="font-bold text-foreground">Evidence from inputs</p>
-            <ul className="mt-1.5 space-y-1.5">
-              {p.quotes.map((q) => {
-                const m = memberById(q.memberId);
-                return (
-                  <li key={q.memberId} className="flex items-start gap-1.5 text-sm">
-                    <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${m.ring}`}>{m.initials}</span>
-                    <span className="text-slate-600">{m.name}: <span className="italic">&ldquo;{q.text}&rdquo;</span></span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </div>
-        <PanelRow icon="question" title="Biggest uncertainty" text={p.uncertainty} />
-
-        <div className="rounded-xl bg-slate-50 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 space-y-1.5">
-              <p className="mb-1 text-sm font-bold text-sage-dark">Opportunity score</p>
-              {p.bars.map((b) => (
-                <div key={b.label} className="flex items-center justify-between">
-                  <span className="text-xs text-slate-600">{b.label}</span>
-                  <ScoreDots value={b.value} />
+    <Columns
+      left={
+        <div className="space-y-4">
+          <RailTitle>Cohort contributions</RailTitle>
+          <p className="px-1 text-xs text-slate-400">Each person dumps separately, async, across the 3 days.</p>
+          {COHORT.map((m) => {
+            const cd = COHORT_DUMPS[m.id];
+            const isYou = m.id === YOU;
+            return (
+              <Card key={m.id}>
+                <div className="mb-2 flex items-center gap-2">
+                  <Avatar m={m} size="h-7 w-7 text-[10px]" />
+                  <span className="font-bold text-foreground">{m.name} {isYou && <span className="text-xs font-normal text-slate-400">(you)</span>}</span>
+                  <span className="ml-auto text-xs font-semibold text-sage-dark">{isYou ? dumps : cd?.count ?? 0} items</span>
                 </div>
-              ))}
-            </div>
-            <div className="rounded-lg bg-sage-tint px-3 py-2 text-center">
-              <p className="text-xs text-sage-dark">Overall</p>
-              <p className="text-2xl font-bold text-sage-dark">{p.overall}<span className="text-sm">/10</span></p>
-              <p className="text-[10px] font-semibold text-sage-dark">{p.overallLabel}</p>
-            </div>
-          </div>
+                {!isYou && cd && (
+                  <>
+                    <p className="text-xs text-slate-600">{cd.sample}</p>
+                    <div className="mt-2 flex gap-1.5 text-slate-400">{cd.kinds.map((k) => <Icon key={k} name={KIND_ICON[k]} className="h-3.5 w-3.5" />)}</div>
+                  </>
+                )}
+                {isYou && <p className="text-xs text-slate-400">Dumping now →</p>}
+              </Card>
+            );
+          })}
         </div>
-
-        <button onClick={onNext} className="flex w-full items-center justify-center gap-2 rounded-xl bg-sage py-3.5 text-sm font-bold text-white transition-colors hover:bg-sage-dark">
-          Continue to approaches
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </button>
-      </div>
-    </div>
+      }
+      center={
+        <Card className="flex h-full flex-col p-6">
+          <CenterHead title="Convergence" sub="Dump anything — no structure. The agent reads across all five of you." />
+          <div className="flex-1 space-y-3">
+            <Bubble agent text={AGENT_INTRO} />
+            {DUMPS.slice(0, dumps).map((d, i) => (
+              <div key={i} className="space-y-3">
+                <Bubble text={d.label} kind={d.kind} />
+                <Bubble agent text={d.agent} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            {!done ? (
+              <button onClick={onDump} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-sage/50 bg-sage-tint/20 p-3 text-left transition-colors hover:bg-sage-tint/40">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-sage"><Icon name={KIND_ICON[next.kind]} className="h-4 w-4" /></span>
+                <span className="min-w-0 flex-1"><span className="block text-[11px] font-bold uppercase tracking-wide text-sage-dark">Dump next ({next.kind})</span><span className="block truncate text-sm text-slate-600">{next.label}</span></span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sage text-white"><Icon name="send" className="h-4 w-4" /></span>
+              </button>
+            ) : (
+              <div className="flex items-center justify-between gap-4 rounded-xl bg-sage-tint/40 p-3">
+                <p className="text-sm font-semibold text-sage-dark">Convergence map complete — {AGENT_NAME} has the patterns.</p>
+                <PrimaryBtn label="Go to Formation" onClick={onNext} icon="sparkle" />
+              </div>
+            )}
+          </div>
+        </Card>
+      }
+      right={
+        <div className="space-y-4">
+          <RailTitle>Convergence map</RailTitle>
+          {signals.length === 0 && <Card><p className="text-sm text-slate-400">Patterns appear here as you dump.</p></Card>}
+          {signals.map((s) => (
+            <Card key={s.kind} className={s.tone === "warn" ? "border-amber-200 bg-amber-50/60" : "border-sage/30 bg-sage-tint/20"}>
+              <div className="flex gap-3">
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${s.tone === "warn" ? "bg-amber-100 text-amber-700" : "bg-sage-tint text-sage-dark"}`}><Icon name={s.icon} className="h-4 w-4" /></span>
+                <div><p className={`text-xs font-bold uppercase tracking-wide ${s.tone === "warn" ? "text-amber-700" : "text-sage-dark"}`}>{s.kind}</p><p className="mt-0.5 text-sm text-slate-700">{s.text}</p></div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      }
+    />
   );
 }
 
-function PanelRow({ icon, title, text }: { icon: IconName; title: string; text: string }) {
+function Bubble({ agent, text, kind }: { agent?: boolean; text: string; kind?: DumpKind }) {
+  if (agent) {
+    return (
+      <div className="flex items-start gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage text-white"><svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg></span>
+        <p className="max-w-md rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5 text-sm text-slate-700">{text}</p>
+      </div>
+    );
+  }
+  const attach = kind && kind !== "text";
   return (
-    <div className="flex gap-3">
-      <RailIcon name={icon} />
-      <div className="flex-1">
-        <p className="font-bold text-foreground">{title}</p>
-        <p className="mt-0.5 text-sm text-slate-600">{text}</p>
+    <div className="flex justify-end">
+      <div className="max-w-md rounded-2xl rounded-tr-sm bg-sage px-4 py-2.5 text-sm text-white">
+        {attach && <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-white/80"><Icon name={KIND_ICON[kind]} className="h-3.5 w-3.5" /> {kind}</span>}
+        {text}
       </div>
     </div>
   );
 }
 
-/* --------------------------------------------------------- 4. Approaches */
+/* ---------------------------------------------------- 2. Formation */
 
-const APPROACH_NAV = [
-  { id: "explore", label: "Explore approaches", icon: "sparkle" as IconName },
-  { id: "compare", label: "Compare", icon: "chart" as IconName },
-  { id: "recommend", label: "Recommend", icon: "star" as IconName },
-];
-
-const SNAP_ICON: Record<string, IconName> = {
-  "Ease to test": "flask",
-  "Speed to revenue": "clock",
-  "Founder fit": "user",
-  "Market size": "chart",
-  "Defensibility": "shield",
-  "Operational complexity": "gear",
-  "Margin potential": "dollar",
-  "Overall score": "star",
+const STATUS_META: Record<HypothesisStatus, { label: string; cls: string }> = {
+  approved: { label: "Approved", cls: "bg-emerald-100 text-emerald-700" },
+  tumble: { label: "In the tumble dryer", cls: "bg-amber-100 text-amber-700" },
+  folded: { label: "Folded into Relaunch", cls: "bg-slate-100 text-slate-600" },
+  proposed: { label: "Under review", cls: "bg-sky-100 text-sky-700" },
 };
 
-function Approaches({ opp, idx, approach, onPick, onSelect }: { opp: Opportunity; idx: number; approach: Approach; onPick: (i: number) => void; onSelect: () => void }) {
+function FormationPhase({ hypId, onSelect, statuses, setStatuses, onNext }: { hypId: string; onSelect: (id: string) => void; statuses: Record<string, HypothesisStatus>; setStatuses: (s: Record<string, HypothesisStatus>) => void; onNext: () => void }) {
+  const hyp = HYPOTHESES.find((h) => h.id === hypId)!;
+  const parked = HYPOTHESES.filter((h) => statuses[h.id] === "tumble");
+  const setStatus = (id: string, st: HypothesisStatus) => setStatuses({ ...statuses, [id]: st });
   return (
     <Columns
       left={
         <div className="space-y-4">
-          <RailCard>
-            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Selected opportunity</p>
-            <p className="font-semibold text-foreground">{opp.problem}</p>
-          </RailCard>
-          <RailCard>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Approaches</p>
-            <ul className="space-y-1">
-              {APPROACH_NAV.map((n, i) => (
-                <li key={n.id}>
-                  <span className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-semibold ${i === 0 ? "bg-sage-tint text-sage-dark" : "text-slate-500"}`}>
-                    <Icon name={n.icon} className="h-4 w-4" />{n.label}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </RailCard>
-          <RailCard>
-            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">About approaches</p>
-            <p className="text-sm text-slate-600">Different ways to solve the same customer problem. Compare them across key dimensions to choose the strongest first move.</p>
-          </RailCard>
-          <AskFlash hint="Ask Flash AI for guidance on evaluating approaches." />
+          <RailTitle>Deliberation</RailTitle>
+          <Card>
+            <p className="text-sm text-slate-600">The agent proposed {HYPOTHESES.length} ranked hypotheses. Vote, challenge, pivot — or park anything in the tumble dryer.</p>
+          </Card>
+          <Card>
+            <p className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="pause" className="h-4 w-4 text-amber-500" /> Tumble dryer</p>
+            {parked.length === 0 ? <p className="text-sm text-slate-400">Nothing parked.</p> : (
+              <ul className="space-y-1.5">{parked.map((h) => <li key={h.id} className="text-sm text-slate-600">{h.title}</li>)}</ul>
+            )}
+          </Card>
         </div>
       }
       center={
-        <RailCard className="p-6">
-          <CenterHead
-            title="Explore approaches"
-            sub="Different ways we could solve this problem for this customer."
-            right={<button className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"><span className="text-base leading-none">+</span> Add custom approach</button>}
-          />
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">{opp.approaches.length} approaches</p>
+        <Card className="p-6">
+          <CenterHead title="Formation" sub="Ranked venture hypotheses from your convergence map." />
           <div className="space-y-3">
-            {opp.approaches.map((a, i) => {
-              const active = i === idx;
+            {HYPOTHESES.map((h) => {
+              const active = h.id === hypId;
+              const st = statuses[h.id];
               return (
-                <button
-                  key={a.title}
-                  onClick={() => onPick(i)}
-                  className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}
-                >
-                  <RailIcon name={a.icon} />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-foreground">{a.title}</p>
-                    <p className="mt-0.5 text-sm text-slate-500">{a.desc}</p>
+                <button key={h.id} onClick={() => onSelect(h.id)} className={`block w-full rounded-xl border p-4 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">{h.rank}</span>
+                    <span className="font-bold text-foreground">{h.title}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_META[st].cls}`}>{STATUS_META[st].label}</span>
+                    <span className="ml-auto rounded-lg bg-sage-tint px-2 py-0.5 text-sm font-bold text-sage-dark">{h.score}</span>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${BADGE_TONE[a.badgeTone]}`}>{a.badge}</span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-slate-400"><path d="m9 6 6 6-6 6" /></svg>
+                  <p className="text-sm text-slate-600">{h.note}</p>
                 </button>
               );
             })}
           </div>
-        </RailCard>
+
+          <div className="mt-6 rounded-xl border border-sage/30 bg-sage-tint/20 p-5">
+            <p className="flex items-center gap-2 font-bold text-foreground"><Icon name="scale" className="h-4 w-4 text-sage" /> Roles &amp; equity — for the approved venture (Relaunch)</p>
+            <div className="mt-3 space-y-2">
+              {ROLES.map((r) => {
+                const m = memberById(r.memberId);
+                return (
+                  <div key={r.memberId} className="flex items-center gap-3 rounded-lg bg-white p-3">
+                    <Avatar m={m} size="h-8 w-8 text-[10px]" />
+                    <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{m.name} · {r.title}</p><p className="truncate text-xs text-slate-500">{r.responsibilities}</p></div>
+                    <span className="shrink-0 rounded-lg bg-sage px-2.5 py-1 text-sm font-bold text-white">{r.equity}%</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-xs text-slate-500">{EQUITY_NOTE}</p>
+          </div>
+          <div className="mt-6 flex justify-end"><PrimaryBtn label="Lock the venture & generate output" onClick={onNext} icon="bolt" /></div>
+        </Card>
       }
-      right={<SelectedApproach approach={approach} onSelect={onSelect} />}
+      right={
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="flex items-center justify-between">
+              <RailTitle>Selected hypothesis</RailTitle>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_META[statuses[hyp.id]].cls}`}>{STATUS_META[statuses[hyp.id]].label}</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{hyp.title}</p>
+            <Field label="Customer" value={hyp.customer} />
+            <Field label="Problem" value={hyp.problem} />
+            <Field label="Why this team" value={hyp.whyTeam} />
+            <Field label="Validation plan" value={hyp.validation} />
+            <div className="flex gap-4 rounded-lg bg-slate-50 p-3 text-center text-xs">
+              <div className="flex-1"><p className="text-base font-bold text-emerald-600">{hyp.votes.approve}</p><p className="text-slate-500">approve</p></div>
+              <div className="flex-1"><p className="text-base font-bold text-amber-600">{hyp.votes.challenge}</p><p className="text-slate-500">challenge</p></div>
+              <div className="flex-1"><p className="text-base font-bold text-sky-600">{hyp.votes.pivot}</p><p className="text-slate-500">pivot</p></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <VoteBtn icon="thumb" label="Approve" tone="bg-sage text-white" onClick={() => setStatus(hyp.id, "approved")} />
+              <VoteBtn icon="alert" label="Challenge" tone="border border-slate-200 text-slate-600" onClick={() => setStatus(hyp.id, "proposed")} />
+              <VoteBtn icon="refresh" label="Pivot" tone="border border-slate-200 text-slate-600" onClick={() => setStatus(hyp.id, "proposed")} />
+              <VoteBtn icon="pause" label="Park" tone="border border-slate-200 text-slate-600" onClick={() => setStatus(hyp.id, "tumble")} />
+            </div>
+          </div>
+        </div>
+      }
     />
   );
 }
 
-function SelectedApproach({ approach, onSelect }: { approach: Approach; onSelect: () => void }) {
-  return (
-    <div className="lg:sticky lg:top-4 lg:self-start">
-      <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Selected approach</p>
-          <div className="mt-2 flex gap-3">
-            <RailIcon name={approach.icon} />
-            <div>
-              <p className="text-lg font-bold text-foreground">{approach.title}</p>
-              <p className="mt-0.5 text-sm text-slate-500">{approach.desc}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">How it works</p>
-            <ul className="space-y-1.5">{approach.howItWorks.map((h) => <li key={h} className="flex items-start gap-1.5 text-sm text-slate-600"><Icon name="check" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" />{h}</li>)}</ul>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Why this could work</p>
-            <ul className="space-y-1.5">{approach.whyItWorks.map((h) => <li key={h} className="flex items-start gap-1.5 text-sm text-slate-600"><Icon name="star" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" />{h}</li>)}</ul>
-          </div>
-        </div>
-
-        <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Evaluation snapshot</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {approach.snapshot.map((t) => {
-              const overall = t.label === "Overall score";
-              return (
-                <div key={t.label} className={`rounded-lg border p-2.5 ${overall ? "border-sage bg-sage-tint/30" : "border-slate-200"}`}>
-                  <p className="flex items-center gap-1 text-[10px] font-semibold text-slate-400"><Icon name={SNAP_ICON[t.label]} className="h-3 w-3" />{t.label}</p>
-                  <p className="mt-1 text-lg font-bold text-foreground">{t.score}<span className="text-xs text-slate-400">/10</span></p>
-                  <p className="text-[10px] text-slate-500">{t.note}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="rounded-xl bg-slate-50 p-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-sage-dark">Recommended first test</p>
-          <p className="mt-1.5 text-sm text-slate-600">{approach.firstTest}</p>
-        </div>
-
-        <button onClick={onSelect} className="flex w-full items-center justify-center gap-2 rounded-xl bg-sage py-3.5 text-sm font-bold text-white transition-colors hover:bg-sage-dark">
-          <Icon name="check" className="h-4 w-4" /> Select this approach
-        </button>
-      </div>
-    </div>
-  );
+function VoteBtn({ icon, label, tone, onClick }: { icon: IconName; label: string; tone: string; onClick: () => void }) {
+  return <button onClick={onClick} className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-colors hover:opacity-90 ${tone}`}><Icon name={icon} className="h-4 w-4" />{label}</button>;
+}
+function Field({ label, value }: { label: string; value: string }) {
+  return <div><p className="text-xs font-bold text-slate-400">{label}</p><p className="mt-0.5 text-sm text-slate-600">{value}</p></div>;
 }
 
-function AskFlash({ hint }: { hint: string }) {
-  return (
-    <RailCard className="bg-slate-50">
-      <p className="mb-1 flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="sparkle" className="h-4 w-4 text-sage" /> Need help?</p>
-      <p className="mb-3 text-sm text-slate-600">{hint}</p>
-      <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-        <Icon name="sparkle" className="h-4 w-4 text-sage" /> Ask Flash AI
-      </button>
-    </RailCard>
-  );
-}
+/* ------------------------------------------------------- 3. Output */
 
-/* ------------------------------------------------------------- 5. Output */
-
-function OutputStage({ opp, view, onView, onBack }: { opp: Opportunity; view: string; onView: (v: string) => void; onBack: () => void }) {
+function OutputPhase({ section, onSection, recorded, onRecord, onNext }: { section: string; onSection: (s: string) => void; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+  const recordedCount = Object.values(recorded).filter(Boolean).length;
   return (
     <Columns
       left={
         <div className="space-y-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Output menu</p>
-          <RailCard className="p-2">
+          <RailTitle>Venture birth certificate</RailTitle>
+          <Card className="p-2">
             <ul className="space-y-1">
               {OUTPUT_MENU.map((m) => (
                 <li key={m.id}>
-                  <button
-                    onClick={() => onView(m.id)}
-                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${view === m.id ? "bg-sage-tint text-sage-dark" : "text-slate-600 hover:bg-slate-50"}`}
-                  >
+                  <button onClick={() => onSection(m.id)} className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${section === m.id ? "bg-sage-tint text-sage-dark" : "text-slate-600 hover:bg-slate-50"}`}>
                     <Icon name={m.icon} className="h-4 w-4" />{m.label}
                   </button>
                 </li>
               ))}
             </ul>
-          </RailCard>
-          <AskFlash hint="Ask Flash AI to refine your output or try a different tone." />
+          </Card>
         </div>
       }
       center={
-        <RailCard className="p-6">
-          <CenterHead
-            title="5. Output"
-            sub="Your AI-generated assets are ready. Review, refine, and export what you need."
-            right={
-              <div className="flex gap-2">
-                <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"><Icon name="doc" className="h-4 w-4" /> Export code</button>
-                <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"><Icon name="chart" className="h-4 w-4" /> Make pitch deck</button>
-              </div>
-            }
-          />
-          <OutputView opp={opp} view={view} />
-          <div className="mt-6 flex items-center justify-between">
-            <button onClick={onBack} className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
-              Back to Approaches
-            </button>
-            <Continue label="Next: Share & Test" onClick={() => onView("page")} />
-          </div>
-        </RailCard>
+        <Card className="p-6">
+          <CenterHead title="Output — Day 3" sub="Your venture birth certificate, ready to share. Keep it simple." right={<button className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"><Icon name="doc" className="h-4 w-4" /> Export</button>} />
+          <OutputSection section={section} recorded={recorded} onRecord={onRecord} />
+          <div className="mt-6 flex justify-end"><PrimaryBtn label="Set up follow-through" onClick={onNext} icon="calendar" /></div>
+        </Card>
       }
       right={
         <div className="space-y-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Selected opportunity</p>
-          <RailCard>
-            <div className="flex gap-3">
-              <RailIcon name="people" />
-              <div>
-                <p className="font-bold text-foreground">{opp.title}</p>
-                <p className="text-xs text-sage-dark">Generated assets ready</p>
-              </div>
-            </div>
-          </RailCard>
-          <RailCard>
-            <p className="mb-2 text-sm font-bold text-foreground">What&apos;s included</p>
-            <ul className="space-y-1.5">
-              {OUTPUT_MENU.filter((m) => m.id !== "summary").map((m) => (
-                <CheckRow key={m.id} label={m.id === "page" ? "Landing page (you're here)" : m.label} />
-              ))}
-            </ul>
-          </RailCard>
-          <RailCard className="bg-sage-tint/30">
-            <p className="text-sm font-bold text-foreground">Tip</p>
-            <p className="mt-1 text-sm text-slate-600">Customize your landing page message and visuals to match your audience.</p>
-          </RailCard>
+          <RailTitle>Status</RailTitle>
+          <Card className="bg-sage-tint/20">
+            <p className="font-bold text-foreground">Relaunch</p>
+            <p className="mt-0.5 text-sm text-slate-600">Venture locked. All assets generated.</p>
+          </Card>
+          <Card>
+            <p className="mb-2 text-sm font-bold text-foreground">Commitment ritual</p>
+            <p className="text-sm text-slate-600">{recordedCount} of {COMMITMENTS.length} founders have recorded their 30-second commitment.</p>
+          </Card>
+          <Card className="bg-slate-50">
+            <p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="lock" className="h-4 w-4 text-slate-400" /> Then the agent goes quiet</p>
+            <p className="mt-1.5 text-sm text-slate-600">After day 3 it returns only at day 7, 14, 21 and 30. The work is yours.</p>
+          </Card>
         </div>
       }
     />
   );
 }
 
-function OutputView({ opp, view }: { opp: Opportunity; view: string }) {
-  const o = opp.output;
-  if (view === "summary") {
-    return (
-      <div className="rounded-xl border border-sage/40 bg-sage-tint/20 p-6">
-        <p className="text-xs font-bold uppercase tracking-wide text-sage-dark">Opportunity summary</p>
-        <p className="mt-3 text-lg leading-relaxed text-foreground">{o.summary}</p>
-      </div>
-    );
-  }
-  if (view === "page") return <LandingPreview opp={opp} />;
-  if (view === "outreach") return <Outreach outreach={o.outreach} />;
-  if (view === "testplan") {
-    return (
-      <div className="space-y-4">
-        <div className="rounded-xl border border-slate-200 p-5">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Testable hypothesis</p>
-          <p className="mt-2 text-foreground">{o.testPlan.hypothesis}</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 p-5">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">First test</p>
-            <p className="mt-2 text-sm text-foreground">{o.testPlan.firstTest}</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-5">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">What we measure</p>
-            <ul className="mt-2 space-y-1">{o.testPlan.metrics.map((m) => <li key={m} className="flex items-center gap-1.5 text-sm text-slate-600"><Icon name="check" className="h-3.5 w-3.5 text-sage" />{m}</li>)}</ul>
-          </div>
-        </div>
-        <div className="rounded-xl bg-sage-tint/30 p-5">
-          <p className="text-xs font-bold uppercase tracking-wide text-sage-dark">Decision rule</p>
-          <p className="mt-2 text-foreground">{o.testPlan.decisionRule}</p>
-        </div>
-      </div>
-    );
-  }
-  // deck
+function OutputSection({ section, recorded, onRecord }: { section: string; recorded: Record<string, boolean>; onRecord: (id: string) => void }) {
+  const b = BIRTH_CERTIFICATE;
+  if (section === "thesis") return <Block title="Thesis"><p className="text-lg leading-relaxed text-foreground">{b.thesis}</p></Block>;
+  if (section === "charter") return <Block title="Team charter"><ul className="space-y-2">{b.charter.map((c) => <li key={c} className="flex gap-2 text-foreground"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{c}</li>)}</ul></Block>;
+  if (section === "roles") return (
+    <Block title="Roles & equity">
+      <div className="space-y-2">{ROLES.map((r) => { const m = memberById(r.memberId); return (
+        <div key={r.memberId} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+          <Avatar m={m} size="h-8 w-8 text-[10px]" />
+          <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{m.name} · {r.title}</p><p className="text-xs text-slate-500">{r.responsibilities}</p></div>
+          <span className="rounded-lg bg-sage px-2.5 py-1 text-sm font-bold text-white">{r.equity}%</span>
+        </div>); })}</div>
+      <p className="mt-3 text-xs text-slate-500">{EQUITY_NOTE}</p>
+    </Block>
+  );
+  if (section === "decisions") return <Block title="Decision framework"><ul className="space-y-2">{DECISION_FRAMEWORK.map((d) => <li key={d} className="flex gap-2 text-foreground"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{d}</li>)}</ul></Block>;
+  if (section === "roadmap") return (
+    <Block title="30-day roadmap">
+      <div className="space-y-2">{b.roadmap.map((w) => (
+        <div key={w.week} className="flex gap-3 rounded-lg border border-slate-200 p-3"><span className="shrink-0 rounded-md bg-sage-tint px-2 py-1 text-xs font-bold text-sage-dark">{w.week}</span><p className="text-sm text-slate-700">{w.text}</p></div>
+      ))}</div>
+    </Block>
+  );
+  if (section === "deck") return (
+    <Block title="Pitch deck">
+      <div className="grid gap-3 sm:grid-cols-2">{b.deck.map((s, i) => (
+        <div key={s.title} className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-bold text-slate-400">Slide {i + 1}</p><p className="mt-1 font-bold text-foreground">{s.title}</p><p className="mt-1 text-sm text-slate-600">{s.body}</p></div>
+      ))}</div>
+    </Block>
+  );
+  if (section === "landing") return <LandingPreview />;
+  if (section === "outreach") return <Block title="Outreach copy"><Outreach /></Block>;
+  if (section === "validation") return (
+    <Block title="Validation report">
+      <p className="mb-2 text-xs font-bold text-slate-400">Tests we&rsquo;ll run</p>
+      <ul className="space-y-1.5">{b.validation.tests.map((t) => <li key={t} className="flex items-center gap-2 text-sm text-slate-700"><Icon name="target" className="h-4 w-4 text-sage" />{t}</li>)}</ul>
+      <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{b.validation.resultsNote}</p>
+      <div className="mt-4 rounded-lg bg-sage-tint/30 p-4"><p className="text-xs font-bold uppercase tracking-wide text-sage-dark">Decision rule</p><p className="mt-1 text-sm text-foreground">{b.validation.decisionRule}</p></div>
+    </Block>
+  );
+  // commitments
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {o.deck.map((s, i) => (
-        <div key={s.title} className="rounded-xl border border-slate-200 p-4">
-          <p className="text-xs font-bold text-slate-400">Slide {i + 1}</p>
-          <p className="mt-1 font-bold text-foreground">{s.title}</p>
-          <p className="mt-1 text-sm text-slate-600">{s.body}</p>
-        </div>
-      ))}
-    </div>
+    <Block title="Commitment ritual">
+      <p className="mb-3 text-sm text-slate-600">Each founder records a 30-second video: &ldquo;I&rsquo;m in for 30 days, my first task is X, due Y.&rdquo;</p>
+      <div className="space-y-2">{COMMITMENTS.map((c) => { const m = memberById(c.memberId); const rec = recorded[c.memberId]; return (
+        <div key={c.memberId} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+          <Avatar m={m} size="h-9 w-9 text-xs" />
+          <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{m.name}</p><p className="truncate text-xs text-slate-500">{c.task} · due {c.due}</p></div>
+          <button onClick={() => onRecord(c.memberId)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${rec ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+            <Icon name={rec ? "check" : "play"} className="h-3.5 w-3.5" />{rec ? "Recorded" : "Record"}
+          </button>
+        </div>); })}</div>
+    </Block>
   );
 }
 
-function LandingPreview({ opp }: { opp: Opportunity }) {
+function Block({ title, children }: { title: string; children: React.ReactNode }) {
+  return <div><p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">{title}</p>{children}</div>;
+}
+
+function LandingPreview() {
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
-  const o = opp.output.page;
+  const l = BIRTH_CERTIFICATE.landing;
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-500">Landing page preview</p>
-        <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
-          <DeviceBtn active={device === "desktop"} onClick={() => setDevice("desktop")} icon="laptop" label="Desktop" />
-          <DeviceBtn active={device === "mobile"} onClick={() => setDevice("mobile")} icon="doc" label="Mobile" />
+    <Block title="Landing page">
+      <div className="mb-3 flex justify-end gap-1 rounded-lg bg-slate-100 p-1">
+        <button onClick={() => setDevice("desktop")} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${device === "desktop" ? "bg-sage text-white" : "text-slate-500"}`}>Desktop</button>
+        <button onClick={() => setDevice("mobile")} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${device === "mobile" ? "bg-sage text-white" : "text-slate-500"}`}>Mobile</button>
+      </div>
+      <div className="rounded-2xl border border-slate-200 p-6">
+        <div className={`mx-auto ${device === "mobile" ? "max-w-xs" : "max-w-full"}`}>
+          <div className="mb-5 flex items-center gap-2"><svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-sage"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg><span className="font-bold text-foreground">Relaunch</span></div>
+          <h3 className="text-3xl font-bold leading-tight tracking-tight text-foreground">{l.headline}</h3>
+          <p className="mt-3 text-slate-600">{l.subhead}</p>
+          <span className="mt-5 inline-flex h-11 items-center rounded-xl bg-sage px-5 text-sm font-bold text-white">{l.cta}</span>
+          <div className="mt-6 flex h-32 items-center justify-center rounded-xl bg-sage-tint/40 text-sm font-medium text-sage/70">Hero visual</div>
         </div>
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-6">
-        <div className={`mx-auto ${device === "mobile" ? "max-w-sm" : "max-w-full"}`}>
-          <div className="mb-6 flex items-center justify-between">
-            <span className="flex items-center gap-2"><svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-sage"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg><span className="font-bold text-foreground">Flash Company</span></span>
-            {device === "desktop" && <span className="flex gap-4 text-xs text-slate-500">{o.nav.map((n) => <span key={n}>{n}</span>)}</span>}
-          </div>
-          <div className={`grid items-center gap-6 ${device === "mobile" ? "" : "md:grid-cols-2"}`}>
-            <div>
-              <h2 className="text-3xl font-bold leading-tight tracking-tight text-foreground">{o.headline}</h2>
-              <p className="mt-3 text-sm text-slate-600">{o.subhead}</p>
-              <span className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-sage px-5 text-sm font-bold text-white"><svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>{o.cta}</span>
-              <div className="mt-5 flex items-center gap-3">
-                <div className="flex -space-x-2">{MEMBERS.map((m) => <Avatar key={m.id} m={m} size="h-7 w-7 text-[9px]" />)}</div>
-                <p className="text-xs text-slate-500"><span className="font-bold text-foreground">{o.proofCount}</span> · {o.proofAudience}<br />{o.proofNote}</p>
-              </div>
-            </div>
-            <Image src="/venn.png" alt="Opportunity venn diagram" width={1254} height={1254} className="h-auto w-full" />
-          </div>
-        </div>
-      </div>
-    </div>
+    </Block>
   );
 }
 
-function DeviceBtn({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: IconName; label: string }) {
-  return (
-    <button onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors ${active ? "bg-sage text-white" : "text-slate-500"}`}>
-      <Icon name={icon} className="h-3.5 w-3.5" />{label}
-    </button>
-  );
-}
+const CHANNELS = [{ key: "linkedin", label: "LinkedIn" }, { key: "dm", label: "DM" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }] as const;
 
-const CHANNELS = [
-  { key: "linkedin", label: "LinkedIn" },
-  { key: "dm", label: "DM" },
-  { key: "email", label: "Email" },
-  { key: "whatsapp", label: "WhatsApp" },
-] as const;
-
-function Outreach({ outreach }: { outreach: Opportunity["output"]["outreach"] }) {
+function Outreach() {
   const [active, setActive] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-2">
-        {CHANNELS.map((c) => (
-          <button key={c.key} onClick={() => setActive(c.key)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${active === c.key ? "bg-sage text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>{c.label}</button>
-        ))}
-      </div>
-      <p className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm leading-relaxed text-slate-700">{outreach[active]}</p>
+      <div className="mb-3 flex flex-wrap gap-2">{CHANNELS.map((c) => <button key={c.key} onClick={() => setActive(c.key)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${active === c.key ? "bg-sage text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>{c.label}</button>)}</div>
+      <p className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm leading-relaxed text-slate-700">{BIRTH_CERTIFICATE.outreach[active]}</p>
     </div>
+  );
+}
+
+/* ------------------------------------------------- 4. Follow-through */
+
+function FollowThroughPhase({ active, onSelect, recorded }: { active: string; onSelect: (d: string) => void; recorded: Record<string, boolean> }) {
+  const cp = CHECKPOINTS.find((c) => c.day === active)!;
+  const recordedCount = Object.values(recorded).filter(Boolean).length;
+  return (
+    <Columns
+      left={
+        <div className="space-y-4">
+          <RailTitle>How follow-through works</RailTitle>
+          <Card>
+            <p className="flex items-center gap-2 font-bold text-foreground"><Icon name="lock" className="h-4 w-4 text-sage" /> The agent is dormant</p>
+            <p className="mt-1.5 text-sm text-slate-600">After the 3-day sprint it returns only at day 7, 14, 21 and 30 — removing constant reliance and pushing the group to do the work.</p>
+          </Card>
+          <Card>
+            <p className="flex items-center gap-2 font-bold text-foreground"><Icon name="bolt" className="h-4 w-4 text-sage" /> Efficient by design</p>
+            <p className="mt-1.5 text-sm text-slate-600">Fewer touchpoints means fewer tokens and a positive constraint on the team.</p>
+          </Card>
+        </div>
+      }
+      center={
+        <Card className="p-6">
+          <CenterHead title="Follow-through" sub="The 30-day arc. The agent checks in; the team does the work." />
+          <ol className="relative space-y-3 border-l-2 border-slate-100 pl-6">
+            {CHECKPOINTS.map((c) => {
+              const sel = c.day === active;
+              return (
+                <li key={c.day} className="relative">
+                  <span className={`absolute -left-[31px] flex h-5 w-5 items-center justify-center rounded-full ${c.status === "active" ? "bg-sage text-white" : "border-2 border-slate-200 bg-white text-slate-300"}`}>
+                    {c.status === "locked" && <Icon name="lock" className="h-2.5 w-2.5" />}
+                  </span>
+                  <button onClick={() => onSelect(c.day)} className={`block w-full rounded-xl border p-4 text-left transition-colors ${sel ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-foreground">{c.day} · {c.title}</span>
+                      <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${c.status === "active" ? "bg-sage text-white" : "bg-slate-100 text-slate-400"}`}>{c.status === "active" ? "Open now" : "Locked"}</span>
+                    </div>
+                    {sel && (
+                      <div className="mt-3">
+                        <p className="text-xs font-bold text-slate-400">The agent asks</p>
+                        <ul className="mt-1 space-y-1">{cp.asks.map((a) => <li key={a} className="flex gap-2 text-sm text-slate-700"><Icon name="message" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" />{a}</li>)}</ul>
+                        <p className="mt-3 text-xs font-bold text-slate-400">Due by then</p>
+                        <p className="mt-0.5 text-sm text-slate-600">{cp.due}</p>
+                      </div>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </Card>
+      }
+      right={
+        <div className="space-y-4">
+          <RailTitle>Carried forward</RailTitle>
+          <Card className="bg-sage-tint/20"><p className="font-bold text-foreground">Relaunch</p><p className="mt-0.5 text-sm text-slate-600">Pilot cohort live; first pulse at day 7.</p></Card>
+          <Card>
+            <p className="mb-2 text-sm font-bold text-foreground">Commitments</p>
+            <p className="text-sm text-slate-600">{recordedCount} of {COMMITMENTS.length} recorded. Each founder owns one first task with a due date.</p>
+          </Card>
+          <Card className="bg-slate-50">
+            <p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="refresh" className="h-4 w-4 text-sage" /> Day-30 review</p>
+            <p className="mt-1.5 text-sm text-slate-600">Go / no-go, plus a chance to rebalance roles and equity.</p>
+          </Card>
+        </div>
+      }
+    />
   );
 }
