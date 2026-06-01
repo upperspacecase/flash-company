@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-white">
@@ -70,10 +72,15 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex aspect-square w-full items-center justify-center rounded-3xl border-2 border-dashed border-sage/40 bg-sage-tint/50">
-          <span className="text-base font-medium text-sage/70">
-            Image placeholder
-          </span>
+        <div className="w-full">
+          <Image
+            src="/venn.png"
+            alt="Skills, Networks, and Insights overlap to reveal your best venture opportunity"
+            width={1254}
+            height={1254}
+            priority
+            className="h-auto w-full"
+          />
         </div>
       </main>
     </div>
