@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { OpportunityMap } from "./opportunity-map";
 
 export default function Home() {
   return (
@@ -73,14 +73,7 @@ export default function Home() {
         </div>
 
         <div className="w-full">
-          <Image
-            src="/venn.png"
-            alt="Skills, Networks, and Insights overlap to reveal your best venture opportunity"
-            width={1254}
-            height={1254}
-            priority
-            className="h-auto w-full"
-          />
+          <OpportunityMap />
         </div>
       </main>
     </div>
