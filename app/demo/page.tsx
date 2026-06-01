@@ -139,7 +139,6 @@ export default function Demo() {
   const [statuses, setStatuses] = useState<Record<string, HypothesisStatus>>(
     Object.fromEntries(HYPOTHESES.map((h) => [h.id, h.status]))
   );
-  const [section, setSection] = useState("thesis");
   const [recorded, setRecorded] = useState<Record<string, boolean>>(
     Object.fromEntries(COMMITMENTS.map((c) => [c.memberId, c.recorded]))
   );
@@ -153,7 +152,7 @@ export default function Demo() {
         {phase === 0 && <CohortPhase onNext={() => setPhase(1)} />}
         {phase === 1 && <ConvergencePhase dumps={dumps} onDump={() => setDumps((d) => Math.min(DUMPS.length, d + 1))} onNext={() => setPhase(2)} />}
         {phase === 2 && <FormationPhase hypId={hypId} onSelect={setHypId} statuses={statuses} setStatuses={setStatuses} onNext={() => setPhase(3)} />}
-        {phase === 3 && <OutputPhase section={section} onSection={setSection} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(4)} />}
+        {phase === 3 && <OutputPhase recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(4)} />}
         {phase === 4 && <FollowThroughPhase active={checkpoint} onSelect={setCheckpoint} recorded={recorded} />}
       </main>
     </div>
@@ -491,20 +490,20 @@ function Field({ label, value }: { label: string; value: string }) {
 
 /* ------------------------------------------------------- 3. Output */
 
-function OutputPhase({ section, onSection, recorded, onRecord, onNext }: { section: string; onSection: (s: string) => void; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+function OutputPhase({ recorded, onRecord, onNext }: { recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
   const recordedCount = Object.values(recorded).filter(Boolean).length;
   return (
     <Columns
       left={
         <div className="space-y-4">
           <RailTitle>Venture birth certificate</RailTitle>
-          <Card className="p-2">
+          <Card className="p-2 lg:sticky lg:top-4">
             <ul className="space-y-1">
               {OUTPUT_MENU.map((m) => (
                 <li key={m.id}>
-                  <button onClick={() => onSection(m.id)} className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${section === m.id ? "bg-sage-tint text-sage-dark" : "text-slate-600 hover:bg-slate-50"}`}>
+                  <a href={`#${m.id}`} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-sage-dark">
                     <Icon name={m.icon} className="h-4 w-4" />{m.label}
-                  </button>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -513,8 +512,15 @@ function OutputPhase({ section, onSection, recorded, onRecord, onNext }: { secti
       }
       center={
         <Card className="p-6">
-          <CenterHead title="Output — Day 3" sub="Your venture birth certificate, ready to share. Keep it simple." right={<button className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"><Icon name="doc" className="h-4 w-4" /> Export</button>} />
-          <OutputSection section={section} recorded={recorded} onRecord={onRecord} />
+          <CenterHead title="Output — Day 3" sub="Your venture birth certificate, ready to share. One page, top to bottom." right={<button className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"><Icon name="doc" className="h-4 w-4" /> Export</button>} />
+          <div className="divide-y divide-slate-100">
+            {OUTPUT_MENU.map((m) => (
+              <section key={m.id} id={m.id} className="scroll-mt-6 py-8 first:pt-0 last:pb-0">
+                <h2 className="mb-4 flex items-center gap-2.5 text-lg font-bold text-foreground"><RailIcon name={m.icon} />{m.label}</h2>
+                <SectionBody id={m.id} recorded={recorded} onRecord={onRecord} />
+              </section>
+            ))}
+          </div>
           <div className="mt-6 flex justify-end"><PrimaryBtn label="Set up follow-through" onClick={onNext} icon="calendar" /></div>
         </Card>
       }
@@ -539,12 +545,12 @@ function OutputPhase({ section, onSection, recorded, onRecord, onNext }: { secti
   );
 }
 
-function OutputSection({ section, recorded, onRecord }: { section: string; recorded: Record<string, boolean>; onRecord: (id: string) => void }) {
+function SectionBody({ id, recorded, onRecord }: { id: string; recorded: Record<string, boolean>; onRecord: (id: string) => void }) {
   const b = BIRTH_CERTIFICATE;
-  if (section === "thesis") return <Block title="Thesis"><p className="text-lg leading-relaxed text-foreground">{b.thesis}</p></Block>;
-  if (section === "charter") return <Block title="Team charter"><ul className="space-y-2">{b.charter.map((c) => <li key={c} className="flex gap-2 text-foreground"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{c}</li>)}</ul></Block>;
-  if (section === "roles") return (
-    <Block title="Roles & equity">
+  if (id === "thesis") return <Thesis />;
+  if (id === "charter") return <ul className="space-y-2">{b.charter.map((c) => <li key={c} className="flex gap-2 text-foreground"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{c}</li>)}</ul>;
+  if (id === "roles") return (
+    <>
       <div className="space-y-2">{ROLES.map((r) => { const m = memberById(r.memberId); return (
         <div key={r.memberId} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
           <Avatar m={m} size="h-8 w-8 text-[10px]" />
@@ -552,36 +558,35 @@ function OutputSection({ section, recorded, onRecord }: { section: string; recor
           <span className="rounded-lg bg-sage px-2.5 py-1 text-sm font-bold text-white">{r.equity}%</span>
         </div>); })}</div>
       <p className="mt-3 text-xs text-slate-500">{EQUITY_NOTE}</p>
-    </Block>
+    </>
   );
-  if (section === "decisions") return <Block title="Decision framework"><ul className="space-y-2">{DECISION_FRAMEWORK.map((d) => <li key={d} className="flex gap-2 text-foreground"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{d}</li>)}</ul></Block>;
-  if (section === "roadmap") return (
-    <Block title="30-day roadmap">
-      <div className="space-y-2">{b.roadmap.map((w) => (
-        <div key={w.week} className="flex gap-3 rounded-lg border border-slate-200 p-3"><span className="shrink-0 rounded-md bg-sage-tint px-2 py-1 text-xs font-bold text-sage-dark">{w.week}</span><p className="text-sm text-slate-700">{w.text}</p></div>
-      ))}</div>
-    </Block>
+  if (id === "decisions") return <ul className="space-y-2">{DECISION_FRAMEWORK.map((d) => <li key={d} className="flex gap-2 text-foreground"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{d}</li>)}</ul>;
+  if (id === "roadmap") return (
+    <div className="space-y-2">{b.roadmap.map((w) => (
+      <div key={w.week} className="flex gap-3 rounded-lg border border-slate-200 p-3"><span className="shrink-0 rounded-md bg-sage-tint px-2 py-1 text-xs font-bold text-sage-dark">{w.week}</span><p className="text-sm text-slate-700">{w.text}</p></div>
+    ))}</div>
   );
-  if (section === "deck") return (
-    <Block title="Pitch deck">
+  if (id === "deck") return (
+    <>
+      <p className="mb-3 text-xs text-slate-400">{b.deckNote}</p>
       <div className="grid gap-3 sm:grid-cols-2">{b.deck.map((s, i) => (
         <div key={s.title} className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-bold text-slate-400">Slide {i + 1}</p><p className="mt-1 font-bold text-foreground">{s.title}</p><p className="mt-1 text-sm text-slate-600">{s.body}</p></div>
       ))}</div>
-    </Block>
+    </>
   );
-  if (section === "landing") return <LandingPreview />;
-  if (section === "outreach") return <Block title="Outreach copy"><Outreach /></Block>;
-  if (section === "validation") return (
-    <Block title="Validation report">
+  if (id === "landing") return <LandingPreview />;
+  if (id === "outreach") return <Outreach />;
+  if (id === "validation") return (
+    <>
       <p className="mb-2 text-xs font-bold text-slate-400">Tests we&rsquo;ll run</p>
       <ul className="space-y-1.5">{b.validation.tests.map((t) => <li key={t} className="flex items-center gap-2 text-sm text-slate-700"><Icon name="target" className="h-4 w-4 text-sage" />{t}</li>)}</ul>
       <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{b.validation.resultsNote}</p>
       <div className="mt-4 rounded-lg bg-sage-tint/30 p-4"><p className="text-xs font-bold uppercase tracking-wide text-sage-dark">Decision rule</p><p className="mt-1 text-sm text-foreground">{b.validation.decisionRule}</p></div>
-    </Block>
+    </>
   );
   // commitments
   return (
-    <Block title="Commitment ritual">
+    <>
       <p className="mb-3 text-sm text-slate-600">Each founder records a 30-second video: &ldquo;I&rsquo;m in for 30 days, my first task is X, due Y.&rdquo;</p>
       <div className="space-y-2">{COMMITMENTS.map((c) => { const m = memberById(c.memberId); const rec = recorded[c.memberId]; return (
         <div key={c.memberId} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
@@ -591,19 +596,51 @@ function OutputSection({ section, recorded, onRecord }: { section: string; recor
             <Icon name={rec ? "check" : "play"} className="h-3.5 w-3.5" />{rec ? "Recorded" : "Record"}
           </button>
         </div>); })}</div>
-    </Block>
+    </>
   );
 }
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
-  return <div><p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">{title}</p>{children}</div>;
+function Thesis() {
+  const t = BIRTH_CERTIFICATE.thesis;
+  return (
+    <div className="space-y-6">
+      <div>
+        <ThesisHeader day="Day 1" title="Define & Differentiate" intro={t.defineDifferentiate.intro} />
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">{t.defineDifferentiate.points.map((p) => <SubCard key={p.label} icon={p.icon} label={p.label} text={p.text} />)}</div>
+      </div>
+      <div>
+        <ThesisHeader day="Day 2" title="Find the Right Approach" intro={t.findApproach.intro} />
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">{t.findApproach.points.map((p) => <SubCard key={p.label} icon={p.icon} label={p.label} text={p.text} />)}</div>
+        <div className="mt-3 rounded-xl bg-sage-tint/30 p-4"><p className="text-xs font-bold uppercase tracking-wide text-sage-dark">Testable hypothesis</p><p className="mt-1 text-foreground">{t.findApproach.hypothesis}</p></div>
+      </div>
+    </div>
+  );
+}
+
+function ThesisHeader({ day, title, intro }: { day: string; title: string; intro: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="rounded-md bg-sage px-2 py-0.5 text-[10px] font-bold uppercase text-white">{day}</span>
+      <span className="font-bold text-foreground">{title}</span>
+      <span className="text-sm text-slate-500">— {intro}</span>
+    </div>
+  );
+}
+
+function SubCard({ icon, label, text }: { icon: IconName; label: string; text: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 p-4">
+      <p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name={icon} className="h-4 w-4 text-sage" />{label}</p>
+      <p className="mt-1.5 text-sm text-slate-600">{text}</p>
+    </div>
+  );
 }
 
 function LandingPreview() {
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const l = BIRTH_CERTIFICATE.landing;
   return (
-    <Block title="Landing page">
+    <>
       <div className="mb-3 flex justify-end gap-1 rounded-lg bg-slate-100 p-1">
         <button onClick={() => setDevice("desktop")} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${device === "desktop" ? "bg-sage text-white" : "text-slate-500"}`}>Desktop</button>
         <button onClick={() => setDevice("mobile")} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${device === "mobile" ? "bg-sage text-white" : "text-slate-500"}`}>Mobile</button>
@@ -617,7 +654,7 @@ function LandingPreview() {
           <div className="mt-6 flex h-32 items-center justify-center rounded-xl bg-sage-tint/40 text-sm font-medium text-sage/70">Hero visual</div>
         </div>
       </div>
-    </Block>
+    </>
   );
 }
 

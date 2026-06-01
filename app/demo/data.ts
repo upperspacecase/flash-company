@@ -205,8 +205,26 @@ export const DECISION_FRAMEWORK = [
 // --------------------------------------------------------------- Output
 
 export const BIRTH_CERTIFICATE = {
-  thesis:
-    "Relaunch is an 8-week guided returnship cohort that gets parents back to work — with a community that gets it, real employer intros, and rebuilt confidence. We win because the founders already hold the distribution, the cohort ops, and the outcome data.",
+  thesis: {
+    defineDifferentiate: {
+      intro: "Day 1 — uncovering the truth behind the assumptions.",
+      points: [
+        { icon: "user" as IconName, label: "Real customer", text: "Mothers returning after a 1–3 year career break — reached today through Maya's 4,000-member community. Not 'parents' broadly; specifically those who paused and want back in." },
+        { icon: "alert" as IconName, label: "Exact problem (worth solving?)", text: "Re-entry is cold and confidence-eroding, and employers quietly screen out gaps. Worth solving: these returners are skilled and motivated but underserved, and the pain is acute and recurring — 30+ DMs a week." },
+        { icon: "store" as IconName, label: "Competitors & alternatives", text: "Today they use cold job boards, big-firm 'returnship' PR programmes, and LinkedIn. Threat: an incumbent could bolt on a returner track. Opportunity: none combine community, real intros, and confidence-rebuilding for small and mid-size employers." },
+        { icon: "sparkle" as IconName, label: "Radical differentiation", text: "The only path pairing a trusted community (distribution + safety), a structured 8-week cohort (ops moat), and measured outcomes (data moat). Not a job board — a guided way back." },
+      ],
+    },
+    findApproach: {
+      intro: "Day 2 — how to deliver the best solution.",
+      points: [
+        { icon: "refresh" as IconName, label: "Paths explored", text: "Explored three forms: a self-serve product, a done-for-you service, and an employer-side integration." },
+        { icon: "sparkle" as IconName, label: "Magic Lenses applied", text: "Stress-tested the shortlist through the Magic Lenses to pressure-check demand, founder fit, and defensibility before committing." },
+        { icon: "target" as IconName, label: "Chosen opportunity", text: "The guided returnship cohort, service-first — fastest to revenue and the best fit for the team's distribution and ops." },
+      ],
+      hypothesis: "We believe returning parents will pay for a guided cohort if it delivers community, real employer intros, and measurable confidence gains within 8 weeks.",
+    },
+  },
   charter: [
     "We move at sprint speed and ship before we feel ready.",
     "Returners are members, not leads — we build with them.",
@@ -219,13 +237,17 @@ export const BIRTH_CERTIFICATE = {
     { week: "Week 3", text: "Land 5 employer intros for placements; Priya ships comeback content." },
     { week: "Week 4", text: "Measure interviews, placements and confidence lift; decide go / no-go." },
   ],
+  deckNote: "Structured on the standard Y Combinator seed-deck format.",
   deck: [
+    { title: "Relaunch", body: "A guided way back to work for parents. (Title slide — company, one-line pitch, contact.)" },
     { title: "Problem", body: "Parents who pause their careers face a cold, confidence-eroding path back, and employer bias against gaps." },
-    { title: "Customer", body: "Parents returning to work after a break — reachable through Maya's 4k-member community." },
-    { title: "Solution", body: "An 8-week guided returnship cohort: community, employer intros, and rebuilt confidence." },
-    { title: "Why us", body: "Distribution, cohort ops, outcome data, platform and brand already in the founding team." },
-    { title: "How it runs", body: "Recruit a cohort → 8-week programme → employer intros → measured outcomes." },
-    { title: "Traction plan", body: "Paid pilot cohort of 12 from the community, plus 5 employer intros, inside 30 days." },
+    { title: "Solution", body: "An 8-week guided returnship cohort: community, real employer intros, and rebuilt confidence." },
+    { title: "Why now", body: "Returnships are going mainstream and the motherhood penalty is in the spotlight — demand and willingness to act are peaking." },
+    { title: "Market", body: "Millions of skilled parents return to work after a break each year. We start with the reachable wedge — Maya's 4k community and similar networks — then expand." },
+    { title: "Product", body: "Recruit a cohort → 8-week programme (community + coaching) → employer intros → measured outcomes." },
+    { title: "Business model", body: "Paid cohort seats (buy-in per member), then employer placement fees, then a studio / white-label tier." },
+    { title: "Team", body: "Distribution (Maya), platform (Alex), cohort ops (Jordan), brand (Priya), outcomes & data (Sam) — all in the founding five." },
+    { title: "Traction plan", body: "Paid pilot cohort of 12 from the community plus 5 employer intros inside 30 days." },
     { title: "The ask", body: "Run the pilot, hit the day-30 decision gate, then open cohort two." },
   ],
   landing: {
