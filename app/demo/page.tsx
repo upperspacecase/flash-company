@@ -432,22 +432,6 @@ function FormationPhase({ hypId, onSelect, statuses, setStatuses, onNext }: { hy
             })}
           </div>
 
-          <div className="mt-6 rounded-xl border border-sage/30 bg-sage-tint/20 p-5">
-            <p className="flex items-center gap-2 font-bold text-foreground"><Icon name="scale" className="h-4 w-4 text-sage" /> Roles &amp; equity — for the approved venture (Relaunch)</p>
-            <div className="mt-3 space-y-2">
-              {ROLES.map((r) => {
-                const m = memberById(r.memberId);
-                return (
-                  <div key={r.memberId} className="flex items-center gap-3 rounded-lg bg-white p-3">
-                    <Avatar m={m} size="h-8 w-8 text-[10px]" />
-                    <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{m.name} · {r.title}</p><p className="truncate text-xs text-slate-500">{r.responsibilities}</p></div>
-                    <span className="shrink-0 rounded-lg bg-sage px-2.5 py-1 text-sm font-bold text-white">{r.equity}%</span>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="mt-3 text-xs text-slate-500">{EQUITY_NOTE}</p>
-          </div>
           <div className="mt-6 flex justify-end"><PrimaryBtn label="Lock the venture & generate output" onClick={onNext} icon="bolt" /></div>
         </Card>
       }
