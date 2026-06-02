@@ -161,3 +161,108 @@ the work themselves.
   easier to build something clickable).
 - This is deliberately **meta**: building the tool will refine Ty and River's own
   venture process.
+
+---
+
+# Revision — June 02, 2026 (feature spec v2)
+
+Refines section 4 (Features) and section 6 (Pricing). Where this conflicts
+with the original, this revision wins.
+
+## Features
+
+- Shared AI agent with **up to 3 people** (was up to 5).
+- **Initial 48-hour access** with check-in points over 7 / 30 days.
+- Daily input for 2 days — 30 mins to 3 hrs per user:
+  - Upload documents
+  - Networks (Instagram, LinkedIn, Facebook, etc.)
+  - Chat conversation — typed or voice input
+
+## Invite Team
+
+- Shareable link URL.
+- Team forms when both accept (the 48-hour window starts, or it auto-expires).
+- No app download. No account creation. Just a link.
+
+## Async Input — chat agent with voice
+
+- Each person answers **15 questions** independently, 15–30 mins, via a private
+  link to a simple form. Sample questions:
+  1. "What's a problem you keep noticing that nobody is solving well?"
+  2. "What skill or resource do you have that the other two don't know about?"
+  3. "What's something you've built, sold, or shipped before — even something small?"
+  4. "What would you do for free if you didn't need money?"
+  5. "What's the biggest risk you're willing to take right now?"
+- Answers are anonymous to the group until synthesis is complete.
+- Voice memo option (2 min max per answer).
+- Deadline: 12 hours from team formation.
+
+## AI Synthesis Engine
+
+- Agent reads all user inputs.
+- Convergence Map — where unique opportunities or insights exist for this team.
+- Deep-researches markets, gap analysis, documented pain points, first
+  principles, trimtabs.
+- Considers industry best practices (lean startup, growth hacking,
+  organisational singularity).
+- Produces up to **5 opportunity spaces / gaps**, with human input:
+  voting / commenting, plus Spark / Conviction sliding scales.
+- Produces **5 venture outlines**, with human input (vote / comment). Each
+  potential venture includes:
+  - Venture thesis — one sentence: what, for whom, why now
+  - Problem score
+  - Solution — vitamin vs painkiller
+  - Market
+  - Differentiation
+  - Purpose
+  - Unique — why this specific combination of 3 people makes it possible
+    (the "only we can do this" moment)
+  - Earning potential — range over 3 years
+
+## Venture Dashboard
+
+- Team receives 3–5 venture outlines and votes.
+- All 3 people get the outlines simultaneously via email / message.
+- 12 hours to read, comment, and vote independently.
+- Anonymous voting until reveal (honest opinions); clear thresholds (no
+  ambiguity); agent-mediated revision (constructive path forward).
+- Selecting full venture details for validation surfaces:
+  - Venture name — agent-generated, cohort can rename
+  - One-sentence thesis — what, for whom, why now
+  - The origin story — how these 3 people + their inputs = this venture (2 paras)
+  - Team / resource map — what each brings (time, capital, skills, connections),
+    extracted from inputs — with role, responsibility, tasks, equity
+  - Financials — income, revenue, costs
+  - 30-day sprint plan — Day 1–2: validation probe; Day 3–4: customer
+    conversation / landing page / prototype; Day 5–6: synthesise learnings;
+    Day 7: go / no-go
+  - Risk register — 3 biggest risks + 1 mitigation each
+  - The commitment — each person's recorded statement: "I'm in for 7 days. My
+    first task is [X]."
+
+## Validation Engine
+
+- Venture assumptions & hypothesis — what to test via primary feedback.
+- Venture assets — demo MVP / landing page (with feedback feature), pitch deck,
+  outreach copy.
+- Feedback synthesis — suggests edits to the chosen venture outline. Each person
+  sends assets to 10–20 people; feedback aggregates into the shared agent.
+- Check-in access on day 7, 14, 21 & 30.
+
+## Output
+
+- Venture details
+- Team alignment & relationship clarity
+- Validation / testable assets: MVP website / landing page, pitch deck, outreach copy
+
+## Pricing (v2)
+
+- **Free** — invite up to 3 people; agent access for 24 hours; basic venture
+  outline (up to 5 potential ventures).
+- **Seed — $50 per person (one time)** — a % goes to a Flash Fund ventures can
+  apply to for fast seed funding; up to 3-person team; agent access for 48 hrs;
+  7-day validation roadmap; full Flash Company package (3–5 venture outlines +
+  venture building).
+- **Venture Launch — $250 upfront + $100/mo** — legal + financial setup
+  (Stripe Atlas + Estonia / LLC).
+- **Venture Grow — $200–5,000/mo** — agent orchestration; agent swarms.

@@ -47,10 +47,10 @@ const TESTIMONIALS = [
 ];
 
 const PRICING = [
-  { name: "Free", price: "$0", period: "", tagline: "Try the convergence map.", cta: "Start free", href: "/demo/free", features: ["Basic convergence map", "Up to 3 people", "One session, one day", "Public gallery"] },
-  { name: "Full protocol", price: "$250", period: "/ group", tagline: "About $50 a person.", cta: "Run a sprint", href: "/demo", featured: true, features: ["Up to 5 people", "Full 72-hour protocol", "Complete venture birth certificate", "30-day agent follow-up"] },
-  { name: "Quarterly", price: "€1,000", period: "/ quarter", tagline: "For teams running sprints often.", cta: "Talk to us", href: "/demo", features: ["Unlimited sessions", "Everything in Full protocol", "Custom options"] },
-  { name: "Studio", price: "$3,000", period: "/ month", tagline: "White-label for networks.", cta: "Talk to us", href: "/demo", features: ["Run cohorts across your network", "Multi-cohort orchestration", "Analytics dashboards", "White-label branding"] },
+  { name: "Free", price: "$0", period: "", tagline: "See what you're sitting on.", cta: "Start free", href: "/demo/free", features: ["Invite up to 3 people", "Agent access for 24 hours", "Basic venture outline", "Up to 5 potential ventures"] },
+  { name: "Seed", price: "$50", period: "/ person", tagline: "Part goes to the Flash Fund for fast seed funding.", cta: "Run a sprint", href: "/demo", featured: true, features: ["Up to 3-person team", "Agent access for 48 hours", "7-day validation roadmap", "3–5 venture outlines + venture building"] },
+  { name: "Venture Launch", price: "$250", period: "upfront + $100/mo", tagline: "When you're ready to incorporate.", cta: "Talk to us", href: "/demo", features: ["Legal + financial setup", "Stripe Atlas + Estonia / LLC"] },
+  { name: "Venture Grow", price: "$200–5,000", period: "/ month", tagline: "Scale the venture with agents.", cta: "Talk to us", href: "/demo", features: ["Agent orchestration", "Agent swarms"] },
 ];
 
 const FAQS = [
