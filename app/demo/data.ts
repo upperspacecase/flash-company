@@ -1,302 +1,312 @@
-// Clickable prototype content for Flash Company — built from the PRD.
-// One sprint: a 5-person cohort dumps input, converges, forms a venture
-// ("Relaunch"), ships a venture birth certificate, then follows through.
-// Phases: Cohort -> Convergence -> Formation -> Output -> Follow-through.
+// Clickable prototype content for Flash Company — feature spec v2 (June 02).
+// One sprint: a 3-person cohort answers a 15-question intake, the agent
+// synthesises opportunity spaces and venture outlines, the team votes and
+// picks one ("Relaunch"), then validates it.
+// Phases: Invite -> Input -> Synthesis -> Ventures -> Validation.
 
 export type IconName =
   | "people" | "group" | "user" | "bolt" | "alert" | "sparkle" | "link" | "mic"
   | "image" | "doc" | "laptop" | "store" | "building" | "target" | "check"
   | "star" | "clock" | "calendar" | "scale" | "chart" | "thumb" | "lock"
-  | "play" | "coins" | "message" | "minus" | "send" | "pause" | "refresh";
+  | "play" | "coins" | "message" | "minus" | "send" | "pause" | "refresh"
+  | "copy" | "shield" | "heart" | "comment";
 
 export const AGENT_NAME = "Flash";
 export const TAGLINE = "Build together. Start clearly.";
 
-export const SPRINT = {
-  windowHours: 72,
-  days: 3,
-  buyInTotal: "$250",
-  buyInPer: "~$50",
-};
+export const SPRINT = { windowHours: 48, freeHours: 24 };
 
 export type Member = {
   id: string;
   name: string;
   initials: string;
   role: string;
-  skills: string;
-  network: string;
+  brings: string;
   accepted: boolean;
   ring: string;
   dot: string;
 };
 
-// "You" are Maya for the purposes of the data-dump chat.
 export const COHORT: Member[] = [
-  { id: "maya", name: "Maya", initials: "MA", role: "Community & GTM", skills: "Product, UX, audience", network: "Runs a 4k-member community for new parents", accepted: true, ring: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
-  { id: "alex", name: "Alex", initials: "AL", role: "Product & Eng", skills: "Full-stack, ex-fintech", network: "Engineering leaders", accepted: true, ring: "bg-sky-100 text-sky-700", dot: "bg-sky-500" },
-  { id: "priya", name: "Priya", initials: "PR", role: "Brand & Content", skills: "Design, content, creators", network: "Creator communities", accepted: true, ring: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
-  { id: "jordan", name: "Jordan", initials: "JO", role: "Ops & Delivery", skills: "Cohort programs, logistics", network: "Ops & partnerships", accepted: true, ring: "bg-violet-100 text-violet-700", dot: "bg-violet-500" },
-  { id: "sam", name: "Sam", initials: "SA", role: "Research & Outcomes", skills: "Data, healthcare", network: "Clinicians & researchers", accepted: false, ring: "bg-rose-100 text-rose-700", dot: "bg-rose-500" },
+  { id: "maya", name: "Maya", initials: "MA", role: "Community & GTM", brings: "Runs a 4k-member community for new parents", accepted: true, ring: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  { id: "alex", name: "Alex", initials: "AL", role: "Product & Eng", brings: "Full-stack, ex-fintech", accepted: true, ring: "bg-sky-100 text-sky-700", dot: "bg-sky-500" },
+  { id: "priya", name: "Priya", initials: "PR", role: "Brand & Content", brings: "Designer with a creator network", accepted: false, ring: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
 ];
 
 export const YOU = "maya";
 export const memberById = (id: string) => COHORT.find((m) => m.id === id)!;
 
 export const PHASES = [
-  { id: "cohort", label: "Cohort", day: "Kick-off", blurb: "Invite 3–5 people you trust and open the 72-hour window." },
-  { id: "convergence", label: "Convergence", day: "Day 1", blurb: "Everyone dumps input separately. The agent finds the patterns." },
-  { id: "formation", label: "Formation", day: "Day 2", blurb: "Ranked venture hypotheses, roles, and equity — you vote and commit." },
-  { id: "output", label: "Output", day: "Day 3", blurb: "Walk away with a venture birth certificate ready to share." },
-  { id: "followthrough", label: "Follow-through", day: "Day 7–30", blurb: "The agent goes quiet, returning only at day 7, 14, 21 and 30." },
+  { id: "invite", label: "Invite", day: "Kick-off", blurb: "Share a link. The team forms when everyone accepts." },
+  { id: "input", label: "Input", day: "Day 1", blurb: "Each person answers 15 questions privately. Typed or voice." },
+  { id: "synthesis", label: "Synthesis", day: "Day 1", blurb: "The agent finds your convergence map and opportunity spaces." },
+  { id: "ventures", label: "Ventures", day: "Day 2", blurb: "Five venture outlines. Vote, comment, and pick one." },
+  { id: "validation", label: "Validation", day: "Day 2–30", blurb: "Assets to test, feedback synthesis, and the 7/14/21/30 check-ins." },
 ] as const;
 
-// ---------------------------------------------------------------- Cohort
+// ------------------------------------------------------------- Invite
 
-export const SUGGESTED_CONTACTS = [
-  { name: "Nadia K.", reason: "HR lead in your contacts — could open employer doors later." },
-  { name: "Tom R.", reason: "Built two marketplaces; strong if you go two-sided." },
-  { name: "Deb L.", reason: "Returned to work herself — a perfect first tester." },
-];
-
-export const COHORT_READINESS = [
-  { label: "Cohort invited (4 of 5 in)", done: true },
-  { label: "Buy-in agreed", done: true },
-  { label: "72-hour window opened", done: true },
-  { label: "Everyone accepted", done: false },
-];
-
-// ----------------------------------------------------------- Convergence
-
-export const AGENT_INTRO =
-  "Welcome to your 72-hour sprint. Don't structure anything yet — just dump. Problems you keep seeing, people you know, things you're weirdly good at, links, voice notes. I'll read across all five of you and find the patterns.";
-
-export type DumpKind = "text" | "voice" | "link" | "image" | "doc";
-
-export type Dump = {
-  kind: DumpKind;
-  label: string; // bubble content / attachment label
-  agent: string; // agent's reflection after this dump
+export const INVITE = {
+  url: "flashco.app/s/3kq9-relaunch",
+  note: "No app download. No account creation. Just a link.",
+  forms: "The team forms when everyone accepts — then the 48-hour window starts (or the invite auto-expires).",
+  members: COHORT,
 };
 
-// "You" (Maya) dump these one at a time. Clickable in the prototype.
-export const DUMPS: Dump[] = [
-  { kind: "text", label: "Half my parents community asks the same thing: how do I go back to work after a long break without starting from zero?", agent: "Noted — 'returning to work after a break' is the third time that's surfaced across the group." },
-  { kind: "voice", label: "Voice memo · 0:42 — \"employers ghost them the second they see a two-year gap…\"", agent: "Tension logged: strong demand from parents vs. employer hesitancy about gaps." },
-  { kind: "link", label: "Link · article — \"The motherhood penalty costs returners ~20% of salary\"", agent: "Market signal added — the timing pressure is real and external." },
-  { kind: "image", label: "Photo · screenshot of 30 DMs all asking the same thing", agent: "That's hard evidence of repeated, specific demand. Flagging it." },
-  { kind: "text", label: "I'm not interested in building another job board. That's been done to death.", agent: "Constraint noted — not a job board. I'll keep proposals away from that shape." },
+// -------------------------------------------------------------- Input
+
+export type Question = { q: string; a: string; voice?: boolean };
+
+// "You" are Maya; these are her answers. 15 questions, sampled from the spec.
+export const QUESTIONS: Question[] = [
+  { q: "What's a problem you keep noticing that nobody is solving well?", a: "Parents in my community ask the same thing constantly: how do I go back to work after a long break without starting from zero?" },
+  { q: "What skill or resource do you have that the other two don't know about?", a: "I've quietly built a 4,000-person community of new parents who trust me.", voice: true },
+  { q: "What's something you've built, sold, or shipped before — even something small?", a: "I ran a paid 6-week parenting course last year — 80 people, sold out twice." },
+  { q: "What would you do for free if you didn't need money?", a: "Help people feel capable again after a setback. That's the thread in everything I do." },
+  { q: "What's the biggest risk you're willing to take right now?", a: "Going public with a paid product to my community and being judged if it flops." },
+  { q: "Who do you have unusual access to — a community, network, or type of customer?", a: "Returning parents, and through them, the small employers who'd hire them." },
+  { q: "What trend are you convinced is about to get much bigger?", a: "Returnships and flexible re-entry — the motherhood penalty is finally in the spotlight." },
+  { q: "What do people consistently ask you for help with?", a: "How to restart a career and how to rebuild confidence after time out.", voice: true },
+  { q: "What's something you believe that most people in your field disagree with?", a: "Job boards are the worst possible re-entry path. People need a guided cohort, not a search box." },
+  { q: "How much time can you give this over the next two weeks?", a: "About 20 hours a week — evenings and the kids' nap windows." },
+  { q: "What could you put in beyond time — money, tools, an audience?", a: "My community as distribution, and a small budget for a landing page." },
+  { q: "What kind of work drains you that you'd want to avoid?", a: "Cold B2B sales. I'd rather build trust at scale than chase logos." },
+  { q: "What would make you proud to have built in a year?", a: "A hundred parents back in work who'd told me they'd given up." },
+  { q: "When did you last see a customer or friend clearly frustrated?", a: "Last week — a friend got ghosted by three employers the moment they saw her two-year gap." },
+  { q: "If this works, what does winning look like for you personally?", a: "Doing work that matters with people I trust, and not having to ask permission to do it." },
 ];
 
-// What the rest of the cohort has already dumped (async).
-export const COHORT_DUMPS: Record<string, { count: number; sample: string; kinds: DumpKind[] }> = {
-  alex: { count: 6, sample: "Built matching infra before — wary of two-sided cold starts.", kinds: ["text", "link", "doc"] },
-  priya: { count: 5, sample: "Creators love a 'comeback story' angle — I could make a content engine for it.", kinds: ["text", "image", "voice"] },
-  jordan: { count: 4, sample: "I've run 8-week cohort programs. The ops is where the moat is.", kinds: ["text", "doc"] },
-  sam: { count: 5, sample: "I have outcome data on confidence and re-employment after breaks.", kinds: ["text", "link", "doc"] },
+// Other members' progress (anonymous until synthesis completes).
+export const INPUT_STATUS: Record<string, { done: number; total: number }> = {
+  maya: { done: 0, total: QUESTIONS.length },
+  alex: { done: 15, total: 15 },
+  priya: { done: 12, total: 15 },
 };
+
+// ----------------------------------------------------------- Synthesis
 
 export type Signal = { icon: IconName; kind: string; tone: "good" | "warn"; text: string };
 
-// Revealed progressively as you dump (one per dump sent).
 export const CONVERGENCE_SIGNALS: Signal[] = [
-  { icon: "group", kind: "Overlap", tone: "good", text: "Returning to work after a break surfaced independently by Maya, Priya and Sam." },
-  { icon: "alert", kind: "Tension", tone: "warn", text: "Parents want back in; employers hesitate at career gaps." },
+  { icon: "group", kind: "Overlap", tone: "good", text: "Returning to work after a break surfaced independently across all three intakes." },
+  { icon: "alert", kind: "Tension", tone: "warn", text: "Strong demand from parents vs. employer hesitancy about career gaps." },
   { icon: "minus", kind: "Gap", tone: "good", text: "No trusted, supportive path back — only cold job boards." },
-  { icon: "sparkle", kind: "Hidden complementarity", tone: "good", text: "Maya's community (distribution) + Jordan's cohort ops + Sam's outcome data + Alex's platform + Priya's brand." },
-  { icon: "chart", kind: "Market signal", tone: "good", text: "Motherhood penalty + the rise of returnships means timing is on your side." },
+  { icon: "sparkle", kind: "Hidden complementarity", tone: "good", text: "Maya's community (distribution) + Alex's platform + Priya's brand and content." },
+  { icon: "chart", kind: "Market signal", tone: "good", text: "The motherhood penalty and the rise of returnships put timing on your side." },
 ];
 
-// ------------------------------------------------------------- Formation
+export type Slider = { spark: number; conviction: number }; // 0–5
 
-export type Vote = { approve: number; challenge: number; pivot: number };
-export type HypothesisStatus = "approved" | "tumble" | "folded" | "proposed";
-
-export type Hypothesis = {
+export type OpportunitySpace = {
   id: string;
-  rank: number;
   title: string;
-  score: number;
-  customer: string;
-  problem: string;
-  whyTeam: string;
-  validation: string;
-  votes: Vote;
-  status: HypothesisStatus;
-  note: string;
+  text: string;
+  votes: number;
+  spark: number;
+  conviction: number;
+  top?: boolean;
 };
 
-export const HYPOTHESES: Hypothesis[] = [
+export const OPPORTUNITY_SPACES: OpportunitySpace[] = [
+  { id: "reentry", title: "Guided re-entry for parents", text: "A supportive, structured path back to work for parents after a career break.", votes: 3, spark: 5, conviction: 5, top: true },
+  { id: "employer", title: "Employer returnship programmes", text: "Help companies run structured returnships and hire from an overlooked talent pool.", votes: 2, spark: 4, conviction: 3 },
+  { id: "confidence", title: "Confidence & coaching for returners", text: "Rebuild the confidence that erodes during time out of the workforce.", votes: 2, spark: 4, conviction: 4 },
+  { id: "flexmatch", title: "Flexible-role matching", text: "Connect returners with genuinely flexible roles, not only 'remote-friendly'.", votes: 1, spark: 3, conviction: 3 },
+  { id: "community", title: "Community for career returners", text: "A place returners swap leads, stories, and accountability.", votes: 2, spark: 4, conviction: 3 },
+];
+
+// ------------------------------------------------------------ Ventures
+
+export type Venture = {
+  id: string;
+  name: string;
+  thesis: string;
+  problemScore: number; // /10
+  solution: "Painkiller" | "Vitamin";
+  market: string;
+  differentiation: string;
+  purpose: string;
+  unique: string;
+  earn: string; // projected 3-yr range (illustrative)
+  votes: number;
+  spark: number;
+  conviction: number;
+  recommended?: boolean;
+};
+
+export const VENTURES: Venture[] = [
   {
     id: "relaunch",
-    rank: 1,
-    title: "Relaunch",
-    score: 8.6,
-    customer: "Parents (especially mothers) returning to work after a career break.",
-    problem: "Re-entry is cold and confidence-eroding, and employers are wary of gaps.",
-    whyTeam: "Maya's community for distribution, Jordan's cohort ops, Sam's outcome data, Alex's platform, Priya's brand.",
-    validation: "Run a paid pilot cohort recruited from Maya's community; land 5 employer intros.",
-    votes: { approve: 5, challenge: 0, pivot: 0 },
-    status: "approved",
-    note: "An 8-week guided returnship cohort. Strongest fit — distribution, ops and outcomes already in the room.",
+    name: "Relaunch",
+    thesis: "An 8-week guided returnship cohort that gets parents back to work, for parents after a career break, now that returnships are going mainstream.",
+    problemScore: 9,
+    solution: "Painkiller",
+    market: "Parents returning after a break — reachable through Maya's 4k community and similar networks.",
+    differentiation: "Community + cohort ops + real employer intros in one path. Not a job board.",
+    purpose: "Help capable people feel capable again after a setback.",
+    unique: "Only this trio can pair a trusted parent community, a builder, and a brand voice that's lived the comeback.",
+    earn: "$120k–600k by year 3 (illustrative)",
+    votes: 3,
+    spark: 5,
+    conviction: 5,
+    recommended: true,
   },
   {
     id: "flexmatch",
-    rank: 2,
-    title: "FlexMatch",
-    score: 6.9,
-    customer: "Returning parents and employers offering flexible roles.",
-    problem: "Returners can't find genuinely flexible roles; employers can't find vetted returners.",
-    whyTeam: "Alex has built matching infra; Maya has supply-side trust.",
-    validation: "Concierge-match 10 returners to roles by hand before building anything.",
-    votes: { approve: 2, challenge: 0, pivot: 3 },
-    status: "tumble",
-    note: "Marketplace. Parked — Alex flagged the two-sided cold-start risk. In the tumble dryer for now.",
+    name: "FlexMatch",
+    thesis: "A matching service pairing returners with genuinely flexible roles, for returning parents and flexible employers, now that flexible work is the default ask.",
+    problemScore: 7,
+    solution: "Vitamin",
+    market: "Returners + employers offering flexible roles.",
+    differentiation: "Supply-side trust via Maya's community.",
+    purpose: "Make flexible work findable.",
+    unique: "Warm supply, but the team has no two-sided marketplace experience.",
+    earn: "$80k–400k by year 3 (illustrative)",
+    votes: 1,
+    spark: 3,
+    conviction: 3,
   },
   {
     id: "comeback",
-    rank: 3,
-    title: "The Comeback",
-    score: 6.2,
-    customer: "Career returners across all fields.",
-    problem: "No brand tells the comeback story or builds the returner community.",
-    whyTeam: "Priya's content engine + Maya's audience.",
-    validation: "Publish comeback-story content and measure list growth.",
-    votes: { approve: 1, challenge: 3, pivot: 1 },
-    status: "folded",
-    note: "Content + community brand. Folded into Relaunch as its top-of-funnel rather than run standalone.",
+    name: "The Comeback",
+    thesis: "A content brand and community for career returners, for anyone restarting a career, now that the comeback story resonates widely.",
+    problemScore: 6,
+    solution: "Vitamin",
+    market: "Career returners across fields.",
+    differentiation: "Priya's content engine + Maya's audience.",
+    purpose: "Make returning feel normal, not shameful.",
+    unique: "Strong top-of-funnel — better as Relaunch's front door than a standalone business.",
+    earn: "$40k–250k by year 3 (illustrative)",
+    votes: 2,
+    spark: 4,
+    conviction: 3,
   },
   {
-    id: "employer",
-    rank: 4,
-    title: "Returnships-as-a-Service",
-    score: 5.5,
-    customer: "Employers who want to hire returners but lack a programme.",
-    problem: "Companies want the talent but have no structured returnship to run.",
-    whyTeam: "Jordan's programme ops; Sam's outcome reporting.",
-    validation: "Pitch one employer a paid pilot returnship.",
-    votes: { approve: 1, challenge: 1, pivot: 2 },
-    status: "tumble",
-    note: "B2B and slower. Parked for after consumer traction.",
+    id: "returnos",
+    name: "ReturnOS",
+    thesis: "Returnship-as-a-service for employers, for companies that want returner talent, now that hiring pools are tight.",
+    problemScore: 7,
+    solution: "Painkiller",
+    market: "Employers wanting structured returnships.",
+    differentiation: "Programme ops + outcome reporting.",
+    purpose: "Open the door employers keep shut.",
+    unique: "Real, but B2B and slower — better once consumer traction exists.",
+    earn: "$100k–800k by year 3 (illustrative)",
+    votes: 1,
+    spark: 3,
+    conviction: 4,
+  },
+  {
+    id: "confidence",
+    name: "Confidence Lab",
+    thesis: "Coaching that rebuilds confidence after a career break, for returners who feel rusty, now that re-entry anxiety is widely felt.",
+    problemScore: 6,
+    solution: "Vitamin",
+    market: "Returners lacking confidence to re-enter.",
+    differentiation: "Outcome focus on confidence + re-employment.",
+    purpose: "Restore self-belief.",
+    unique: "Meaningful, but a feature of Relaunch more than a business on its own.",
+    earn: "$50k–300k by year 3 (illustrative)",
+    votes: 1,
+    spark: 4,
+    conviction: 3,
   },
 ];
 
 export const CHOSEN_ID = "relaunch";
 
-export type Role = { memberId: string; title: string; responsibilities: string; equity: number };
+// -------------------------------------------------- Full venture details
 
-export const ROLES: Role[] = [
-  { memberId: "maya", title: "CEO · Community & GTM", responsibilities: "Recruits cohorts from her community; owns brand voice.", equity: 28 },
-  { memberId: "alex", title: "CTO · Product & Eng", responsibilities: "Builds the cohort platform and intro flow.", equity: 26 },
-  { memberId: "jordan", title: "COO · Ops & Delivery", responsibilities: "Runs the 8-week cohort and employer partnerships.", equity: 22 },
-  { memberId: "priya", title: "CMO · Brand & Content", responsibilities: "Runs the comeback-story content engine.", equity: 14 },
-  { memberId: "sam", title: "Head of Research · Outcomes", responsibilities: "Measures confidence and re-employment; owns the data moat.", equity: 10 },
-];
+export type TeamRole = {
+  memberId: string;
+  role: string;
+  responsibility: string;
+  tasks: string;
+  equity: number;
+  resource: string; // time / capital / skills / connections
+};
 
-export const EQUITY_NOTE = "Equity is embedded in role and is a starting framework — revisit at the day-30 review.";
+export type Commitment = { memberId: string; statement: string; recorded: boolean };
 
-export const DECISION_FRAMEWORK = [
-  "The lead of each function decides within it.",
-  "Any spend over €500 or any hire needs 3 of 5.",
-  "A change to the core thesis needs 4 of 5.",
-  "The day-30 review can rebalance roles and equity.",
-];
-
-// --------------------------------------------------------------- Output
-
-export const BIRTH_CERTIFICATE = {
-  thesis: {
-    defineDifferentiate: {
-      intro: "Uncovering the truth behind the assumptions.",
-      points: [
-        { icon: "user" as IconName, label: "Real customer", text: "Mothers returning after a 1–3 year career break — reached today through Maya's 4,000-member community. Not 'parents' broadly; specifically those who paused and want back in." },
-        { icon: "alert" as IconName, label: "Exact problem (worth solving?)", text: "Re-entry is cold and confidence-eroding, and employers quietly screen out gaps. Worth solving: these returners are skilled and motivated but underserved, and the pain is acute and recurring — 30+ DMs a week." },
-        { icon: "store" as IconName, label: "Competitors & alternatives", text: "Today they use cold job boards, big-firm 'returnship' PR programmes, and LinkedIn. Threat: an incumbent could bolt on a returner track. Opportunity: none combine community, real intros, and confidence-rebuilding for small and mid-size employers." },
-        { icon: "sparkle" as IconName, label: "Radical differentiation", text: "The only path pairing a trusted community (distribution + safety), a structured 8-week cohort (ops moat), and measured outcomes (data moat). Not a job board — a guided way back." },
-      ],
-    },
-    approach: {
-      title: "The approach we agreed on",
-      intro: "The chosen path — and the venture we're committing to.",
-      chosen: "Relaunch — a guided returnship cohort, service-first. The fastest path to revenue and the best fit for the team's distribution and ops.",
-      hypothesis: "We believe returning parents will pay for a guided cohort if it delivers community, real employer intros, and measurable confidence gains within 8 weeks.",
-    },
-  },
-  roadmap: [
-    { week: "Week 1", text: "Recruit 12 parents from Maya's community into a paid pilot cohort." },
-    { week: "Week 2", text: "Run weeks 1–2 of the cohort; Sam baselines confidence and goals." },
-    { week: "Week 3", text: "Land 5 employer intros for placements; Priya ships comeback content." },
-    { week: "Week 4", text: "Measure interviews, placements and confidence lift; decide go / no-go." },
+export const VENTURE_DETAILS = {
+  name: "Relaunch",
+  thesis: "An 8-week guided returnship cohort that gets parents back to work, with community, real employer intros, and rebuilt confidence.",
+  origin: [
+    "All three of you, separately, pointed at the same wall: capable parents who want back into work and have no supportive way in. Maya hears it weekly from a 4,000-person community; Alex has watched skilled friends get screened out for a gap; Priya keeps being asked to tell the comeback story.",
+    "Put together, you're a path no one of you could build alone — trusted distribution, a platform to run cohorts, and a brand that's lived the comeback. That's the 'only we can do this' moment: community + product + story, aimed at a problem all three of you can't stop noticing.",
   ],
-  deckNote: "Structured on the standard Y Combinator seed-deck format.",
-  deck: [
-    { title: "Relaunch", body: "A guided way back to work for parents. (Title slide — company, one-line pitch, contact.)" },
-    { title: "Problem", body: "Parents who pause their careers face a cold, confidence-eroding path back, and employer bias against gaps." },
-    { title: "Solution", body: "An 8-week guided returnship cohort: community, real employer intros, and rebuilt confidence." },
-    { title: "Why now", body: "Returnships are going mainstream and the motherhood penalty is in the spotlight — demand and willingness to act are peaking." },
-    { title: "Market", body: "Millions of skilled parents return to work after a break each year. We start with the reachable wedge — Maya's 4k community and similar networks — then expand." },
-    { title: "Product", body: "Recruit a cohort → 8-week programme (community + coaching) → employer intros → measured outcomes." },
-    { title: "Business model", body: "Paid cohort seats (buy-in per member), then employer placement fees, then a studio / white-label tier." },
-    { title: "Team", body: "Distribution (Maya), platform (Alex), cohort ops (Jordan), brand (Priya), outcomes & data (Sam) — all in the founding five." },
-    { title: "Traction plan", body: "Paid pilot cohort of 12 from the community plus 5 employer intros inside 30 days." },
-    { title: "The ask", body: "Run the pilot, hit the day-30 decision gate, then open cohort two." },
+  team: [
+    { memberId: "maya", role: "CEO · Community & GTM", responsibility: "Recruit cohorts; own the brand voice and member trust.", tasks: "Open a waitlist to the community; run the first cohort.", equity: 40, resource: "20 hrs/wk · 4k-member audience · course-selling track record" },
+    { memberId: "alex", role: "CTO · Product & Eng", responsibility: "Build the cohort platform, signup, and employer intro flow.", tasks: "Ship the landing page + signup; wire up intros.", equity: 35, resource: "25 hrs/wk · full-stack build · fintech rigor" },
+    { memberId: "priya", role: "CMO · Brand & Content", responsibility: "Run the comeback-story content engine and brand.", tasks: "Publish 3 comeback stories; design the brand.", equity: 25, resource: "15 hrs/wk · creator network · design" },
+  ] as TeamRole[],
+  financials: {
+    note: "Illustrative starting model — replace with real numbers as you test.",
+    rows: [
+      { label: "Income / pricing", value: "Paid cohort seat (~$250/parent), later employer placement fees" },
+      { label: "Revenue (yr 1)", value: "Illustrative: 6 cohorts × 12 seats ≈ $180k" },
+      { label: "Costs", value: "Coaching time, platform, content, employer outreach" },
+    ],
+  },
+  sprint: [
+    { days: "Day 1–2", text: "Validation probe — landing page to the community, measure signups." },
+    { days: "Day 3–4", text: "Customer conversations / a simple prototype / employer intros." },
+    { days: "Day 5–6", text: "Synthesise learnings — what's resonating, what's not." },
+    { days: "Day 7", text: "Go / no-go decision." },
+  ],
+  risks: [
+    { risk: "Parents won't pay before seeing results.", mitigation: "Offer a pay-on-placement or partial-refund pilot." },
+    { risk: "Employers won't interview returners.", mitigation: "Pre-line 5 warm employer intros before the cohort starts." },
+    { risk: "Cohort ops don't scale.", mitigation: "Cap the pilot at 12 and templatise everything." },
+  ],
+  commitments: [
+    { memberId: "maya", statement: "I'm in for 7 days. My first task is to open a waitlist to my community.", recorded: true },
+    { memberId: "alex", statement: "I'm in for 7 days. My first task is to ship the signup + intro flow.", recorded: true },
+    { memberId: "priya", statement: "I'm in for 7 days. My first task is to publish 3 comeback-story posts.", recorded: false },
+  ] as Commitment[],
+};
+
+// ----------------------------------------------------------- Validation
+
+export const VALIDATION = {
+  hypothesis: "We believe returning parents will pay for a guided cohort if it delivers community, real employer intros, and measurable confidence gains within 8 weeks.",
+  assumptions: [
+    "Parents will give an email to join a returnship waitlist.",
+    "At least 1 in 4 waitlisters will book a call.",
+    "Employers will take a warm intro to a vetted returner.",
   ],
   landing: {
     headline: "Your career didn't end. It paused.",
     subhead: "Relaunch is an 8-week guided cohort that gets parents back to work — with a community that gets it, real employer intros, and your confidence rebuilt.",
     cta: "Join the next cohort",
   },
+  deck: [
+    { title: "Relaunch", body: "A guided way back to work for parents. (Title — one-line pitch, contact.)" },
+    { title: "Problem", body: "Parents who pause their careers face a cold, confidence-eroding path back." },
+    { title: "Solution", body: "An 8-week guided returnship cohort: community, intros, rebuilt confidence." },
+    { title: "Why now", body: "Returnships are mainstream; the motherhood penalty is in the spotlight." },
+    { title: "Market", body: "Millions of parents return each year; start with Maya's 4k community." },
+    { title: "Product", body: "Recruit → 8-week programme → employer intros → measured outcomes." },
+    { title: "Team", body: "Community (Maya), platform (Alex), brand (Priya) — the founding three." },
+    { title: "The ask", body: "Run the pilot, hit the day-30 gate, open cohort two." },
+  ],
   outreach: {
     linkedin: "If you paused your career to raise kids, going back can feel like starting from zero. It shouldn't.\n\nWe're piloting Relaunch — an 8-week guided cohort that gets parents back to work with community, real employer intros, and rebuilt confidence. Comment 'relaunch' for a spot.",
-    dm: "Hey {name} — you mentioned wanting to go back to work but not knowing where to start. We're running a small guided cohort for exactly that — community, employer intros, confidence. Want the details?",
-    email: "Subject: a guided way back to work\n\nHi {name},\n\nGoing back to work after a break is hard — cold job boards and employer bias don't help. Relaunch is an 8-week guided cohort built for returning parents: community, real employer intros, and rebuilt confidence.\n\nWe're taking a small pilot cohort. Want in?\n\nMaya — Relaunch",
-    whatsapp: "Hi {name}! We're running a small 8-week cohort for parents going back to work — community + employer intros + confidence. Pilot spots are limited. Keen?",
+    dm: "Hey {name} — you mentioned wanting to go back to work but not knowing where to start. We're running a small guided cohort for exactly that. Want the details?",
+    email: "Subject: a guided way back to work\n\nHi {name},\n\nGoing back after a break is hard — cold job boards and employer bias don't help. Relaunch is an 8-week guided cohort built for returning parents: community, real employer intros, and rebuilt confidence.\n\nWe're taking a small pilot cohort. Want in?\n\nMaya — Relaunch",
+    whatsapp: "Hi {name}! Running a small 8-week cohort for parents going back to work — community + employer intros + confidence. Pilot spots are limited. Keen?",
   },
-  validation: {
-    tests: [
-      "Landing page shared to Maya's community",
-      "20 warm DMs to parents who've asked",
-      "5 employer intros for placement demand",
-    ],
-    resultsNote: "Results populate during follow-through (day 7+). Nothing here is filled in yet — this is the plan, not measured outcomes.",
-    decisionRule: "If 12 join the paid pilot and 3 employers commit to interviews within two weeks, we continue.",
-  },
-  nextSteps: [
-    "Send the landing page and outreach to your first 10 by day 4.",
-    "Record your commitments below.",
-    "The agent goes quiet until day 7 — the work is yours.",
+  sendTarget: "Each founder sends the assets to 10–20 people for first feedback.",
+  feedbackEdits: [
+    "Lead with 'employer intros' — testers cared more about that than community.",
+    "Add a price anchor; people asked 'how much?' before booking.",
+    "Swap 'cohort' for 'programme' — clearer to first-timers.",
+  ],
+  feedbackNote: "Feedback aggregates into the shared agent, which suggests edits to the venture outline. Nothing here is measured yet — these are example suggestions.",
+  checkins: [
+    { day: "Day 7", status: "active", text: "Did the waitlist fill? What surprised you?" },
+    { day: "Day 14", status: "locked", text: "How are calls and employer intros tracking?" },
+    { day: "Day 21", status: "locked", text: "Confidence lift? Any churn?" },
+    { day: "Day 30", status: "locked", text: "Go / no-go, and rebalance roles & equity." },
   ],
 };
-
-export type Commitment = { memberId: string; task: string; due: string; recorded: boolean };
-
-export const COMMITMENTS: Commitment[] = [
-  { memberId: "maya", task: "Recruit 12 parents into the pilot cohort", due: "Day 7", recorded: true },
-  { memberId: "alex", task: "Ship the cohort signup + intro flow", due: "Day 7", recorded: true },
-  { memberId: "jordan", task: "Line up 5 employer intros", due: "Day 10", recorded: false },
-  { memberId: "priya", task: "Publish 3 comeback-story posts", due: "Day 7", recorded: true },
-  { memberId: "sam", task: "Set the confidence baseline survey", due: "Day 5", recorded: false },
-];
-
-export const OUTPUT_MENU: { id: string; label: string; icon: IconName }[] = [
-  { id: "thesis", label: "Thesis", icon: "bolt" },
-  { id: "landing", label: "Landing page", icon: "laptop" },
-  { id: "roles", label: "Roles & equity", icon: "scale" },
-  { id: "decisions", label: "Decision framework", icon: "check" },
-  { id: "roadmap", label: "30-day roadmap", icon: "calendar" },
-  { id: "deck", label: "Pitch deck", icon: "chart" },
-  { id: "outreach", label: "Outreach copy", icon: "message" },
-  { id: "validation", label: "Validation report", icon: "target" },
-  { id: "commitments", label: "Commitment ritual", icon: "play" },
-];
-
-// -------------------------------------------------------- Follow-through
-
-export type Checkpoint = { day: string; status: "active" | "locked"; title: string; asks: string[]; due: string };
-
-export const CHECKPOINTS: Checkpoint[] = [
-  { day: "Day 7", status: "active", title: "First pulse", asks: ["Did the pilot cohort fill?", "What surprised you about the first returners?"], due: "Cohort recruited; signup live." },
-  { day: "Day 14", status: "locked", title: "Mid-cohort", asks: ["How are interviews and placements tracking?", "Where is the cohort getting stuck?"], due: "Weeks 1–2 of the cohort run." },
-  { day: "Day 21", status: "locked", title: "Outcomes check", asks: ["What's the confidence lift?", "Any churn, and why?"], due: "Sam's outcome data in." },
-  { day: "Day 30", status: "locked", title: "Go / no-go", asks: ["Continue, pivot or stop?", "Rebalance roles and equity?"], due: "Decision gate + role review." },
-];
