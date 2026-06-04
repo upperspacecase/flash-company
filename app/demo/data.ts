@@ -513,17 +513,51 @@ export function revenueDefaults(m: RevenueModel) {
 // Cap table — equity blank to start, standard founder vesting + an option pool.
 export const CAP_TABLE = { pool: 10, vestingDefault: "4 yr · 1 yr cliff" };
 
+// Click "Approach" — never commit to the first idea. Generate at least three
+// options; each is a one-pager (title, why it's a good idea, a quick sketch).
+export type ApproachOption = { id: string; title: string; why: string };
+export const APPROACH_OPTIONS: ApproachOption[] = [
+  { id: "cohort", title: "Guided 8-week cohort", why: "A supported group programme that gets parents back to work — community plus warm employer intros." },
+  { id: "concierge", title: "1:1 concierge placement", why: "High-touch, done-for-you placement at a premium — proves demand before building any ops." },
+  { id: "marketplace", title: "Self-serve returner marketplace", why: "Returners and flexible employers match themselves — scales, but needs two-sided liquidity first." },
+];
+
+// In-depth market report — generated on demand from the team's inputs + public
+// data. Illustrative for the demo.
+export const MARKET_REPORT = {
+  summary: "Millions of parents return to work each year — a large, under-served re-entry market with strong tailwinds.",
+  stats: [
+    { label: "TAM", value: "~$12B", note: "Global career re-entry, coaching & placement spend" },
+    { label: "SAM", value: "~$1.4B", note: "English-speaking returning parents" },
+    { label: "SOM · yr 1", value: "~$2–4M", note: "Reachable through communities like Maya's" },
+  ],
+  trends: [
+    "Returnship programmes are going mainstream at major employers.",
+    "The motherhood penalty is in the policy and media spotlight.",
+    "Flexible / hybrid roles are the default ask, widening re-entry paths.",
+  ],
+  segments: [
+    "Parents 0–3 yrs out — highest confidence, fastest to place.",
+    "Parents 3–7 yrs out — need the most support; highest willingness to pay.",
+    "Career-changers returning — adjacent, larger, lower intent.",
+  ],
+  competition: "Job boards (broad, cold), returnship bootcamps (expensive, one-off), Facebook groups (free, unstructured).",
+  sources: ["Team intake — 3 founders", "Labour-force participation data", "Returnship programme directories", "Community survey signals"],
+};
+
 export type VentureDraft = {
   thesis: string;
-  // Click worksheet — the Basics / Advantage / Competition output.
+  // Click "Basics" — Customer, Advantage, Competition.
   basics: { customer: string; problem: string };
   advantage: { capability: string; insight: string; motivation: string };
   competition: { gorilla: string; alternatives: string };
   purpose: string;
   problem: { painful: number; frequent: number; whyNow: number; payNow: string };
-  solution: string;
-  market: string;
+  // Click "Differentiation" — the statement, a clarity score, and operating principles.
   differentiation: { statement: string; clarity: number };
+  principles: string[];
+  // Click "Approach" — the chosen option (how we'll solve it).
+  approachId: string;
   revenue: { id: string; growth: number; drivers: Record<string, number> };
   unique: string;
   story: string[]; // bits pulled from the lenses — the narrative the venture is built on
@@ -550,9 +584,13 @@ export function makeVentureDraft(): VentureDraft {
     },
     purpose: CHOSEN.purpose,
     problem: { ...PROBLEM_BREAKDOWN },
-    solution: "An 8-week guided returnship cohort: community, real employer intros, and rebuilt confidence.",
-    market: CHOSEN.market,
     differentiation: { statement: DIFFERENTIATION.statement, clarity: DIFFERENTIATION.clarity },
+    principles: [
+      "Warm beats cold — always lead with a real introduction.",
+      "Outcomes over activity — measure placements, not logins.",
+      "The community is the product — protect trust above growth.",
+    ],
+    approachId: APPROACH_OPTIONS[0].id,
     revenue: revenueDefaults(REVENUE_MODELS[0]),
     unique: CHOSEN.unique,
     story: [],

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useState } from "react";
 import {
+  APPROACH_OPTIONS,
   CHOSEN_ID,
   COHORT,
   CONVERGENCE_SIGNALS,
@@ -10,6 +11,7 @@ import {
   INTAKE_TOTAL,
   INVITE,
   LENSES,
+  MARKET_REPORT,
   OPPORTUNITY_SPACES,
   PHASES,
   REVENUE_MODELS,
@@ -1077,59 +1079,153 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: {
   const toggleStory = (s: string) => onVenture((p) => ({ ...p, story: p.story.includes(s) ? p.story.filter((x) => x !== s) : [...p.story, s] }));
   return (
     <div className="mt-5 space-y-5">
-      <Section title="The Basics">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="sm:col-span-1"><LabeledBox label="Customer" value={venture.basics.customer} onChange={(v) => setBasics({ customer: v })} placeholder="Who exactly?" /></div>
-          <div className="sm:col-span-2"><LabeledBox label="Problem" value={venture.basics.problem} onChange={(v) => setBasics({ problem: v })} placeholder="What's broken for them?" /></div>
-        </div>
-      </Section>
-
-      <Section title="Advantage">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <LabeledBox label="Capability" value={venture.advantage.capability} onChange={(v) => setAdvantage({ capability: v })} placeholder="What can only you do?" />
-          <LabeledBox label="Insight" value={venture.advantage.insight} onChange={(v) => setAdvantage({ insight: v })} placeholder="What do you know that others don't?" />
-          <LabeledBox label="Motivation" value={venture.advantage.motivation} onChange={(v) => setAdvantage({ motivation: v })} placeholder="Why you, why this?" />
-        </div>
-      </Section>
-
-      <Section title="Competition">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="sm:col-span-1"><LabeledBox label="800-pound gorilla" value={venture.competition.gorilla} onChange={(v) => setCompetition({ gorilla: v })} placeholder="The incumbent" /></div>
-          <div className="sm:col-span-2"><LabeledBox label="Top alternatives" value={venture.competition.alternatives} onChange={(v) => setCompetition({ alternatives: v })} placeholder="What they use instead" /></div>
-        </div>
-      </Section>
-
-      <Section title="Purpose">
+      <Section title="North star">
         <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-4">
-          <p className="text-xs italic text-slate-400">Start with a clear why.</p>
+          <p className="text-xs italic text-slate-400">The clear why behind it all.</p>
           <EditableArea value={venture.purpose} onChange={(val) => set("purpose", val)} className="mt-1 text-foreground" />
         </div>
       </Section>
 
-      <ProblemBreakdown problem={venture.problem} set={setProblem} />
+      <Part label="Basics" hint="Get the foundation right.">
+        <Section title="Customer & problem">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="sm:col-span-1"><LabeledBox label="Customer" value={venture.basics.customer} onChange={(v) => setBasics({ customer: v })} placeholder="Who exactly?" /></div>
+            <div className="sm:col-span-2"><LabeledBox label="Problem" value={venture.basics.problem} onChange={(v) => setBasics({ problem: v })} placeholder="What's broken for them?" /></div>
+          </div>
+        </Section>
+        <ProblemBreakdown problem={venture.problem} set={setProblem} />
+        <Section title="Advantage">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <LabeledBox label="Capability" value={venture.advantage.capability} onChange={(v) => setAdvantage({ capability: v })} placeholder="What can only you do?" />
+            <LabeledBox label="Insight" value={venture.advantage.insight} onChange={(v) => setAdvantage({ insight: v })} placeholder="What do you know that others don't?" />
+            <LabeledBox label="Motivation" value={venture.advantage.motivation} onChange={(v) => setAdvantage({ motivation: v })} placeholder="Why you, why this?" />
+          </div>
+          <div className="mt-3"><LabeledBox label="Only we can do this" value={venture.unique} onChange={(val) => set("unique", val)} placeholder="The combination only your team has" /></div>
+        </Section>
+        <Section title="Competition">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="sm:col-span-1"><LabeledBox label="800-pound gorilla" value={venture.competition.gorilla} onChange={(v) => setCompetition({ gorilla: v })} placeholder="The incumbent" /></div>
+            <div className="sm:col-span-2"><LabeledBox label="Top alternatives" value={venture.competition.alternatives} onChange={(v) => setCompetition({ alternatives: v })} placeholder="Substitutes, workarounds, non-consumption" /></div>
+          </div>
+        </Section>
+        <Section title="Market"><MarketReport /></Section>
+      </Part>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Section title="Solution"><div className="h-full rounded-xl border border-slate-200 p-4"><EditableArea value={venture.solution} onChange={(val) => set("solution", val)} className="text-sm text-foreground" rows={3} /></div></Section>
-        <Section title="Market"><div className="h-full rounded-xl border border-slate-200 p-4"><EditableArea value={venture.market} onChange={(val) => set("market", val)} className="text-sm text-foreground" rows={3} /></div></Section>
-      </div>
+      <Part label="Differentiation" hint="Differentiation makes products click.">
+        <DifferentiationBlock diff={venture.differentiation} set={setDiff} />
+        <Section title="Principles"><PrinciplesEditor principles={venture.principles} onChange={(p) => set("principles", p)} /></Section>
+      </Part>
 
-      <DifferentiationBlock diff={venture.differentiation} set={setDiff} />
+      <Part label="Approach" hint="How you'll solve it — never commit to your first idea.">
+        <Section title="Options"><ApproachOptions chosen={venture.approachId} onPick={(id) => set("approachId", id)} /></Section>
+        <Section title="Lenses">
+          <p className="-mt-1 mb-3 text-xs text-slate-400">Pressure-test each option through different lenses. Pull the bits that ring true — they feed the story.</p>
+          <LensTabs lensId={lensId} onPick={setLensId} />
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            <LensPanel lens={lens} pulled={venture.story} onPull={toggleStory} />
+            <StoryPanel pulled={venture.story} onRemove={toggleStory} />
+          </div>
+        </Section>
+      </Part>
+
       <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} />
 
-      <Section title="Only we can do this">
-        <div className="rounded-xl border border-slate-200 p-4"><EditableArea value={venture.unique} onChange={(val) => set("unique", val)} className="text-sm text-foreground" /></div>
-      </Section>
-
-      <Section title="See it through lenses">
-        <p className="-mt-1 mb-3 text-xs text-slate-400">Zoom out to spot the big opportunity, then zoom in to make it real. Pull the bits that ring true — they feed the story.</p>
-        <LensTabs lensId={lensId} onPick={setLensId} />
-        <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <LensPanel lens={lens} pulled={venture.story} onPull={toggleStory} />
-          <StoryPanel pulled={venture.story} onRemove={toggleStory} />
-        </div>
-      </Section>
-
       <FullVentureDetails venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} />
+    </div>
+  );
+}
+
+// A Click top-level part (Basics / Differentiation / Approach) — a defined,
+// bordered section with a book-style header.
+function Part({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-slate-50/40 p-5">
+      <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-slate-200 pb-3">
+        <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-sage-dark">{label}</h2>
+        <p className="text-xs text-slate-400">{hint}</p>
+      </div>
+      <div className="space-y-5">{children}</div>
+    </section>
+  );
+}
+
+function MarketReport() {
+  const [run, setRun] = useState(false);
+  const r = MARKET_REPORT;
+  if (!run) {
+    return (
+      <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-sage/50 bg-sage-tint/10 p-4 sm:flex-row sm:items-center">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-foreground">Run an in-depth market report</p>
+          <p className="text-xs text-slate-500">Pulls the team&rsquo;s inputs and public data into sizing, trends, segments, and competition.</p>
+        </div>
+        <button onClick={() => setRun(true)} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="chart" className="h-4 w-4" /> Run market report</button>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-slate-200 p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold text-foreground">{r.summary}</p>
+        <button onClick={() => setRun(false)} className="shrink-0 text-xs font-semibold text-slate-400 hover:text-slate-600">Regenerate</button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {r.stats.map((s) => (
+          <div key={s.label} className="rounded-lg border border-sage/30 bg-sage-tint/20 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-sage-dark">{s.label}</p>
+            <p className="text-lg font-bold tabular-nums text-foreground">{s.value}</p>
+            <p className="text-[11px] text-slate-500">{s.note}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div><p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Tailwinds</p><ul className="space-y-1.5">{r.trends.map((t) => <li key={t} className="flex items-start gap-2 text-sm text-slate-700"><Icon name="chart" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" />{t}</li>)}</ul></div>
+        <div><p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Segments</p><ul className="space-y-1.5">{r.segments.map((t) => <li key={t} className="flex items-start gap-2 text-sm text-slate-700"><Icon name="group" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" />{t}</li>)}</ul></div>
+      </div>
+      <div className="mt-4"><p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Competitive landscape</p><p className="text-sm text-slate-700">{r.competition}</p></div>
+      <p className="mt-3 text-[11px] text-slate-400">Sources: {r.sources.join(" · ")}. Illustrative — generated from the team&rsquo;s inputs and public data.</p>
+    </div>
+  );
+}
+
+function PrinciplesEditor({ principles, onChange }: { principles: string[]; onChange: (p: string[]) => void }) {
+  const setAt = (i: number, val: string) => onChange(principles.map((x, idx) => (idx === i ? val : x)));
+  return (
+    <div className="rounded-xl border border-slate-200 p-4">
+      <p className="-mt-1 mb-3 text-xs text-slate-400">Turn your differentiation into operating rules — e.g. Google&rsquo;s &ldquo;Faster is better than slower.&rdquo;</p>
+      <div className="space-y-2">
+        {principles.map((p, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sage" />
+            <input value={p} onChange={(e) => setAt(i, e.target.value)} placeholder="A rule your team will live by" className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-foreground focus:border-sage focus:outline-none" />
+            <button onClick={() => onChange(principles.filter((_, idx) => idx !== i))} aria-label="Remove principle" className="mt-1.5 shrink-0 text-slate-300 hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
+          </div>
+        ))}
+      </div>
+      <button onClick={() => onChange([...principles, ""])} className="mt-3 text-sm font-semibold text-sage-dark hover:underline">+ Add a principle</button>
+    </div>
+  );
+}
+
+function ApproachOptions({ chosen, onPick }: { chosen: string; onPick: (id: string) => void }) {
+  return (
+    <div>
+      <p className="-mt-1 mb-3 text-xs text-slate-400">At least three. Each is a one-pager — pick the one to carry into validation.</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {APPROACH_OPTIONS.map((o) => {
+          const active = o.id === chosen;
+          return (
+            <button key={o.id} onClick={() => onPick(o.id)} className={`flex flex-col rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+              <div className="flex items-center gap-2">
+                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${active ? "bg-sage text-white" : "border border-slate-300"}`}>{active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}</span>
+                <p className="text-sm font-bold text-foreground">{o.title}</p>
+              </div>
+              <p className="mt-1.5 text-xs text-slate-600">{o.why}</p>
+              <div className="mt-3 flex h-14 items-center justify-center rounded-lg border border-dashed border-slate-200 text-[11px] uppercase tracking-wide text-slate-300">sketch</div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1440,17 +1536,22 @@ function StoryPanel({ pulled, onRemove }: { pulled: string[]; onRemove: (s: stri
 
 // The deck and landing are built live from the editable venture draft, so
 // edits in Ventures (and the cap table / revenue model) feed straight through.
+function approachOf(v: VentureDraft) {
+  return APPROACH_OPTIONS.find((o) => o.id === v.approachId) ?? APPROACH_OPTIONS[0];
+}
+
 function buildDeck(v: VentureDraft, name: string): DeckSlide[] {
   const model = REVENUE_MODELS.find((m) => m.id === v.revenue.id) ?? REVENUE_MODELS[0];
   const build = revenueBuild(v.revenue.id, v.revenue.drivers, v.revenue.growth);
   const founders = v.capTable.rows.map((r) => memberById(r.memberId).name).join(" · ");
   const team = v.capTable.rows.map((r) => ({ memberId: r.memberId, role: r.role, equity: r.equity }));
+  const approach = approachOf(v);
   return [
     { kind: "title", label: "Title", headline: name, points: [v.thesis], footnote: `${founders} — founding team` },
     { label: "Problem", headline: "Parents who pause their careers face a cold, confidence-eroding path back.", points: ["Job boards screen people out the moment they see a two-year gap.", "No trusted, supportive route back — only a cold search box.", v.problem.payNow] },
-    { label: "Solution", headline: v.solution, points: ["A community that gets it.", "Real, warm employer introductions.", "Confidence rebuilt and measured over 8 weeks."] },
+    { label: "Approach", headline: approach.title, points: [approach.why] },
     { label: "Why now", headline: "Returnships are going mainstream.", points: ["The motherhood penalty is finally in the spotlight.", "Flexible and returner hiring is becoming the default ask."] },
-    { kind: "market", label: "Market", headline: v.market, points: ["Wedge: Maya's 4,000-member parent community.", "Expand into adjacent returner networks and employer partners."], footnote: `${money(build[2])} Y3 ${model.unit} (illustrative)` },
+    { kind: "market", label: "Market", headline: MARKET_REPORT.summary, points: MARKET_REPORT.stats.map((s) => `${s.label}: ${s.value}`), footnote: `${money(build[2])} Y3 ${model.unit} (illustrative)` },
     { label: "Product", headline: "Recruit → 8-week programme → employer intros → measured outcomes.", points: ["A waitlist opens to the community.", "The cohort runs the guided 8-week programme.", "Warm employer intros, with outcomes tracked."] },
     { label: "Business model", headline: `${model.label}: ${model.pitch}`, points: [`Year 1: ${money(build[0])}`, `Year 3: ${money(build[2])} ${model.unit}`, `Growing ${v.revenue.growth}% a year`] },
     { kind: "traction", label: "Traction", headline: "Distribution and proof before a line of code.", points: ["4,000-member parent community", "Sold-out course — 80 parents, twice", "Validation waitlist live"] },
@@ -1461,7 +1562,7 @@ function buildDeck(v: VentureDraft, name: string): DeckSlide[] {
 }
 
 function buildLanding(v: VentureDraft): typeof VALIDATION.landing {
-  return { ...VALIDATION.landing, subhead: v.solution };
+  return { ...VALIDATION.landing, subhead: approachOf(v).why };
 }
 
 /* ----------------------------------------- validation: Click hypothesis + scorecard */
@@ -1472,7 +1573,7 @@ function FoundingHypothesis({ v }: { v: VentureDraft }) {
   const part = (text: string, fallback: string) => <span className="rounded-md bg-sage-tint px-1.5 py-0.5 font-semibold text-sage-dark">{text || fallback}</span>;
   return (
     <div className="rounded-xl border border-slate-200 p-5 text-[15px] leading-relaxed text-slate-700">
-      If we help {part(v.basics.customer, "customer")} solve {part(v.basics.problem, "problem")} with {part(v.solution, "approach")}, they will choose it over {part(comp, "competitors")} because our solution is {part(v.differentiation.statement, "differentiation")}.
+      If we help {part(v.basics.customer, "customer")} solve {part(v.basics.problem, "problem")} with {part(approachOf(v).title, "approach")}, they will choose it over {part(comp, "competitors")} because our solution is {part(v.differentiation.statement, "differentiation")}.
     </div>
   );
 }
