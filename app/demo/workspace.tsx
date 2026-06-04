@@ -1141,13 +1141,9 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
         <Card className="p-6">
           <CenterHead title={`Validate ${name}`} sub="Answer the six questions with real people before you build." />
           <Section title="Founding hypothesis">
-            <FoundingHypothesis v={venture} />
+            <p className="-mt-1 mb-3 text-xs text-slate-400">Each clause is a thing to prove — tick its scorecard check when the evidence lands.</p>
+            <HypothesisScorecard v={venture} onToggle={(k) => onVenture((p) => ({ ...p, scorecard: { ...p.scorecard, [k]: !p.scorecard[k] } }))} />
           </Section>
-
-          <div className="mt-6"><Section title="Scorecard">
-            <p className="-mt-1 mb-3 text-xs text-slate-400">What validation is trying to prove. Tick each as the evidence lands.</p>
-            <ClickScorecard score={venture.scorecard} onToggle={(k) => onVenture((p) => ({ ...p, scorecard: { ...p.scorecard, [k]: !p.scorecard[k] } }))} />
-          </Section></div>
 
           <div className="mt-6"><ValidationScorecard published={published} /></div>
 
@@ -1796,48 +1792,46 @@ function buildLanding(v: VentureDraft): typeof VALIDATION.landing {
 
 /* ----------------------------------------- validation: Click hypothesis + scorecard */
 
-// The Click "Founding Hypothesis" — line-broken worksheet, composed live.
-function FoundingHypothesis({ v }: { v: VentureDraft }) {
+// The Click "Founding Hypothesis" + Scorecard — each clause on a line with its
+// scorecard check beside it. Composed live from the venture.
+function HypothesisScorecard({ v, onToggle }: { v: VentureDraft; onToggle: (k: ScorecardKey) => void }) {
   const comp = [v.competition.gorilla, v.competition.alternatives].filter(Boolean).join(" / ");
-  const rows = [
-    { label: "If we help", value: v.basics.customer, fallback: "customer" },
-    { label: "solve", value: v.basics.problem, fallback: "problem" },
-    { label: "with", value: approachOf(v).title, fallback: "approach" },
-    { label: "they will choose it over", value: comp, fallback: "competitors" },
-    { label: "because our solution is", value: v.differentiation.statement, fallback: "differentiation" },
+  const rows: { label: string; value: string; fallback: string; key: ScorecardKey; question: string }[] = [
+    { label: "If we help", value: v.basics.customer, fallback: "customer", key: "rightCustomer", question: "Right customer?" },
+    { label: "solve", value: v.basics.problem, fallback: "problem", key: "rightProblem", question: "Right problem?" },
+    { label: "with", value: approachOf(v).title, fallback: "approach", key: "rightApproach", question: "Right approach?" },
+    { label: "they will choose it over", value: comp, fallback: "competitors", key: "willSwitch", question: "Will they switch?" },
+    { label: "because our solution is", value: v.differentiation.statement, fallback: "differentiation", key: "rightDifferentiation", question: "Right differentiation?" },
   ];
+  const done = SCORECARD.filter((s) => v.scorecard[s.key]).length;
+  const check = (key: ScorecardKey, question: string) => {
+    const on = v.scorecard[key];
+    return (
+      <button onClick={() => onToggle(key)} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-sm font-semibold transition-colors ${on ? "border-sage bg-sage-tint/30 text-foreground" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>
+        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${on ? "bg-sage text-white" : "border border-slate-300"}`}>{on && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m5 12 5 5L20 7" /></svg>}</span>
+        {question}
+      </button>
+    );
+  };
   return (
-    <div className="space-y-2.5 rounded-xl border border-slate-200 p-4 sm:p-5">
-      {rows.map((r) => (
-        <div key={r.label} className="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-center sm:gap-3">
-          <span className="text-sm font-semibold text-foreground sm:text-right">{r.label}</span>
-          <span className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{r.value || <span className="italic text-slate-400">{r.fallback}</span>}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ClickScorecard({ score, onToggle }: { score: Record<ScorecardKey, boolean>; onToggle: (k: ScorecardKey) => void }) {
-  const done = SCORECARD.filter((s) => score[s.key]).length;
-  return (
-    <div className="rounded-xl border border-slate-200 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm text-slate-500">Six checks to clear before you commit.</p>
-        <span className="rounded-lg bg-sage px-2.5 py-1 text-sm font-bold tabular-nums text-white">{done}/{SCORECARD.length}</span>
+    <div className="rounded-xl border border-slate-200 p-4 sm:p-5">
+      <div className="mb-3 hidden items-center justify-between text-[11px] font-bold uppercase tracking-wide text-slate-400 lg:flex">
+        <span className="flex-1">Founding hypothesis</span>
+        <span className="flex w-[13rem] items-center justify-between">Scorecard <span className="rounded bg-sage px-1.5 py-0.5 text-white tabular-nums">{done}/{SCORECARD.length}</span></span>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {SCORECARD.map((s) => {
-          const on = score[s.key];
-          return (
-            <button key={s.key} onClick={() => onToggle(s.key)} className={`flex items-center gap-2.5 rounded-lg border p-2.5 text-left text-sm font-semibold transition-colors ${on ? "border-sage bg-sage-tint/30 text-foreground" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>
-              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${on ? "bg-sage text-white" : "border border-slate-300"}`}>
-                {on && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m5 12 5 5L20 7" /></svg>}
-              </span>
-              {s.label}
-            </button>
-          );
-        })}
+      <div className="space-y-2.5">
+        {rows.map((r) => (
+          <div key={r.label} className="grid gap-x-4 gap-y-1.5 sm:grid-cols-[11rem_1fr] sm:items-center lg:grid-cols-[11rem_1fr_13rem]">
+            <span className="text-sm font-semibold text-foreground sm:text-right">{r.label}</span>
+            <span className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{r.value || <span className="italic text-slate-400">{r.fallback}</span>}</span>
+            <div className="sm:col-span-2 lg:col-span-1">{check(r.key, r.question)}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 border-t border-slate-100 pt-3 lg:grid lg:grid-cols-[11rem_1fr_13rem] lg:items-center lg:gap-x-4">
+        <span className="hidden text-right text-sm font-semibold text-foreground lg:block">overall</span>
+        <span className="hidden text-xs italic text-slate-400 lg:block">does the whole thing land?</span>
+        {check("doesItClick", "Does it click?")}
       </div>
     </div>
   );
