@@ -592,7 +592,8 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
 
 function SynthesisPhase({ onNext }: { onNext: () => void }) {
   const [energy, setEnergy] = useState<Record<string, number[]>>(() => ({ maya: [...SKILL_ENERGY.maya], alex: [...SKILL_ENERGY.alex], priya: [...SKILL_ENERGY.priya] }));
-  const [view, setView] = useState("team");
+  const [shown, setShown] = useState<Record<string, boolean>>({ team: true, maya: false, alex: false, priya: false });
+  const [editId, setEditId] = useState("maya");
   const [roles, setRoles] = useState(SYNTH_ROLES.map((r) => ({ ...r })));
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
   const [problems, setProblems] = useState<Votable[]>(LIVED_PROBLEMS.map((p) => ({ ...p })));
@@ -648,7 +649,7 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
 
           <Part label="Team" hint="Who you are together.">
             <Section title="Energy & skill map">
-              <SkillRadar energy={energy} view={view} onView={setView} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
+              <SkillRadar energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} editId={editId} onEdit={(id) => { setEditId(id); setShown((s) => ({ ...s, [id]: true })); }} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
             </Section>
             <Section title="Network map"><NetworkMap /></Section>
             <Section title="Roles & tasks"><RolesTasks roles={roles} onRoles={setRoles} confirmed={confirmed} onConfirm={(id) => setConfirmed((c) => ({ ...c, [id]: !c[id] }))} /></Section>
@@ -688,18 +689,22 @@ function CountdownBadge() {
   );
 }
 
-function SkillRadar({ energy, view, onView, onEnergy }: { energy: Record<string, number[]>; view: string; onView: (v: string) => void; onEnergy: (id: string, i: number, val: number) => void }) {
+const MEMBER_COLOR: Record<string, string> = { maya: "#10b981", alex: "#0ea5e9", priya: "#f59e0b" };
+const TEAM_COLOR = "#6f8f5f";
+
+function SkillRadar({ energy, shown, onToggle, editId, onEdit, onEnergy }: { energy: Record<string, number[]>; shown: Record<string, boolean>; onToggle: (k: string) => void; editId: string; onEdit: (id: string) => void; onEnergy: (id: string, i: number, val: number) => void }) {
   const n = SKILLS.length, cx = 130, cy = 128, R = 88, max = 5;
   const pt = (i: number, val: number): [number, number] => {
     const a = (Math.PI * 2 * i) / n - Math.PI / 2;
     const r = (val / max) * R;
     return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
   };
-  const team = SKILLS.map((_, i) => COHORT.reduce((sum, m) => sum + energy[m.id][i], 0) / COHORT.length);
+  // Team = the outer envelope: the best of everyone on each skill.
+  const team = SKILLS.map((_, i) => Math.max(...COHORT.map((m) => energy[m.id][i])));
   const polyStr = (vals: number[]) => vals.map((v, i) => { const [x, y] = pt(i, v); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(" ");
-  const isMember = view !== "team";
+  const toggles = [{ id: "team", name: "Team", color: TEAM_COLOR }, ...COHORT.map((m) => ({ id: m.id, name: m.name, color: MEMBER_COLOR[m.id] }))];
   return (
-    <div className="grid items-center gap-4 lg:grid-cols-2">
+    <div className="grid items-start gap-4 lg:grid-cols-2">
       <svg viewBox="0 0 260 260" className="mx-auto w-full max-w-[300px]">
         {[1, 2, 3, 4, 5].map((ring) => <polygon key={ring} points={polyStr(SKILLS.map(() => ring))} fill="none" stroke="#e2e8f0" strokeWidth="1" />)}
         {SKILLS.map((label, i) => {
@@ -712,22 +717,33 @@ function SkillRadar({ energy, view, onView, onEnergy }: { energy: Record<string,
             </g>
           );
         })}
-        {!isMember && COHORT.map((m) => <polygon key={m.id} points={polyStr(energy[m.id])} fill="none" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 3" />)}
-        <polygon points={polyStr(isMember ? energy[view] : team)} fill="rgba(111,143,95,0.18)" stroke="#6f8f5f" strokeWidth="2" />
+        {shown.team && <polygon points={polyStr(team)} fill="rgba(111,143,95,0.15)" stroke={TEAM_COLOR} strokeWidth="2" />}
+        {COHORT.map((m) => shown[m.id] && <polygon key={m.id} points={polyStr(energy[m.id])} fill="none" stroke={MEMBER_COLOR[m.id]} strokeWidth="2" />)}
       </svg>
       <div>
+        <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">Show</p>
         <div className="flex flex-wrap gap-1.5">
-          {["team", ...COHORT.map((m) => m.id)].map((id) => {
-            const active = view === id;
-            return <button key={id} onClick={() => onView(id)} className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${active ? "bg-sage text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{id === "team" ? "Team" : memberById(id).name}</button>;
+          {toggles.map((o) => {
+            const on = shown[o.id];
+            return (
+              <button key={o.id} onClick={() => onToggle(o.id)} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors ${on ? "text-white" : "border-slate-200 text-slate-600 hover:border-slate-300"}`} style={on ? { backgroundColor: o.color, borderColor: o.color } : undefined}>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: on ? "rgba(255,255,255,0.9)" : o.color }} />{o.name}
+              </button>
+            );
           })}
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">Outer = energises (create), inner = drains. {isMember ? "Adjust the dots to edit." : "Team is the average; dashed = each person."}</p>
-        {isMember && (
-          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
-            {SKILLS.map((label, i) => <DotScore key={label} label={label} value={energy[view][i]} onChange={(val) => onEnergy(view, i, val)} />)}
-          </div>
-        )}
+        <p className="mt-2 text-[11px] text-slate-400">Outer = energises (create), inner = drains. Team is the outer envelope — the best of everyone on each skill.</p>
+
+        <p className="mb-1.5 mt-4 text-[11px] font-bold uppercase tracking-wide text-slate-400">Adjust energy</p>
+        <div className="flex flex-wrap gap-1.5">
+          {COHORT.map((m) => {
+            const on = editId === m.id;
+            return <button key={m.id} onClick={() => onEdit(m.id)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${on ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEMBER_COLOR[m.id] }} />{m.name}</button>;
+          })}
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+          {SKILLS.map((label, i) => <DotScore key={label} label={label} value={energy[editId][i]} onChange={(val) => onEnergy(editId, i, val)} />)}
+        </div>
       </div>
     </div>
   );
