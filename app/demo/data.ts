@@ -280,6 +280,7 @@ export type DeckSlide = {
   points?: string[];
   kind?: "title" | "market" | "team" | "traction" | "ask";
   footnote?: string;
+  team?: { memberId: string; role: string; equity: string }[]; // for the team slide, fed from the cap table
 };
 
 export const VALIDATION = {
@@ -313,20 +314,6 @@ export const VALIDATION = {
     proof: { stat: "Trusted by 4,000+ parents", detail: "From Maya's community and a sold-out course — 80 parents, twice over." }, // 4 · social proof
     cta: "Join the next cohort", // 5 · next step
   },
-  // YC seed-deck order, generated from the venture outline + team + financials.
-  deck: [
-    { kind: "title", label: "Title", headline: VENTURE_DETAILS.name, points: ["A guided way back to work for parents."], footnote: "Maya · Alex · Priya — founding team" },
-    { label: "Problem", headline: "Parents who pause their careers face a cold, confidence-eroding path back.", points: ["Job boards screen people out the moment they see a two-year gap.", "No trusted, supportive route back — only a cold search box.", "Confidence erodes the longer the time out of work runs."] },
-    { label: "Solution", headline: "An 8-week guided returnship cohort.", points: ["A community that gets it.", "Real, warm employer introductions.", "Confidence rebuilt and measured over 8 weeks."] },
-    { label: "Why now", headline: "Returnships are going mainstream.", points: ["The motherhood penalty is finally in the spotlight.", "Flexible and returner hiring is becoming the default ask."] },
-    { kind: "market", label: "Market", headline: "Millions of parents return to work every year.", points: ["Wedge: Maya's 4,000-member parent community.", "Expand into adjacent returner networks and employer partners."], footnote: CHOSEN.earn },
-    { label: "Product", headline: "Recruit → 8-week programme → employer intros → measured outcomes.", points: ["A waitlist opens to the community.", "The cohort runs the guided 8-week programme.", "Warm employer intros, with outcomes tracked."] },
-    { label: "Business model", headline: "Paid cohort seats now, employer placement fees later.", points: ["≈ $250 per parent, per cohort.", "Year-1 illustrative: 6 cohorts × 12 seats ≈ $180k.", "Then: placement fees from employers who hire."] },
-    { kind: "traction", label: "Traction", headline: "Distribution and proof before a line of code.", points: ["4,000-member parent community", "Sold-out course — 80 parents, twice", "Validation waitlist live"] },
-    { label: "Why us", headline: "Community + cohort ops + real employer intros, in one path. Not a job board.", points: [CHOSEN.unique] },
-    { kind: "team", label: "Team", headline: "Three founders, one problem they can't stop noticing." },
-    { kind: "ask", label: "The ask", headline: "Run the pilot, hit the day-30 gate, open cohort two.", points: ["First cohort: 12 parents.", "5 warm employer intros pre-lined.", "Day-30 go/no-go → a Series-A-ready traction story."] },
-  ] as DeckSlide[],
   outreach: {
     linkedin: "If you paused your career to raise kids, going back can feel like starting from zero. It shouldn't.\n\nWe're piloting Relaunch — an 8-week guided cohort that gets parents back to work with community, real employer intros, and rebuilt confidence. Comment 'relaunch' for a spot.",
     dm: "Hey {name} — you mentioned wanting to go back to work but not knowing where to start. We're running a small guided cohort for exactly that. Want the details?",
@@ -477,6 +464,7 @@ export type VentureDraft = {
   differentiation: { statement: string; clarity: number };
   revenue: { id: string; growth: number; drivers: Record<string, number> };
   unique: string;
+  story: string[]; // bits pulled from the lenses — the narrative the venture is built on
   capTable: { pool: number; rows: { memberId: string; role: string; responsibility: string; equity: string; vesting: string }[] };
 };
 
@@ -486,11 +474,12 @@ export function makeVentureDraft(): VentureDraft {
     thesis: CHOSEN.thesis,
     purpose: CHOSEN.purpose,
     problem: { ...PROBLEM_BREAKDOWN },
-    solution: CHOSEN.solution,
+    solution: "An 8-week guided returnship cohort: community, real employer intros, and rebuilt confidence.",
     market: CHOSEN.market,
     differentiation: { statement: DIFFERENTIATION.statement, clarity: DIFFERENTIATION.clarity },
     revenue: revenueDefaults(REVENUE_MODELS[0]),
     unique: CHOSEN.unique,
+    story: [],
     capTable: {
       pool: CAP_TABLE.pool,
       rows: VENTURE_DETAILS.team.map((r) => ({ memberId: r.memberId, role: r.role, responsibility: r.responsibility, equity: "", vesting: CAP_TABLE.vestingDefault })),

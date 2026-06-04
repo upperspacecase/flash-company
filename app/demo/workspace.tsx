@@ -176,7 +176,7 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
         {phase === 1 && <InputPhase answered={answered} onAnswer={() => setAnswered((a) => Math.min(QUESTIONS.length, a + 1))} onNext={() => setPhase(2)} />}
         {phase === 2 && <SynthesisPhase onNext={() => setPhase(3)} />}
         {phase === 3 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(4)} />}
-        {!isFree && phase === 4 && <ValidationPhase name={name} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
+        {!isFree && phase === 4 && <ValidationPhase name={name} venture={venture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
       </main>
     </div>
   );
@@ -377,10 +377,6 @@ function Bubble({ agent, text, voice }: { agent?: boolean; text: string; voice?:
 /* ----------------------------------------------------- 2. Synthesis */
 
 function SynthesisPhase({ onNext }: { onNext: () => void }) {
-  const [lensId, setLensId] = useState(LENSES[0].id);
-  const [pulled, setPulled] = useState<string[]>([]);
-  const lens = LENSES.find((l) => l.id === lensId) ?? LENSES[0];
-  const togglePull = (s: string) => setPulled((p) => (p.includes(s) ? p.filter((x) => x !== s) : [...p, s]));
   return (
     <Columns
       left={
@@ -422,21 +418,7 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
               </div>
             ))}
           </div>
-
-          <div className="mt-7">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">See it through lenses</p>
-            <p className="mt-1 mb-3 text-sm text-slate-500">Zoom out to spot the big opportunity, then zoom in to make it real. Pull the bits that ring true — they build your story.</p>
-            <LensTabs lensId={lensId} onPick={setLensId} />
-            <div className="mt-3 grid gap-3 lg:grid-cols-2">
-              <LensPanel lens={lens} pulled={pulled} onPull={togglePull} />
-              <StoryPanel pulled={pulled} onRemove={togglePull} />
-            </div>
-          </div>
-
-          <div className="mt-6 flex items-center justify-end gap-3">
-            {pulled.length > 0 && <span className="text-xs text-slate-400">{pulled.length} bit{pulled.length > 1 ? "s" : ""} pulled into your story</span>}
-            <PrimaryBtn label={pulled.length > 0 ? "Build ventures from your story" : "See venture outlines"} onClick={onNext} icon="sparkle" />
-          </div>
+          <div className="mt-6 flex justify-end"><PrimaryBtn label="See venture outlines" onClick={onNext} icon="sparkle" /></div>
         </Card>
       }
       right={
@@ -590,9 +572,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const CHANNELS = [{ key: "linkedin", label: "LinkedIn" }, { key: "dm", label: "DM" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }] as const;
 
-function ValidationPhase({ name, checkin, onCheckin, published, onPublish }: { name: string; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void }) {
+function ValidationPhase({ name, venture, checkin, onCheckin, published, onPublish }: { name: string; venture: VentureDraft; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void }) {
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
   const v = VALIDATION;
+  const deck = buildDeck(venture, name);
+  const landing = buildLanding(venture);
   return (
     <Columns
       left={
@@ -626,12 +610,12 @@ function ValidationPhase({ name, checkin, onCheckin, published, onPublish }: { n
           <div className="mt-6"><Section title="Landing page">
             <p className="-mt-1 mb-3 text-xs text-slate-400">The proven 5-part formula — value, how, visual, social proof, next step.</p>
             <PublishBar published={published} onPublish={onPublish} url={v.liveUrl} />
-            <LandingHero name={name} landing={v.landing} />
+            <LandingHero name={name} landing={landing} />
           </Section></div>
 
           <div className="mt-6"><Section title="Pitch deck">
-            <p className="-mt-1 mb-3 text-xs text-slate-400">{v.deck.length} slides, YC seed-deck order — generated from your venture outline, team, and validation plan.</p>
-            <DeckViewer slides={v.deck} name={name} />
+            <p className="-mt-1 mb-3 text-xs text-slate-400">{deck.length} slides, YC seed-deck order — generated live from your venture outline, cap table, and revenue model.</p>
+            <DeckViewer slides={deck} name={name} />
           </Section></div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -771,13 +755,13 @@ function SlideStage({ slide, index, total, name }: { slide: DeckSlide; index: nu
 
             {slide.kind === "team" ? (
               <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                {VENTURE_DETAILS.team.map((r) => {
+                {(slide.team ?? []).map((r) => {
                   const m = memberById(r.memberId);
                   return (
                     <div key={r.memberId} className="rounded-xl border border-slate-200 p-3">
                       <div className="flex items-center gap-2">
                         <Avatar m={m} size="h-8 w-8 text-[10px]" />
-                        <span className="rounded-md bg-sage-tint px-1.5 py-0.5 text-xs font-bold text-sage-dark">{r.equity}%</span>
+                        <span className="rounded-md bg-sage-tint px-1.5 py-0.5 text-xs font-bold text-sage-dark">{r.equity === "" ? "—" : `${r.equity}%`}</span>
                       </div>
                       <p className="mt-2 text-sm font-bold text-foreground">{m.name}</p>
                       <p className="text-xs text-slate-500">{r.role}</p>
@@ -846,9 +830,12 @@ function DotScore({ value, onChange, label }: { value: number; onChange?: (v: nu
 }
 
 function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+  const [lensId, setLensId] = useState(LENSES[0].id);
+  const lens = LENSES.find((l) => l.id === lensId) ?? LENSES[0];
   const set = <K extends keyof VentureDraft,>(key: K, val: VentureDraft[K]) => onVenture((p) => ({ ...p, [key]: val }));
   const setProblem = (patch: Partial<VentureDraft["problem"]>) => onVenture((p) => ({ ...p, problem: { ...p.problem, ...patch } }));
   const setDiff = (patch: Partial<VentureDraft["differentiation"]>) => onVenture((p) => ({ ...p, differentiation: { ...p.differentiation, ...patch } }));
+  const toggleStory = (s: string) => onVenture((p) => ({ ...p, story: p.story.includes(s) ? p.story.filter((x) => x !== s) : [...p.story, s] }));
   return (
     <div className="mt-5 space-y-5">
       <Section title="Purpose">
@@ -870,6 +857,15 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: {
 
       <Section title="Only we can do this">
         <div className="rounded-xl border border-slate-200 p-4"><EditableArea value={venture.unique} onChange={(val) => set("unique", val)} className="text-sm text-foreground" /></div>
+      </Section>
+
+      <Section title="See it through lenses">
+        <p className="-mt-1 mb-3 text-xs text-slate-400">Zoom out to spot the big opportunity, then zoom in to make it real. Pull the bits that ring true — they feed the story.</p>
+        <LensTabs lensId={lensId} onPick={setLensId} />
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <LensPanel lens={lens} pulled={venture.story} onPull={toggleStory} />
+          <StoryPanel pulled={venture.story} onRemove={toggleStory} />
+        </div>
       </Section>
 
       <FullVentureDetails venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} />
@@ -1186,4 +1182,32 @@ function StoryPanel({ pulled, onRemove }: { pulled: string[]; onRemove: (s: stri
       )}
     </div>
   );
+}
+
+/* ---------------------------- validation assets, generated from the venture */
+
+// The deck and landing are built live from the editable venture draft, so
+// edits in Ventures (and the cap table / revenue model) feed straight through.
+function buildDeck(v: VentureDraft, name: string): DeckSlide[] {
+  const model = REVENUE_MODELS.find((m) => m.id === v.revenue.id) ?? REVENUE_MODELS[0];
+  const build = revenueBuild(v.revenue.id, v.revenue.drivers, v.revenue.growth);
+  const founders = v.capTable.rows.map((r) => memberById(r.memberId).name).join(" · ");
+  const team = v.capTable.rows.map((r) => ({ memberId: r.memberId, role: r.role, equity: r.equity }));
+  return [
+    { kind: "title", label: "Title", headline: name, points: [v.thesis], footnote: `${founders} — founding team` },
+    { label: "Problem", headline: "Parents who pause their careers face a cold, confidence-eroding path back.", points: ["Job boards screen people out the moment they see a two-year gap.", "No trusted, supportive route back — only a cold search box.", v.problem.payNow] },
+    { label: "Solution", headline: v.solution, points: ["A community that gets it.", "Real, warm employer introductions.", "Confidence rebuilt and measured over 8 weeks."] },
+    { label: "Why now", headline: "Returnships are going mainstream.", points: ["The motherhood penalty is finally in the spotlight.", "Flexible and returner hiring is becoming the default ask."] },
+    { kind: "market", label: "Market", headline: v.market, points: ["Wedge: Maya's 4,000-member parent community.", "Expand into adjacent returner networks and employer partners."], footnote: `${money(build[2])} Y3 ${model.unit} (illustrative)` },
+    { label: "Product", headline: "Recruit → 8-week programme → employer intros → measured outcomes.", points: ["A waitlist opens to the community.", "The cohort runs the guided 8-week programme.", "Warm employer intros, with outcomes tracked."] },
+    { label: "Business model", headline: `${model.label}: ${model.pitch}`, points: [`Year 1: ${money(build[0])}`, `Year 3: ${money(build[2])} ${model.unit}`, `Growing ${v.revenue.growth}% a year`] },
+    { kind: "traction", label: "Traction", headline: "Distribution and proof before a line of code.", points: ["4,000-member parent community", "Sold-out course — 80 parents, twice", "Validation waitlist live"] },
+    { label: "Why us", headline: v.differentiation.statement, points: [v.unique] },
+    { kind: "team", label: "Team", headline: "Three founders, one problem they can't stop noticing.", team },
+    { kind: "ask", label: "The ask", headline: "Run the pilot, hit the day-30 gate, open cohort two.", points: ["First cohort: 12 parents.", "5 warm employer intros pre-lined.", "Day-30 go/no-go → a Series-A-ready traction story."] },
+  ];
+}
+
+function buildLanding(v: VentureDraft): typeof VALIDATION.landing {
+  return { ...VALIDATION.landing, subhead: v.solution };
 }
