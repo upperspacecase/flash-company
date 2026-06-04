@@ -641,16 +641,6 @@ function FlashMark({ className = "h-5 w-5 text-sage" }: { className?: string }) 
   return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>;
 }
 
-// Small numbered tag marking each part of the 5-part landing formula.
-function FormulaStep({ n, label }: { n: number; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-sage-dark">
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-sage text-[9px] leading-none text-white">{n}</span>
-      {label}
-    </span>
-  );
-}
-
 function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATION.landing }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -668,15 +658,11 @@ function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATI
         <div className="grid items-center gap-8 lg:grid-cols-2">
           {/* value, how, next step, social proof */}
           <div>
-            <FormulaStep n={1} label="Value" />
-            <h3 className="mt-2 text-3xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl">{landing.headline}</h3>
+            <h3 className="text-3xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl">{landing.headline}</h3>
+            <p className="mt-4 text-lg leading-relaxed text-slate-600">{landing.subhead}</p>
 
-            <div className="mt-5"><FormulaStep n={2} label="How" /></div>
-            <p className="mt-2 text-lg leading-relaxed text-slate-600">{landing.subhead}</p>
-
-            <div className="mt-6 flex items-center gap-3">
+            <div className="mt-6">
               <span className="inline-flex h-12 items-center rounded-xl bg-sage px-6 text-sm font-bold text-white">{landing.cta}</span>
-              <FormulaStep n={5} label="Next step" />
             </div>
 
             <div className="mt-7 flex items-center gap-3 border-t border-slate-100 pt-5">
@@ -689,7 +675,6 @@ function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATI
                 <p className="text-sm font-semibold text-foreground">{landing.proof.stat}</p>
                 <p className="text-xs text-slate-500">{landing.proof.detail}</p>
               </div>
-              <span className="ml-auto shrink-0"><FormulaStep n={4} label="Proof" /></span>
             </div>
           </div>
 
@@ -697,7 +682,6 @@ function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATI
           <div>
             <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-sage-tint to-slate-100 ring-1 ring-slate-200">
               <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-sage shadow-sm"><Icon name="play" className="h-7 w-7" /></span>
-              <span className="absolute right-3 top-3"><FormulaStep n={3} label="Visual" /></span>
             </div>
             <p className="mt-2 text-center text-sm text-slate-500">{landing.visualCaption}</p>
           </div>
