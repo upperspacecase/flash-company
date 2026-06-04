@@ -268,6 +268,20 @@ export const VENTURE_DETAILS = {
 
 // ----------------------------------------------------------- Validation
 
+// The chosen venture — the deck and landing page below are generated from it
+// plus the team, financials, and traction surfaced in the earlier phases.
+const CHOSEN = VENTURES.find((v) => v.id === CHOSEN_ID)!;
+
+// A pitch-deck slide. `kind` drives the layout; everything else is content
+// pulled forward from the venture outline, team map, and validation plan.
+export type DeckSlide = {
+  label: string; // YC slide name, shown as the kicker
+  headline: string;
+  points?: string[];
+  kind?: "title" | "market" | "team" | "traction" | "ask";
+  footnote?: string;
+};
+
 export const VALIDATION = {
   hypothesis: "We believe returning parents will pay for a guided cohort if it delivers community, real employer intros, and measurable confidence gains within 8 weeks.",
   assumptions: [
@@ -275,21 +289,29 @@ export const VALIDATION = {
     "At least 1 in 4 waitlisters will book a call.",
     "Employers will take a warm intro to a vetted returner.",
   ],
+  // Built on the proven 5-part landing formula:
+  // value (1) -> how (2) -> visual (3) -> social proof (4) -> next step (5).
   landing: {
-    headline: "Your career didn't end. It paused.",
-    subhead: "Relaunch is an 8-week guided cohort that gets parents back to work — with a community that gets it, real employer intros, and your confidence rebuilt.",
-    cta: "Join the next cohort",
+    headline: "Your career didn't end. It paused.", // 1 · value
+    subhead: "Relaunch is an 8-week guided cohort that gets parents back to work — a community that gets it, real employer intros, and your confidence rebuilt.", // 2 · how
+    visualCaption: "See how an 8-week Relaunch cohort works", // 3 · visual
+    proof: { stat: "Trusted by 4,000+ parents", detail: "From Maya's community and a sold-out course — 80 parents, twice over." }, // 4 · social proof
+    cta: "Join the next cohort", // 5 · next step
   },
+  // YC seed-deck order, generated from the venture outline + team + financials.
   deck: [
-    { title: "Relaunch", body: "A guided way back to work for parents. (Title — one-line pitch, contact.)" },
-    { title: "Problem", body: "Parents who pause their careers face a cold, confidence-eroding path back." },
-    { title: "Solution", body: "An 8-week guided returnship cohort: community, intros, rebuilt confidence." },
-    { title: "Why now", body: "Returnships are mainstream; the motherhood penalty is in the spotlight." },
-    { title: "Market", body: "Millions of parents return each year; start with Maya's 4k community." },
-    { title: "Product", body: "Recruit → 8-week programme → employer intros → measured outcomes." },
-    { title: "Team", body: "Community (Maya), platform (Alex), brand (Priya) — the founding three." },
-    { title: "The ask", body: "Run the pilot, hit the day-30 gate, open cohort two." },
-  ],
+    { kind: "title", label: "Title", headline: VENTURE_DETAILS.name, points: ["A guided way back to work for parents."], footnote: "Maya · Alex · Priya — founding team" },
+    { label: "Problem", headline: "Parents who pause their careers face a cold, confidence-eroding path back.", points: ["Job boards screen people out the moment they see a two-year gap.", "No trusted, supportive route back — only a cold search box.", "Confidence erodes the longer the time out of work runs."] },
+    { label: "Solution", headline: "An 8-week guided returnship cohort.", points: ["A community that gets it.", "Real, warm employer introductions.", "Confidence rebuilt and measured over 8 weeks."] },
+    { label: "Why now", headline: "Returnships are going mainstream.", points: ["The motherhood penalty is finally in the spotlight.", "Flexible and returner hiring is becoming the default ask."] },
+    { kind: "market", label: "Market", headline: "Millions of parents return to work every year.", points: ["Wedge: Maya's 4,000-member parent community.", "Expand into adjacent returner networks and employer partners."], footnote: CHOSEN.earn },
+    { label: "Product", headline: "Recruit → 8-week programme → employer intros → measured outcomes.", points: ["A waitlist opens to the community.", "The cohort runs the guided 8-week programme.", "Warm employer intros, with outcomes tracked."] },
+    { label: "Business model", headline: "Paid cohort seats now, employer placement fees later.", points: ["≈ $250 per parent, per cohort.", "Year-1 illustrative: 6 cohorts × 12 seats ≈ $180k.", "Then: placement fees from employers who hire."] },
+    { kind: "traction", label: "Traction", headline: "Distribution and proof before a line of code.", points: ["4,000-member parent community", "Sold-out course — 80 parents, twice", "Validation waitlist live"] },
+    { label: "Why us", headline: "Community + cohort ops + real employer intros, in one path. Not a job board.", points: [CHOSEN.unique] },
+    { kind: "team", label: "Team", headline: "Three founders, one problem they can't stop noticing." },
+    { kind: "ask", label: "The ask", headline: "Run the pilot, hit the day-30 gate, open cohort two.", points: ["First cohort: 12 parents.", "5 warm employer intros pre-lined.", "Day-30 go/no-go → a Series-A-ready traction story."] },
+  ] as DeckSlide[],
   outreach: {
     linkedin: "If you paused your career to raise kids, going back can feel like starting from zero. It shouldn't.\n\nWe're piloting Relaunch — an 8-week guided cohort that gets parents back to work with community, real employer intros, and rebuilt confidence. Comment 'relaunch' for a spot.",
     dm: "Hey {name} — you mentioned wanting to go back to work but not knowing where to start. We're running a small guided cohort for exactly that. Want the details?",

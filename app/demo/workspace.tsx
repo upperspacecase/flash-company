@@ -19,6 +19,7 @@ import {
   VENTURE_DETAILS,
   YOU,
   memberById,
+  type DeckSlide,
   type IconName,
   type Member,
 } from "./data";
@@ -601,26 +602,21 @@ function ValidationPhase({ name, checkin, onCheckin }: { name: string; checkin: 
           </Section>
 
           <div className="mt-6"><Section title="Landing page">
-            <div className="rounded-2xl border border-slate-200 p-6">
-              <div className="mb-4 flex items-center gap-2"><svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-sage"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg><span className="font-bold text-foreground">{name}</span></div>
-              <h3 className="text-2xl font-bold leading-tight tracking-tight text-foreground">{v.landing.headline}</h3>
-              <p className="mt-2 text-slate-600">{v.landing.subhead}</p>
-              <span className="mt-4 inline-flex h-11 items-center rounded-xl bg-sage px-5 text-sm font-bold text-white">{v.landing.cta}</span>
-              <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-400"><Icon name="comment" className="h-3.5 w-3.5" /> Built-in feedback widget collects responses.</p>
-            </div>
+            <p className="-mt-1 mb-3 text-xs text-slate-400">The proven 5-part formula — value, how, visual, social proof, next step.</p>
+            <LandingHero name={name} landing={v.landing} />
+          </Section></div>
+
+          <div className="mt-6"><Section title="Pitch deck">
+            <p className="-mt-1 mb-3 text-xs text-slate-400">{v.deck.length} slides, YC seed-deck order — generated from your venture outline, team, and validation plan.</p>
+            <DeckViewer slides={v.deck} name={name} />
           </Section></div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <Section title="Pitch deck">
-              <div className="grid gap-2">{v.deck.slice(0, 4).map((s, i) => <div key={s.title} className="rounded-lg border border-slate-200 p-3"><p className="text-xs font-bold text-slate-400">Slide {i + 1}</p><p className="text-sm font-bold text-foreground">{s.title}</p></div>)}<p className="text-xs text-slate-400">+ {v.deck.length - 4} more slides (YC seed-deck format).</p></div>
-            </Section>
             <Section title="Outreach copy">
               <div className="mb-3 flex flex-wrap gap-2">{CHANNELS.map((c) => <button key={c.key} onClick={() => setChannel(c.key)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${channel === c.key ? "bg-sage text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>{c.label}</button>)}</div>
               <p className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{v.outreach[channel]}</p>
             </Section>
-          </div>
-
-          <div className="mt-6"><Section title="Feedback synthesis">
+            <Section title="Feedback synthesis">
             <p className="mb-2 text-xs text-slate-400">{v.feedbackNote}</p>
             <p className="mb-2 text-sm text-slate-600">{v.sendTarget}</p>
             <ul className="space-y-1.5">{v.feedbackEdits.map((e) => <li key={e} className="flex items-start gap-2 rounded-lg bg-slate-50 p-2.5 text-sm text-slate-700"><Icon name="refresh" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{e}</li>)}</ul>
@@ -636,5 +632,181 @@ function ValidationPhase({ name, checkin, onCheckin }: { name: string; checkin: 
         </div>
       }
     />
+  );
+}
+
+/* ------------------------------------------ validation assets: landing + deck */
+
+function FlashMark({ className = "h-5 w-5 text-sage" }: { className?: string }) {
+  return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>;
+}
+
+// Small numbered tag marking each part of the 5-part landing formula.
+function FormulaStep({ n, label }: { n: number; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-sage-dark">
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-sage text-[9px] leading-none text-white">{n}</span>
+      {label}
+    </span>
+  );
+}
+
+function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATION.landing }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+        <span className="ml-3 rounded-md bg-white px-2 py-0.5 text-[11px] text-slate-400">relaunch.co</span>
+      </div>
+      <div className="p-6 sm:p-8">
+        <div className="mb-7 flex items-center gap-2">
+          <FlashMark className="h-5 w-5 text-sage" />
+          <span className="font-bold tracking-tight text-foreground">{name}</span>
+        </div>
+        <div className="grid items-center gap-8 lg:grid-cols-2">
+          {/* value, how, next step, social proof */}
+          <div>
+            <FormulaStep n={1} label="Value" />
+            <h3 className="mt-2 text-3xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl">{landing.headline}</h3>
+
+            <div className="mt-5"><FormulaStep n={2} label="How" /></div>
+            <p className="mt-2 text-lg leading-relaxed text-slate-600">{landing.subhead}</p>
+
+            <div className="mt-6 flex items-center gap-3">
+              <span className="inline-flex h-12 items-center rounded-xl bg-sage px-6 text-sm font-bold text-white">{landing.cta}</span>
+              <FormulaStep n={5} label="Next step" />
+            </div>
+
+            <div className="mt-7 flex items-center gap-3 border-t border-slate-100 pt-5">
+              <div className="flex -space-x-2">
+                {["bg-emerald-200", "bg-sky-200", "bg-amber-200", "bg-rose-200"].map((c, i) => (
+                  <span key={i} className={`h-8 w-8 rounded-full ring-2 ring-white ${c}`} />
+                ))}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">{landing.proof.stat}</p>
+                <p className="text-xs text-slate-500">{landing.proof.detail}</p>
+              </div>
+              <span className="ml-auto shrink-0"><FormulaStep n={4} label="Proof" /></span>
+            </div>
+          </div>
+
+          {/* visual */}
+          <div>
+            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-sage-tint to-slate-100 ring-1 ring-slate-200">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-sage shadow-sm"><Icon name="play" className="h-7 w-7" /></span>
+              <span className="absolute right-3 top-3"><FormulaStep n={3} label="Visual" /></span>
+            </div>
+            <p className="mt-2 text-center text-sm text-slate-500">{landing.visualCaption}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeckViewer({ slides, name }: { slides: DeckSlide[]; name: string }) {
+  const [i, setI] = useState(0);
+  const total = slides.length;
+  const go = (n: number) => setI((n + total) % total);
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <div className="aspect-[16/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <SlideStage slide={slides[i]} index={i} total={total} name={name} />
+        </div>
+        <button onClick={() => go(i - 1)} aria-label="Previous slide" className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-sage-dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+        <button onClick={() => go(i + 1)} aria-label="Next slide" className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-sage-dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {slides.map((s, n) => {
+          const active = n === i;
+          return (
+            <button key={s.label} onClick={() => setI(n)} className={`flex shrink-0 flex-col rounded-lg border px-3 py-2 text-left transition-colors ${active ? "border-sage bg-sage-tint/30 ring-1 ring-sage" : "border-slate-200 hover:border-sage/40"}`}>
+              <span className="text-[10px] font-bold tabular-nums text-slate-400">{String(n + 1).padStart(2, "0")}</span>
+              <span className={`whitespace-nowrap text-xs font-semibold ${active ? "text-sage-dark" : "text-slate-600"}`}>{s.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SlideStage({ slide, index, total, name }: { slide: DeckSlide; index: number; total: number; name: string }) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    <div className="flex h-full flex-col p-6 sm:p-8">
+      <div className="flex shrink-0 items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FlashMark className="h-4 w-4 text-sage" />
+          <span className="text-sm font-bold tracking-tight text-foreground">{name}</span>
+        </div>
+        <span className="text-xs font-semibold tabular-nums text-slate-400">{pad(index + 1)} / {pad(total)}</span>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col justify-center py-3">
+        {slide.kind === "title" ? (
+          <div className="text-center">
+            <h3 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{slide.headline}</h3>
+            {slide.points?.[0] && <p className="mx-auto mt-3 max-w-md text-lg text-slate-600">{slide.points[0]}</p>}
+          </div>
+        ) : (
+          <>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sage-dark">{slide.label}</p>
+            <h3 className="mt-2 text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-[28px]">{slide.headline}</h3>
+
+            {slide.kind === "team" ? (
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                {VENTURE_DETAILS.team.map((r) => {
+                  const m = memberById(r.memberId);
+                  return (
+                    <div key={r.memberId} className="rounded-xl border border-slate-200 p-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar m={m} size="h-8 w-8 text-[10px]" />
+                        <span className="rounded-md bg-sage-tint px-1.5 py-0.5 text-xs font-bold text-sage-dark">{r.equity}%</span>
+                      </div>
+                      <p className="mt-2 text-sm font-bold text-foreground">{m.name}</p>
+                      <p className="text-xs text-slate-500">{r.role}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : slide.kind === "traction" ? (
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                {slide.points?.map((p) => (
+                  <div key={p} className="rounded-xl border border-sage/30 bg-sage-tint/20 p-3 text-sm font-semibold text-foreground">{p}</div>
+                ))}
+              </div>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {slide.points?.map((p) => (
+                  <li key={p} className="flex items-start gap-2.5 text-[15px] text-slate-700">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-sage" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {slide.kind === "market" && slide.footnote && (
+              <div className="mt-4 inline-flex items-center gap-2 self-start rounded-xl bg-foreground px-4 py-2 text-sm font-bold text-white">
+                <Icon name="chart" className="h-4 w-4" /> {slide.footnote}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {slide.kind === "title" && slide.footnote && (
+        <p className="shrink-0 text-center text-xs font-medium text-slate-400">{slide.footnote}</p>
+      )}
+    </div>
   );
 }
