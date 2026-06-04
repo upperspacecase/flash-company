@@ -372,14 +372,98 @@ export const DIFFERENTIATION = {
   ],
 };
 
-// Earning potential, broken down: pick a revenue model, see its fit + implications.
-export type RevenueModel = { id: string; label: string; fit: number; fits: string; doesnt: string };
+// Earning potential — each model is a real bottoms-up build a founder would
+// put in front of a VC: editable Year-1 drivers + an annual growth rate, which
+// compute a 3-year revenue ramp. Different models -> different revenues.
+export type RevDriver = { key: string; label: string; value: number; prefix?: string; suffix?: string };
+export type RevenueModel = {
+  id: string;
+  label: string;
+  pitch: string; // the one-liner a founder gives a VC
+  unit: string; // headline metric, e.g. "revenue" or "ARR"
+  growth: number; // default % annual growth
+  drivers: RevDriver[]; // Year-1 assumptions
+  fits: string;
+  doesnt: string;
+};
+
 export const REVENUE_MODELS: RevenueModel[] = [
-  { id: "cohort", label: "Paid cohort (one-time)", fit: 5, fits: "Matches the 8-week format and a community that already buys courses.", doesnt: "Revenue is lumpy — tied to cohort cadence, not recurring." },
-  { id: "placement", label: "Employer placement fee", fit: 4, fits: "Employers pay well for vetted returner hires.", doesnt: "Slower B2B sale; needs proven placement outcomes first." },
-  { id: "subscription", label: "Membership / subscription", fit: 3, fits: "Smooths revenue across an ongoing community.", doesnt: "Hard to justify a monthly charge once someone is back at work." },
-  { id: "marketplace", label: "Marketplace take rate", fit: 2, fits: "Scales if two-sided liquidity ever arrives.", doesnt: "No marketplace experience on the team; cold-start risk." },
+  {
+    id: "cohort",
+    label: "Paid cohort",
+    pitch: "Parents pay per seat in an 8-week cohort; we add cohorts as the community grows.",
+    unit: "revenue",
+    growth: 80,
+    drivers: [
+      { key: "cohorts", label: "Cohorts / year", value: 6 },
+      { key: "seats", label: "Seats / cohort", value: 12 },
+      { key: "price", label: "Price / seat", value: 250, prefix: "$" },
+    ],
+    fits: "Matches the 8-week format and a community that already buys courses.",
+    doesnt: "Revenue is lumpy — tied to cohort cadence, not recurring.",
+  },
+  {
+    id: "placement",
+    label: "Placement fee",
+    pitch: "Employers pay a success fee for every vetted returner we place into a role.",
+    unit: "revenue",
+    growth: 120,
+    drivers: [
+      { key: "placements", label: "Placements / year", value: 20 },
+      { key: "fee", label: "Fee / placement", value: 4000, prefix: "$" },
+    ],
+    fits: "Employers pay well for vetted returner hires.",
+    doesnt: "Slower B2B sale; needs proven placement outcomes first.",
+  },
+  {
+    id: "subscription",
+    label: "Membership",
+    pitch: "Returners pay monthly for ongoing community, coaching, and intros — recurring ARR.",
+    unit: "ARR",
+    growth: 140,
+    drivers: [
+      { key: "members", label: "Members", value: 300 },
+      { key: "price", label: "Price / month", value: 25, prefix: "$" },
+    ],
+    fits: "Smooths revenue into predictable ARR across an ongoing community.",
+    doesnt: "Hard to justify a monthly charge once someone is back at work.",
+  },
+  {
+    id: "marketplace",
+    label: "Marketplace",
+    pitch: "We take a cut of the placement value flowing through a returner–employer marketplace.",
+    unit: "revenue",
+    growth: 180,
+    drivers: [
+      { key: "gmv", label: "Placement value / year", value: 400000, prefix: "$" },
+      { key: "take", label: "Take rate", value: 12, suffix: "%" },
+    ],
+    fits: "Scales fast if two-sided liquidity ever arrives.",
+    doesnt: "No marketplace experience on the team; cold-start risk.",
+  },
 ];
+
+// Year-1 revenue from a model's drivers.
+export function revenueYear1(id: string, d: Record<string, number>): number {
+  switch (id) {
+    case "cohort": return (d.cohorts || 0) * (d.seats || 0) * (d.price || 0);
+    case "placement": return (d.placements || 0) * (d.fee || 0);
+    case "subscription": return (d.members || 0) * (d.price || 0) * 12;
+    case "marketplace": return (d.gmv || 0) * ((d.take || 0) / 100);
+    default: return 0;
+  }
+}
+
+// 3-year build: Year 1 grown by the annual growth rate.
+export function revenueBuild(id: string, d: Record<string, number>, growth: number): number[] {
+  const y1 = revenueYear1(id, d);
+  const g = 1 + (growth || 0) / 100;
+  return [y1, y1 * g, y1 * g * g];
+}
+
+export function revenueDefaults(m: RevenueModel) {
+  return { id: m.id, growth: m.growth, drivers: Object.fromEntries(m.drivers.map((d) => [d.key, d.value])) };
+}
 
 // Cap table — equity blank to start, standard founder vesting + an option pool.
 export const CAP_TABLE = { pool: 10, vestingDefault: "4 yr · 1 yr cliff" };
@@ -391,7 +475,7 @@ export type VentureDraft = {
   solution: string;
   market: string;
   differentiation: { statement: string; clarity: number };
-  revenueId: string;
+  revenue: { id: string; growth: number; drivers: Record<string, number> };
   unique: string;
   capTable: { pool: number; rows: { memberId: string; role: string; responsibility: string; equity: string; vesting: string }[] };
 };
@@ -405,7 +489,7 @@ export function makeVentureDraft(): VentureDraft {
     solution: CHOSEN.solution,
     market: CHOSEN.market,
     differentiation: { statement: DIFFERENTIATION.statement, clarity: DIFFERENTIATION.clarity },
-    revenueId: REVENUE_MODELS[0].id,
+    revenue: revenueDefaults(REVENUE_MODELS[0]),
     unique: CHOSEN.unique,
     capTable: {
       pool: CAP_TABLE.pool,

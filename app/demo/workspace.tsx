@@ -22,6 +22,8 @@ import {
   YOU,
   makeVentureDraft,
   memberById,
+  revenueBuild,
+  revenueDefaults,
   type DeckSlide,
   type IconName,
   type Member,
@@ -469,7 +471,7 @@ function VenturesPhase({ plan, ventureId, onSelect, name, onName, venture, onVen
           </div>
 
           {editable ? (
-            <RichVentureDetail venture={venture} onVenture={onVenture} earn={v.earn} recorded={recorded} onRecord={onRecord} onNext={onNext} />
+            <RichVentureDetail venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} />
           ) : (
             <>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -823,7 +825,7 @@ function DotScore({ value, onChange, label }: { value: number; onChange?: (v: nu
   );
 }
 
-function RichVentureDetail({ venture, onVenture, earn, recorded, onRecord, onNext }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; earn: string; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
   const set = <K extends keyof VentureDraft,>(key: K, val: VentureDraft[K]) => onVenture((p) => ({ ...p, [key]: val }));
   const setProblem = (patch: Partial<VentureDraft["problem"]>) => onVenture((p) => ({ ...p, problem: { ...p.problem, ...patch } }));
   const setDiff = (patch: Partial<VentureDraft["differentiation"]>) => onVenture((p) => ({ ...p, differentiation: { ...p.differentiation, ...patch } }));
@@ -844,7 +846,7 @@ function RichVentureDetail({ venture, onVenture, earn, recorded, onRecord, onNex
       </div>
 
       <DifferentiationBlock diff={venture.differentiation} set={setDiff} />
-      <RevenueBreakdown revenueId={venture.revenueId} onPick={(id) => set("revenueId", id)} earn={earn} />
+      <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} />
 
       <Section title="Only we can do this">
         <div className="rounded-xl border border-slate-200 p-4"><EditableArea value={venture.unique} onChange={(val) => set("unique", val)} className="text-sm text-foreground" /></div>
@@ -899,23 +901,98 @@ function DifferentiationBlock({ diff, set }: { diff: VentureDraft["differentiati
   );
 }
 
-function RevenueBreakdown({ revenueId, onPick, earn }: { revenueId: string; onPick: (id: string) => void; earn: string }) {
-  const model = REVENUE_MODELS.find((m) => m.id === revenueId) ?? REVENUE_MODELS[0];
+function money(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}m`;
+  if (n >= 1_000) return `$${Math.round(n / 1_000)}k`;
+  return `$${Math.round(n)}`;
+}
+
+function revenueFormula(id: string, d: Record<string, number>): string {
+  switch (id) {
+    case "cohort": return `${d.cohorts ?? 0} cohorts × ${d.seats ?? 0} seats × $${(d.price ?? 0).toLocaleString()}`;
+    case "placement": return `${d.placements ?? 0} placements × $${(d.fee ?? 0).toLocaleString()}`;
+    case "subscription": return `${d.members ?? 0} members × $${d.price ?? 0}/mo × 12`;
+    case "marketplace": return `${money(d.gmv ?? 0)} value × ${d.take ?? 0}%`;
+    default: return "";
+  }
+}
+
+function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenue"]; onChange: (r: VentureDraft["revenue"]) => void }) {
+  const model = REVENUE_MODELS.find((m) => m.id === revenue.id) ?? REVENUE_MODELS[0];
+  const build = revenueBuild(revenue.id, revenue.drivers, revenue.growth);
+  const max = Math.max(...build, 1);
+  const setDriver = (key: string, val: number) => onChange({ ...revenue, drivers: { ...revenue.drivers, [key]: val } });
   return (
     <Section title="Earning potential">
       <div className="rounded-xl border border-slate-200 p-4">
-        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Revenue model</p>
-        <div className="flex flex-wrap gap-2">
-          {REVENUE_MODELS.map((m) => (
-            <button key={m.id} onClick={() => onPick(m.id)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.id === revenueId ? "bg-sage text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{m.label}</button>
-          ))}
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Revenue model — model out the options</p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {REVENUE_MODELS.map((m) => {
+            const active = m.id === revenue.id;
+            const y3 = revenueBuild(m.id, Object.fromEntries(m.drivers.map((d) => [d.key, d.value])), m.growth)[2];
+            return (
+              <button key={m.id} onClick={() => onChange(revenueDefaults(m))} className={`rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+                <p className="text-sm font-bold text-foreground">{m.label}</p>
+                <p className="mt-0.5 text-[11px] uppercase tracking-wide text-slate-400">Y3 {m.unit}</p>
+                <p className="text-lg font-bold tabular-nums text-sage-dark">{money(y3)}</p>
+              </button>
+            );
+          })}
         </div>
-        <div className="mt-3 max-w-xs"><DotScore label="Model fit" value={model.fit} /></div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-lg border border-sage/30 bg-sage-tint/20 p-3"><p className="text-xs font-bold text-sage-dark">What fits</p><p className="mt-0.5 text-sm text-slate-700">{model.fits}</p></div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3"><p className="text-xs font-bold text-amber-700">What doesn&rsquo;t</p><p className="mt-0.5 text-sm text-slate-700">{model.doesnt}</p></div>
+
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/40 p-4">
+          <p className="text-sm font-semibold text-foreground">{model.label}</p>
+          <p className="mt-0.5 text-sm text-slate-600">{model.pitch}</p>
+
+          <div className="mt-4 grid gap-5 lg:grid-cols-2">
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Assumptions</p>
+              <div className="space-y-2">
+                {model.drivers.map((d) => (
+                  <div key={d.key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-2.5">
+                    <span className="text-sm text-slate-600">{d.label}</span>
+                    <span className="flex items-center gap-0.5">
+                      {d.prefix && <span className="text-sm text-slate-400">{d.prefix}</span>}
+                      <input inputMode="numeric" value={revenue.drivers[d.key] ?? 0} onChange={(e) => setDriver(d.key, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)} className="w-24 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-sage focus:outline-none" />
+                      {d.suffix && <span className="text-sm text-slate-400">{d.suffix}</span>}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-2.5">
+                  <span className="text-sm text-slate-600">Annual growth</span>
+                  <span className="flex items-center gap-0.5">
+                    <input inputMode="numeric" value={revenue.growth} onChange={(e) => onChange({ ...revenue, growth: Number(e.target.value.replace(/[^0-9]/g, "")) || 0 })} className="w-24 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-sage focus:outline-none" />
+                    <span className="text-sm text-slate-400">%</span>
+                  </span>
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-slate-400">{revenueFormula(revenue.id, revenue.drivers)} = <span className="font-semibold text-slate-500">{money(build[0])}</span> in year 1</p>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">3-year build</p>
+              <div className="flex h-32 items-end gap-3">
+                {build.map((rev, i) => (
+                  <div key={i} className="flex flex-1 flex-col items-center justify-end gap-1">
+                    <span className="text-xs font-bold tabular-nums text-foreground">{money(rev)}</span>
+                    <div className="w-full rounded-t-md bg-sage" style={{ height: `${Math.max(6, (rev / max) * 100)}%` }} />
+                    <span className="text-[11px] font-semibold text-slate-400">Y{i + 1}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 rounded-lg bg-foreground px-3 py-2 text-center">
+                <p className="text-[11px] uppercase tracking-wide text-white/60">Year 3 {model.unit}</p>
+                <p className="text-xl font-bold tabular-nums text-white">{money(build[2])}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="rounded-lg border border-sage/30 bg-sage-tint/20 p-3"><p className="text-xs font-bold text-sage-dark">What fits</p><p className="mt-0.5 text-sm text-slate-700">{model.fits}</p></div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3"><p className="text-xs font-bold text-amber-700">What doesn&rsquo;t</p><p className="mt-0.5 text-sm text-slate-700">{model.doesnt}</p></div>
+          </div>
+          <p className="mt-3 text-[11px] text-slate-400">Illustrative founder model — assumptions, not results. Edit the drivers to pressure-test the story.</p>
         </div>
-        <p className="mt-3 text-xs text-slate-400">Projected over 3 years: <span className="font-semibold text-slate-600">{earn}</span></p>
       </div>
     </Section>
   );
