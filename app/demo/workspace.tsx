@@ -26,6 +26,7 @@ import {
   revenueDefaults,
   type DeckSlide,
   type IconName,
+  type IntakeField,
   type IntakeQuestion,
   type IntakeSection,
   type Lens,
@@ -313,38 +314,53 @@ function isAnswered(v: unknown): boolean {
   return false;
 }
 
+// Flattened question flow with section markers, for the conversational intake.
+const INTAKE_FLOW = INTAKE.flatMap((s, si) => s.questions.map((q, qi) => ({ q, si, title: s.title, blurb: s.blurb, first: qi === 0 })));
+
 function InputPhase({ onNext }: { onNext: () => void }) {
-  const [section, setSection] = useState(0);
+  const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [voiceMode, setVoiceMode] = useState<Record<string, boolean>>({});
-  const sec = INTAKE[section];
-  const isLast = section === INTAKE.length - 1;
+  const done = step >= INTAKE_FLOW.length;
+  const cur = done ? null : INTAKE_FLOW[step];
+  const isVoice = (id: string) => !!voiceMode[id];
   const update = (id: string, value: unknown) => setAnswers((a) => ({ ...a, [id]: value }));
-  const answeredIn = (s: IntakeSection) => s.questions.filter((q) => isAnswered(answers[q.id])).length;
-  const total = INTAKE.reduce((n, s) => n + answeredIn(s), 0);
+  const answeredIn = (s: IntakeSection) => s.questions.filter((q) => isAnswered(answers[q.id]) || isVoice(q.id)).length;
+  const curSi = cur ? cur.si : INTAKE.length - 1;
+  const canSend = !!cur && (isAnswered(answers[cur.q.id]) || isVoice(cur.q.id) || cur.q.field.kind === "slider");
   return (
     <Columns
-      left={<IntakeNav current={section} onJump={setSection} answeredIn={answeredIn} />}
+      left={<IntakeNav curSi={curSi} answeredIn={answeredIn} />}
       center={
-        <Card className="p-6">
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wide text-sage-dark">Section {section + 1} of {INTAKE.length}</span>
-            <span className="text-xs font-semibold text-slate-400">{total}/{INTAKE_TOTAL} answered</span>
+        <Card className="flex h-full flex-col p-6">
+          <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sage text-white"><FlashMark className="h-4 w-4" /></span>
+              <div><p className="text-sm font-bold text-foreground">Flash</p><p className="text-xs text-slate-400">Tell me about yourself — type, talk, or tap.</p></div>
+            </div>
+            <span className="rounded-full bg-sage-tint px-3 py-1 text-xs font-semibold text-sage-dark">{Math.min(step, INTAKE_FLOW.length)}/{INTAKE_TOTAL}</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{sec.title}</h1>
-          <p className="mt-1 text-slate-500">{sec.blurb}</p>
 
-          <div className="mt-6 space-y-6">
-            {sec.questions.map((q) => (
-              <QuestionField key={q.id} q={q} value={answers[q.id]} onChange={(v) => update(q.id, v)} voice={!!voiceMode[q.id]} onVoice={() => setVoiceMode((m) => ({ ...m, [q.id]: !m[q.id] }))} />
+          <div className="flex-1 space-y-4">
+            {INTAKE_FLOW.slice(0, step + 1).map((item, i) => (
+              <Fragment key={item.q.id}>
+                {item.first && <SectionIntro index={item.si} title={item.title} blurb={item.blurb} />}
+                <AgentBubble q={item.q} />
+                {i < step && <UserAnswer field={item.q.field} value={answers[item.q.id]} voice={isVoice(item.q.id)} />}
+              </Fragment>
             ))}
+            {done && <AgentBubble text="That's everything. Whenever you're ready, I'll synthesise all three of you." />}
           </div>
 
-          <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-5">
-            <button onClick={() => setSection((s) => Math.max(0, s - 1))} disabled={section === 0} className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40">Back</button>
-            {isLast
-              ? <PrimaryBtn label="Submit intake" onClick={onNext} icon="check" />
-              : <PrimaryBtn label={`Next: ${INTAKE[section + 1].title}`} onClick={() => setSection((s) => s + 1)} icon="send" />}
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            {done ? (
+              <div className="flex items-center justify-between gap-4 rounded-xl bg-sage-tint/40 p-3">
+                <p className="text-sm font-semibold text-sage-dark">Submitted — private until the team synthesis runs.</p>
+                <PrimaryBtn label="Run synthesis" onClick={onNext} icon="sparkle" />
+              </div>
+            ) : cur ? (
+              <Composer key={cur.q.id} q={cur.q} value={answers[cur.q.id]} onChange={(v) => update(cur.q.id, v)} voice={isVoice(cur.q.id)} onVoice={() => setVoiceMode((m) => ({ ...m, [cur.q.id]: !m[cur.q.id] }))} canSend={canSend} onSend={() => setStep((s) => s + 1)} />
+            ) : null}
           </div>
         </Card>
       }
@@ -352,7 +368,7 @@ function InputPhase({ onNext }: { onNext: () => void }) {
         <div className="space-y-4">
           <RailTitle>How input works</RailTitle>
           <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Just dump it.</span> No wrong answers — get it down, refine later.</p></Card>
-          <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Voice or text.</span> Any prompt with a mic can be a 2-minute voice memo.</p></Card>
+          <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Type, talk, or tap.</span> Each question picks the easiest way to answer.</p></Card>
           <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Private.</span> Your answers stay yours until the team synthesis runs.</p></Card>
           <Card className="bg-sage-tint/30"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="clock" className="h-4 w-4 text-sage" /> Deadline</p><p className="mt-1 text-sm text-slate-600">12 hours from team formation.</p></Card>
         </div>
@@ -361,43 +377,108 @@ function InputPhase({ onNext }: { onNext: () => void }) {
   );
 }
 
-function IntakeNav({ current, onJump, answeredIn }: { current: number; onJump: (i: number) => void; answeredIn: (s: IntakeSection) => number }) {
+function IntakeNav({ curSi, answeredIn }: { curSi: number; answeredIn: (s: IntakeSection) => number }) {
   return (
     <div className="space-y-4">
       <RailTitle>Your intake</RailTitle>
-      <p className="px-1 text-xs text-slate-400">Answer in any order. Anonymous to the group until synthesis.</p>
+      <p className="px-1 text-xs text-slate-400">Six sections, conversational. Anonymous until synthesis.</p>
       <div className="space-y-1.5">
         {INTAKE.map((s, i) => {
           const a = answeredIn(s);
-          const done = a === s.questions.length;
-          const active = i === current;
+          const complete = a === s.questions.length && i < curSi;
+          const active = i === curSi;
           return (
-            <button key={s.id} onClick={() => onJump(i)} className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${active ? "border-sage bg-sage-tint/30" : "border-transparent hover:bg-slate-50"}`}>
-              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${done ? "bg-sage text-white" : active ? "bg-sage/20 text-sage-dark" : "bg-slate-100 text-slate-400"}`}>{done ? <Icon name="check" className="h-3 w-3" /> : i + 1}</span>
+            <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${active ? "border-sage bg-sage-tint/30" : "border-transparent"}`}>
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${complete ? "bg-sage text-white" : active ? "bg-sage/20 text-sage-dark" : "bg-slate-100 text-slate-400"}`}>{complete ? <Icon name="check" className="h-3 w-3" /> : i + 1}</span>
               <span className="min-w-0 flex-1">
                 <span className={`block truncate text-sm font-semibold ${active ? "text-sage-dark" : "text-slate-600"}`}>{s.title}</span>
                 <span className="block text-[11px] text-slate-400">{a}/{s.questions.length}</span>
               </span>
-            </button>
+            </div>
           );
         })}
       </div>
       <div className="flex items-center gap-2 px-1 pt-1">
         <div className="flex -space-x-2">{COHORT.map((m) => <Avatar key={m.id} m={m} size="h-7 w-7 text-[10px]" />)}</div>
-        <p className="text-xs text-slate-400">Maya {`(you)`}, Alex, and Priya each fill this in separately.</p>
+        <p className="text-xs text-slate-400">Maya (you), Alex, and Priya each answer separately.</p>
       </div>
     </div>
   );
 }
 
-function QuestionField({ q, value, onChange, voice, onVoice }: { q: IntakeQuestion; value: unknown; onChange: (v: unknown) => void; voice: boolean; onVoice: () => void }) {
+function SectionIntro({ index, title, blurb }: { index: number; title: string; blurb: string }) {
+  return (
+    <div className="pt-2">
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-slate-200" />
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Section {index + 1} · {title}</span>
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+      <p className="mt-2 text-center text-xs text-slate-400">{blurb}</p>
+    </div>
+  );
+}
+
+function AgentBubble({ q, text }: { q?: IntakeQuestion; text?: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage text-white"><FlashMark className="h-3.5 w-3.5" /></span>
+      <div className="max-w-lg rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5">
+        <p className="text-sm text-slate-700">{q ? q.q : text}</p>
+        {q?.help && <p className="mt-1 text-xs text-slate-400">{q.help}</p>}
+      </div>
+    </div>
+  );
+}
+
+function UserAnswer({ field, value, voice }: { field: IntakeField; value: unknown; voice: boolean }) {
+  const text = formatAnswer(field, value);
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-lg rounded-2xl rounded-tr-sm bg-sage px-4 py-2.5 text-sm text-white">
+        {voice && <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-white/80"><Icon name="mic" className="h-3.5 w-3.5" /> voice memo</span>}
+        <span className="whitespace-pre-line">{text || (voice ? "Voice memo (demo)" : "—")}</span>
+      </div>
+    </div>
+  );
+}
+
+function formatAnswer(f: IntakeField, v: unknown): string {
+  switch (f.kind) {
+    case "short":
+    case "long":
+    case "location":
+      return asStr(v);
+    case "slider":
+      return `${typeof v === "number" ? v : f.min} ${f.unit ?? ""}`.trim();
+    case "multiLocation":
+      return asArr(v).join(", ");
+    case "multiSelect": {
+      const m = asMulti(v);
+      const sel = m.sel.filter((x) => x !== "Other");
+      if (m.sel.includes("Other") && m.other) sel.push(m.other);
+      return sel.join(", ");
+    }
+    case "select": {
+      const s = asSelect(v);
+      return [s.choice, s.note].filter(Boolean).join(" — ");
+    }
+    case "ranked": {
+      const r = asRanked(v);
+      return [r.ranked.join(" › "), r.note].filter(Boolean).join(" — ");
+    }
+  }
+  return "";
+}
+
+// The chat composer: renders the right input control for the current question.
+function Composer({ q, value, onChange, voice, onVoice, canSend, onSend }: { q: IntakeQuestion; value: unknown; onChange: (v: unknown) => void; voice: boolean; onVoice: () => void; canSend: boolean; onSend: () => void }) {
   const f = q.field;
+  const label = canSend ? "Send" : q.optional ? "Skip" : "Send";
   return (
     <div>
-      <label className="block text-sm font-semibold text-foreground">{q.q}{q.optional && <span className="ml-1.5 text-xs font-normal text-slate-400">(optional)</span>}</label>
-      {q.help && <p className="mt-0.5 text-xs text-slate-400">{q.help}</p>}
-      <div className="mt-2">
-        {(f.kind === "short" || f.kind === "long") && <TextControl value={asStr(value)} onChange={onChange} max={f.max} placeholder={f.placeholder} multiline={f.kind === "long"} voiceable={f.voice} voice={voice} onVoice={onVoice} />}
+      <div className="mb-3">
+        {(f.kind === "short" || f.kind === "long") && <TextControl value={asStr(value)} onChange={onChange} max={f.max} placeholder={f.placeholder} multiline={f.kind === "long"} voiceable={f.voice} voice={voice} onVoice={onVoice} onEnter={canSend ? onSend : undefined} />}
         {f.kind === "slider" && <SliderControl value={typeof value === "number" ? value : f.min} onChange={onChange} min={f.min} max={f.max} step={f.step} unit={f.unit} />}
         {f.kind === "location" && <LocationControl value={asStr(value)} onChange={onChange} placeholder={f.placeholder} />}
         {f.kind === "multiLocation" && <ChipsInput value={asArr(value)} onChange={onChange} />}
@@ -405,11 +486,14 @@ function QuestionField({ q, value, onChange, voice, onVoice }: { q: IntakeQuesti
         {f.kind === "select" && <SelectControl value={asSelect(value)} onChange={onChange} options={f.options} />}
         {f.kind === "ranked" && <RankedControl value={asRanked(value)} onChange={onChange} options={f.options} />}
       </div>
+      <div className="flex items-center justify-end">
+        <button onClick={onSend} disabled={!canSend && !q.optional} className="inline-flex h-11 items-center gap-2 rounded-xl bg-sage px-5 text-sm font-bold text-white transition-colors hover:bg-sage-dark disabled:opacity-40">{label} <Icon name="send" className="h-4 w-4" /></button>
+      </div>
     </div>
   );
 }
 
-function TextControl({ value, onChange, max, placeholder, multiline, voiceable, voice, onVoice }: { value: string; onChange: (v: string) => void; max?: number; placeholder?: string; multiline?: boolean; voiceable?: boolean; voice?: boolean; onVoice: () => void }) {
+function TextControl({ value, onChange, max, placeholder, multiline, voiceable, voice, onVoice, onEnter }: { value: string; onChange: (v: string) => void; max?: number; placeholder?: string; multiline?: boolean; voiceable?: boolean; voice?: boolean; onVoice: () => void; onEnter?: () => void }) {
   if (voiceable && voice) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-sage bg-sage-tint/20 p-3">
@@ -427,7 +511,7 @@ function TextControl({ value, onChange, max, placeholder, multiline, voiceable, 
       <div className="relative">
         {multiline
           ? <textarea value={value} onChange={(e) => onChange(e.target.value)} maxLength={max} rows={3} placeholder={placeholder} className="w-full resize-y rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-sage focus:outline-none" />
-          : <input value={value} onChange={(e) => onChange(e.target.value)} maxLength={max} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-sage focus:outline-none" />}
+          : <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onEnter?.(); } }} maxLength={max} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-sage focus:outline-none" />}
         {voiceable && <button onClick={onVoice} aria-label="Record voice memo" className="absolute right-2 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-sage"><Icon name="mic" className="h-4 w-4" /></button>}
       </div>
       {max && <p className="mt-1 text-right text-[11px] text-slate-400">{value.length}/{max}</p>}
