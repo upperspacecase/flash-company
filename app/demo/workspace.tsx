@@ -112,12 +112,12 @@ function CheckRow({ label, done = true }: { label: string; done?: boolean }) {
     </li>
   );
 }
-function Columns({ left, center, right }: { left: React.ReactNode; center: React.ReactNode; right: React.ReactNode }) {
+function Columns({ left, center, right }: { left: React.ReactNode; center: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       <aside className="lg:w-72 lg:shrink-0">{left}</aside>
       <section className="min-w-0 flex-1">{center}</section>
-      <aside className="lg:w-80 lg:shrink-0">{right}</aside>
+      {right && <aside className="lg:w-80 lg:shrink-0">{right}</aside>}
     </div>
   );
 }
@@ -978,15 +978,17 @@ function VenturesPhase({ plan, ventureId, onSelect, name, onName, venture, onVen
   const isChosen = v.id === CHOSEN_ID;
   const editable = isChosen && !isFree;
   return (
-    <Columns
-      left={
-        <div className="space-y-4">
+    <div className="space-y-5">
+      <div>
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <RailTitle>Venture outlines</RailTitle>
-          <p className="px-1 text-xs text-slate-400">Anonymous voting until reveal. Clear thresholds. The agent mediates revisions.</p>
+          <p className="text-xs text-slate-400">Born from the opportunity space. Anonymous voting until reveal; the agent mediates revisions.</p>
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-1">
           {VENTURES.map((x) => {
             const active = x.id === ventureId;
             return (
-              <button key={x.id} onClick={() => onSelect(x.id)} className={`block w-full rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+              <button key={x.id} onClick={() => onSelect(x.id)} className={`flex w-56 shrink-0 flex-col rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-foreground">{x.name}</span>
                   {x.recommended && <span className="rounded-full bg-sage px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">Top</span>}
@@ -997,58 +999,61 @@ function VenturesPhase({ plan, ventureId, onSelect, name, onName, venture, onVen
             );
           })}
         </div>
-      }
-      center={
-        <Card className="p-6">
-          <CenterHead title={isChosen ? name : v.name} sub="One-sentence thesis, scored — what, for whom, why now." right={isChosen && !isFree ? (
-            <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500"><Icon name="bolt" className="h-3.5 w-3.5 text-sage" /> rename<input value={name} onChange={(e) => onName(e.target.value)} className="ml-1 w-24 border-b border-slate-300 bg-transparent text-foreground focus:border-sage focus:outline-none" /></span>
-          ) : undefined} />
+      </div>
 
-          <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-4">
-            {editable
-              ? <EditableArea value={venture.thesis} onChange={(val) => onVenture((p) => ({ ...p, thesis: val }))} className="text-foreground" />
-              : <p className="text-foreground">{v.thesis}</p>}
-          </div>
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <section className="min-w-0 flex-1">
+          <Card className="p-6">
+            <CenterHead title={isChosen ? name : v.name} sub="One-sentence thesis, scored — what, for whom, why now." right={isChosen && !isFree ? (
+              <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500"><Icon name="bolt" className="h-3.5 w-3.5 text-sage" /> rename<input value={name} onChange={(e) => onName(e.target.value)} className="ml-1 w-24 border-b border-slate-300 bg-transparent text-foreground focus:border-sage focus:outline-none" /></span>
+            ) : undefined} />
 
-          {editable ? (
-            <RichVentureDetail venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} />
-          ) : (
-            <>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Field label="Problem score" value={`${v.problemScore}/10`} />
-                <Field label="Solution" value={v.solution} />
-                <Field label="Market" value={v.market} />
-                <Field label="Differentiation" value={v.differentiation} />
-                <Field label="Purpose" value={v.purpose} />
-                <Field label="Earning potential" value={v.earn} />
-              </div>
-              <div className="mt-3 rounded-xl border border-slate-200 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Only we can do this</p>
-                <p className="mt-1 text-sm text-foreground">{v.unique}</p>
-              </div>
-              {isChosen ? (
-                <div className="mt-6"><Upsell title="Full venture details are part of Seed" text="Origin story, team & equity, financials, the 7-day sprint, risk register, and the commitment ritual — plus the validation engine." /></div>
-              ) : (
-                <div className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Select <span className="font-semibold text-foreground">{VENTURE_DETAILS.name}</span> (the top-voted venture) to see full details.</div>
-              )}
-            </>
-          )}
-        </Card>
-      }
-      right={
-        <div className="lg:sticky lg:top-4 lg:self-start">
-          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
-            <RailTitle>Deliberation</RailTitle>
-            <div className="grid gap-3"><Bars label="Spark" value={v.spark} /><Bars label="Conviction" value={v.conviction} /></div>
-            <div className="flex gap-2">
-              <button className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-sage py-2.5 text-sm font-semibold text-white"><Icon name="thumb" className="h-4 w-4" /> Vote</button>
-              <button className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-600"><Icon name="comment" className="h-4 w-4" /> Comment</button>
+            <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-4">
+              {editable
+                ? <EditableArea value={venture.thesis} onChange={(val) => onVenture((p) => ({ ...p, thesis: val }))} className="text-foreground" />
+                : <p className="text-foreground">{v.thesis}</p>}
             </div>
-            <p className="text-xs text-slate-400">All three vote independently within 12 hours. Votes reveal together.</p>
+
+            {editable ? (
+              <RichVentureDetail venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} />
+            ) : (
+              <>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <Field label="Problem score" value={`${v.problemScore}/10`} />
+                  <Field label="Solution" value={v.solution} />
+                  <Field label="Market" value={v.market} />
+                  <Field label="Differentiation" value={v.differentiation} />
+                  <Field label="Purpose" value={v.purpose} />
+                  <Field label="Earning potential" value={v.earn} />
+                </div>
+                <div className="mt-3 rounded-xl border border-slate-200 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Only we can do this</p>
+                  <p className="mt-1 text-sm text-foreground">{v.unique}</p>
+                </div>
+                {isChosen ? (
+                  <div className="mt-6"><Upsell title="Full venture details are part of Seed" text="Origin story, team & equity, financials, the 7-day sprint, risk register, and the commitment ritual — plus the validation engine." /></div>
+                ) : (
+                  <div className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Select <span className="font-semibold text-foreground">{VENTURE_DETAILS.name}</span> (the top-voted venture) to see full details.</div>
+                )}
+              </>
+            )}
+          </Card>
+        </section>
+        <aside className="lg:w-80 lg:shrink-0">
+          <div className="lg:sticky lg:top-4 lg:self-start">
+            <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+              <RailTitle>Deliberation</RailTitle>
+              <div className="grid gap-3"><Bars label="Spark" value={v.spark} /><Bars label="Conviction" value={v.conviction} /></div>
+              <div className="flex gap-2">
+                <button className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-sage py-2.5 text-sm font-semibold text-white"><Icon name="thumb" className="h-4 w-4" /> Vote</button>
+                <button className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-600"><Icon name="comment" className="h-4 w-4" /> Comment</button>
+              </div>
+              <p className="text-xs text-slate-400">All three vote independently within 12 hours. Votes reveal together.</p>
+            </div>
           </div>
-        </div>
-      }
-    />
+        </aside>
+      </div>
+    </div>
   );
 }
 
@@ -1133,6 +1138,11 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
               </button>
             );
           })}
+
+          <div className="pt-2"><RailTitle>What you walk away with</RailTitle></div>
+          <Card className="bg-sage-tint/20"><p className="font-bold text-foreground">{name}</p><p className="mt-0.5 text-sm text-slate-600">Venture locked. Validation assets generated.</p></Card>
+          <Card><ul className="space-y-1.5">{["Venture details & roles", "Team alignment & cap table", "Hosted landing page", "Live signups dashboard", "Pitch deck", "Outreach copy"].map((x) => <CheckRow key={x} label={x} />)}</ul></Card>
+          <Card className="bg-slate-50"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="heart" className="h-4 w-4 text-sage" /> The Flash Fund</p><p className="mt-1 text-sm text-slate-600">Part of every buy-in seeds ventures that emerge here.</p></Card>
         </div>
       }
       center={
@@ -1171,14 +1181,6 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
             <ul className="space-y-1.5">{v.feedbackEdits.map((e) => <li key={e} className="flex items-start gap-2 rounded-lg bg-slate-50 p-2.5 text-sm text-slate-700"><Icon name="refresh" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{e}</li>)}</ul>
           </Section></div>
         </Card>
-      }
-      right={
-        <div className="space-y-4">
-          <RailTitle>What you walk away with</RailTitle>
-          <Card className="bg-sage-tint/20"><p className="font-bold text-foreground">{name}</p><p className="mt-0.5 text-sm text-slate-600">Venture locked. Validation assets generated.</p></Card>
-          <Card><ul className="space-y-1.5">{["Venture details & roles", "Team alignment & cap table", "Hosted landing page", "Live signups dashboard", "Pitch deck", "Outreach copy"].map((x) => <CheckRow key={x} label={x} />)}</ul></Card>
-          <Card className="bg-slate-50"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="heart" className="h-4 w-4 text-sage" /> The Flash Fund</p><p className="mt-1 text-sm text-slate-600">Part of every buy-in seeds ventures that emerge here.</p></Card>
-        </div>
       }
     />
   );
@@ -1802,13 +1804,24 @@ function buildLanding(v: VentureDraft): typeof VALIDATION.landing {
 
 /* ----------------------------------------- validation: Click hypothesis + scorecard */
 
-// The Click "Founding Hypothesis" sentence, composed live from the venture.
+// The Click "Founding Hypothesis" — line-broken worksheet, composed live.
 function FoundingHypothesis({ v }: { v: VentureDraft }) {
-  const comp = [v.competition.gorilla, v.competition.alternatives].filter(Boolean).join(" / ") || "competitors";
-  const part = (text: string, fallback: string) => <span className="rounded-md bg-sage-tint px-1.5 py-0.5 font-semibold text-sage-dark">{text || fallback}</span>;
+  const comp = [v.competition.gorilla, v.competition.alternatives].filter(Boolean).join(" / ");
+  const rows = [
+    { label: "If we help", value: v.basics.customer, fallback: "customer" },
+    { label: "solve", value: v.basics.problem, fallback: "problem" },
+    { label: "with", value: approachOf(v).title, fallback: "approach" },
+    { label: "they will choose it over", value: comp, fallback: "competitors" },
+    { label: "because our solution is", value: v.differentiation.statement, fallback: "differentiation" },
+  ];
   return (
-    <div className="rounded-xl border border-slate-200 p-5 text-[15px] leading-relaxed text-slate-700">
-      If we help {part(v.basics.customer, "customer")} solve {part(v.basics.problem, "problem")} with {part(approachOf(v).title, "approach")}, they will choose it over {part(comp, "competitors")} because our solution is {part(v.differentiation.statement, "differentiation")}.
+    <div className="space-y-2.5 rounded-xl border border-slate-200 p-4 sm:p-5">
+      {rows.map((r) => (
+        <div key={r.label} className="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-center sm:gap-3">
+          <span className="text-sm font-semibold text-foreground sm:text-right">{r.label}</span>
+          <span className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{r.value || <span className="italic text-slate-400">{r.fallback}</span>}</span>
+        </div>
+      ))}
     </div>
   );
 }
