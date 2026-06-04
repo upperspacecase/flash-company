@@ -38,9 +38,10 @@ export const memberById = (id: string) => COHORT.find((m) => m.id === id)!;
 
 export const PHASES = [
   { id: "invite", label: "Invite", day: "Kick-off", blurb: "Share a link. The team forms when everyone accepts." },
-  { id: "input", label: "Input", day: "Day 1", blurb: "Each person answers 15 questions privately. Typed or voice." },
-  { id: "synthesis", label: "Synthesis", day: "Day 1", blurb: "The agent finds your convergence map and opportunity spaces." },
-  { id: "ventures", label: "Ventures", day: "Day 2", blurb: "Five venture outlines. Vote, comment, and pick one." },
+  { id: "input", label: "Input", day: "Day 1", blurb: "Each person answers privately. Typed or voice." },
+  { id: "synthesis", label: "Synthesis", day: "Day 1", blurb: "The agent maps the team and surfaces problems, obsessions, and markets to vote on." },
+  { id: "opportunity", label: "Opportunity", day: "Day 2", blurb: "Agree broad opportunity spaces, research them, and birth candidate ventures." },
+  { id: "ventures", label: "Ventures", day: "Day 2", blurb: "Pick a birthed venture and flesh it out." },
   { id: "validation", label: "Validation", day: "Day 2–30", blurb: "Assets to test, feedback synthesis, and the 7/14/21/30 check-ins." },
 ] as const;
 
@@ -207,6 +208,32 @@ export const TARGET_MARKETS: Votable[] = [
   { id: "changers", text: "Mid-career changers re-entering a new field.", votes: 1 },
   { id: "expats", text: "Returning expats rebuilding a local network.", votes: 0 },
   { id: "students", text: "Mature students entering the workforce late.", votes: 0 },
+];
+
+// ---------------------------------------------------- Opportunity spaces
+// Before agreeing a venture, the group agrees a broad opportunity space. These
+// are fed by the synthesis voting (top problems × obsessions × markets). Votes
+// here are seeded from the other two members.
+export const OPPORTUNITY_SPACES: Votable[] = [
+  { id: "reentry", text: "Guided re-entry — a supportive path back to work for parents after a break.", votes: 3 },
+  { id: "employer", text: "Employer returnships — help companies hire from an overlooked talent pool.", votes: 1 },
+  { id: "confidence", text: "Confidence & coaching — rebuild the belief that erodes during time out.", votes: 1 },
+  { id: "community", text: "Returner community — peers, leads, and accountability for the comeback.", votes: 2 },
+];
+
+// Stage 3 market research — PESTLE (six) plus two divergent lenses (first
+// principles, pirate) = eight lenses, run against the agreed opportunity space.
+// Illustrative for the demo.
+export type ResearchLens = { key: string; label: string; kind: "pestle" | "divergent"; finding: string };
+export const RESEARCH_LENSES: ResearchLens[] = [
+  { key: "political", label: "Political", kind: "pestle", finding: "Government returnship incentives and parental-leave reform are active tailwinds." },
+  { key: "economic", label: "Economic", kind: "pestle", finding: "Tight labour markets make overlooked talent valuable; households need a second income." },
+  { key: "social", label: "Social", kind: "pestle", finding: "The motherhood penalty is in the spotlight; returning is being destigmatised." },
+  { key: "technological", label: "Technological", kind: "pestle", finding: "Remote / hybrid tooling makes flexible re-entry viable; AI screening can be reframed in your favour." },
+  { key: "environmental", label: "Environmental", kind: "pestle", finding: "Less commuting and local, flexible work align with rising sustainability expectations." },
+  { key: "legal", label: "Legal", kind: "pestle", finding: "Flexible-work and anti-discrimination rights are strengthening; gap-based screening is a growing legal risk." },
+  { key: "firstprinciples", label: "First principles", kind: "divergent", finding: "Strip it down — the real unit is a credible signal to employers. Divergent option: a verified 'return-ready' credential, not a cohort." },
+  { key: "pirate", label: "Pirate", kind: "divergent", finding: "Break the rules — go straight to employers and get paid to source returners. Divergent option: employers fund it, candidates join free." },
 ];
 
 // ------------------------------------------------------------ Ventures

@@ -15,7 +15,9 @@ import {
   MARKET_REPORT,
   NETWORK,
   OBSESSIONS,
+  OPPORTUNITY_SPACES,
   PHASES,
+  RESEARCH_LENSES,
   REVENUE_MODELS,
   SCORECARD,
   SKILLS,
@@ -173,8 +175,8 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
   const [venture, setVenture] = useState<VentureDraft>(makeVentureDraft);
   const [published, setPublished] = useState(false);
 
-  // Free stops at the venture outlines; validation is locked.
-  const go = (i: number) => setPhase(isFree && i >= 4 ? 3 : i);
+  // Free runs through to the venture outlines; validation is locked.
+  const go = (i: number) => setPhase(isFree && i >= 5 ? 4 : i);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50/70">
@@ -184,8 +186,9 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
         {phase === 0 && <InvitePhase onNext={() => setPhase(1)} />}
         {phase === 1 && <InputPhase onNext={() => setPhase(2)} />}
         {phase === 2 && <SynthesisPhase onNext={() => setPhase(3)} />}
-        {phase === 3 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(4)} />}
-        {!isFree && phase === 4 && <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
+        {phase === 3 && <OpportunityPhase onNext={() => setPhase(4)} />}
+        {phase === 4 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(5)} />}
+        {!isFree && phase === 5 && <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
       </main>
     </div>
   );
@@ -220,7 +223,7 @@ function Timeline({ phase, onJump, plan }: { phase: number; onJump: (n: number) 
     <nav className="border-b border-slate-200 bg-white">
       <ol className="mx-auto flex w-full max-w-[1500px] gap-2 overflow-x-auto px-5 py-3">
         {PHASES.map((p, i) => {
-          const locked = isFree && i >= 4;
+          const locked = isFree && i >= 5;
           const active = i === phase && !locked;
           const done = i < phase;
           return (
@@ -667,7 +670,7 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
             </Section>
           </Part>
 
-          <div className="flex justify-end"><PrimaryBtn label="Lock focus & draft ventures" onClick={onNext} icon="sparkle" /></div>
+          <div className="flex justify-end"><PrimaryBtn label="Agree opportunity spaces" onClick={onNext} icon="sparkle" /></div>
         </div>
       }
       right={<OutcomePanel problems={problems} obsessions={obsessions} markets={markets} picks={picks} />}
@@ -866,6 +869,106 @@ function OutcomePanel({ problems, obsessions, markets, picks }: { problems: Vota
         {block("Target markets", markets, picks.markets)}
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
+
+function OpportunityPhase({ onNext }: { onNext: () => void }) {
+  const spaces = [...OPPORTUNITY_SPACES].sort((a, b) => b.votes - a.votes);
+  const [spaceId, setSpaceId] = useState(spaces[0].id);
+  const agreed = OPPORTUNITY_SPACES.find((s) => s.id === spaceId) ?? spaces[0];
+  const pestle = RESEARCH_LENSES.filter((l) => l.kind === "pestle");
+  const divergent = RESEARCH_LENSES.filter((l) => l.kind === "divergent");
+  return (
+    <Columns
+      left={
+        <div className="space-y-4">
+          <RailTitle>Stages</RailTitle>
+          {[
+            { t: "Opportunity spaces", d: "Agree the broad space.", n: "1" },
+            { t: "Market research", d: "PESTLE + 2 divergent lenses.", n: "3" },
+            { t: "Venture birthing", d: "The space births ventures.", n: "4" },
+          ].map((s) => (
+            <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage-tint text-xs font-bold text-sage-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
+          ))}
+          <Card className="bg-sage-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Fed by synthesis.</span> Your top problems, obsessions, and markets shaped these spaces.</p></Card>
+        </div>
+      }
+      center={
+        <div className="space-y-5">
+          <Card className="p-5">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Opportunity</h1>
+            <p className="mt-1 text-slate-500">Before a venture, the group agrees a broad opportunity space — then researches it.</p>
+          </Card>
+
+          <Part label="Opportunity spaces" hint="Agree the space first. Vote counts carried from synthesis.">
+            <p className="-mt-1 mb-1 text-xs text-slate-400">Select the space the team is agreeing on.</p>
+            <div className="space-y-2">
+              {spaces.map((s) => {
+                const active = s.id === spaceId;
+                return (
+                  <button key={s.id} onClick={() => setSpaceId(s.id)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${active ? "bg-sage text-white" : "border border-slate-300"}`}>{active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}</span>
+                    <span className="flex-1 text-sm text-foreground">{s.text}</span>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-400"><Icon name="thumb" className="h-3.5 w-3.5" />{s.votes}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Part>
+
+          <Part label="Market research" hint="PESTLE — six dimensions — plus two divergent lenses, run against the agreed space.">
+            <p className="-mt-1 text-xs text-slate-400">Researching: <span className="font-semibold text-sage-dark">{agreed.text}</span></p>
+            <Section title="PESTLE">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {pestle.map((l) => (
+                  <div key={l.key} className="rounded-xl border border-slate-200 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-sage-dark">{l.label}</p>
+                    <p className="mt-1 text-sm text-slate-700">{l.finding}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+            <Section title="Divergent lenses">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {divergent.map((l) => (
+                  <div key={l.key} className="rounded-xl border border-sage/40 bg-sage-tint/15 p-3">
+                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-sage-dark"><Icon name="bolt" className="h-3.5 w-3.5" />{l.label}</p>
+                    <p className="mt-1 text-sm text-slate-700">{l.finding}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-slate-400">Eight lenses total — the six PESTLE dimensions plus first principles and pirate.</p>
+            </Section>
+          </Part>
+
+          <Part label="Venture birthing" hint="The agreed space births a handful of candidate ventures.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {VENTURES.map((v) => (
+                <div key={v.id} className="rounded-xl border border-slate-200 p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-foreground">{v.name}</span>
+                    {v.recommended && <span className="rounded-full bg-sage px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">Top</span>}
+                  </div>
+                  <p className="mt-1 line-clamp-3 text-xs text-slate-500">{v.thesis}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end"><PrimaryBtn label="Take these into formation" onClick={onNext} icon="sparkle" /></div>
+          </Part>
+        </div>
+      }
+      right={
+        <div className="space-y-4 lg:sticky lg:top-4">
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+            <RailTitle>Agreed space</RailTitle>
+            <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{agreed.text}</p></div>
+            <p className="text-xs text-slate-400">Market-researched through 8 lenses, then used to birth {VENTURES.length} candidate ventures.</p>
+          </div>
+        </div>
+      }
+    />
   );
 }
 
