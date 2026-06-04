@@ -40,7 +40,6 @@ import {
   type IntakeField,
   type IntakeQuestion,
   type IntakeSection,
-  type Lens,
   type Member,
   type ScorecardKey,
   type VentureDraft,
@@ -878,8 +877,6 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
   const spaces = [...OPPORTUNITY_SPACES].sort((a, b) => b.votes - a.votes);
   const [spaceId, setSpaceId] = useState(spaces[0].id);
   const agreed = OPPORTUNITY_SPACES.find((s) => s.id === spaceId) ?? spaces[0];
-  const pestle = RESEARCH_LENSES.filter((l) => l.kind === "pestle");
-  const divergent = RESEARCH_LENSES.filter((l) => l.kind === "divergent");
   return (
     <Columns
       left={
@@ -887,7 +884,8 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
           <RailTitle>Stages</RailTitle>
           {[
             { t: "Opportunity spaces", d: "Agree the broad space.", n: "1" },
-            { t: "Market research", d: "PESTLE + 2 divergent lenses.", n: "3" },
+            { t: "Market research", d: "PESTLE's six dimensions.", n: "3" },
+            { t: "Angles", d: "Lenses on the opportunity.", n: "3" },
             { t: "Venture birthing", d: "The space births ventures.", n: "4" },
           ].map((s) => (
             <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage-tint text-xs font-bold text-sage-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
@@ -918,29 +916,29 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
             </div>
           </Part>
 
-          <Part label="Market research" hint="PESTLE — six dimensions — plus two divergent lenses, run against the agreed space.">
-            <p className="-mt-1 text-xs text-slate-400">Researching: <span className="font-semibold text-sage-dark">{agreed.text}</span></p>
-            <Section title="PESTLE">
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {pestle.map((l) => (
-                  <div key={l.key} className="rounded-xl border border-slate-200 p-3">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-sage-dark">{l.label}</p>
-                    <p className="mt-1 text-sm text-slate-700">{l.finding}</p>
-                  </div>
-                ))}
-              </div>
-            </Section>
-            <Section title="Divergent lenses">
-              <div className="grid gap-2 sm:grid-cols-2">
-                {divergent.map((l) => (
-                  <div key={l.key} className="rounded-xl border border-sage/40 bg-sage-tint/15 p-3">
-                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-sage-dark"><Icon name="bolt" className="h-3.5 w-3.5" />{l.label}</p>
-                    <p className="mt-1 text-sm text-slate-700">{l.finding}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-2 text-[11px] text-slate-400">Eight lenses total — the six PESTLE dimensions plus first principles and pirate.</p>
-            </Section>
+          <Part label="Market research" hint="PESTLE's six dimensions, run against the agreed space.">
+            <p className="-mt-1 mb-2 text-xs text-slate-400">Researching: <span className="font-semibold text-sage-dark">{agreed.text}</span></p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {RESEARCH_LENSES.map((l) => (
+                <div key={l.key} className="rounded-xl border border-slate-200 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-sage-dark">{l.label}</p>
+                  <p className="mt-1 text-sm text-slate-700">{l.finding}</p>
+                </div>
+              ))}
+            </div>
+          </Part>
+
+          <Part label="Angles" hint="Look at the opportunity through different lenses — each gives a different version of it.">
+            <p className="-mt-1 mb-2 text-xs text-slate-400">e.g. what's the X-Prize version of this? where's the Blue Ocean angle?</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {LENSES.map((l) => (
+                <div key={l.id} className="rounded-xl border border-slate-200 p-3">
+                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-sage-dark"><Icon name={l.icon} className="h-3.5 w-3.5" />{l.name}</p>
+                  <p className="text-[11px] italic text-slate-400">{l.question}</p>
+                  <p className="mt-1 text-sm text-slate-700">{l.reframe}</p>
+                </div>
+              ))}
+            </div>
           </Part>
 
           <Part label="Venture birthing" hint="The agreed space births a handful of candidate ventures.">
@@ -1385,15 +1383,12 @@ function DotScore({ value, onChange, label }: { value: number; onChange?: (v: nu
 }
 
 function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
-  const [lensId, setLensId] = useState(LENSES[0].id);
-  const lens = LENSES.find((l) => l.id === lensId) ?? LENSES[0];
   const set = <K extends keyof VentureDraft,>(key: K, val: VentureDraft[K]) => onVenture((p) => ({ ...p, [key]: val }));
   const setBasics = (patch: Partial<VentureDraft["basics"]>) => onVenture((p) => ({ ...p, basics: { ...p.basics, ...patch } }));
   const setAdvantage = (patch: Partial<VentureDraft["advantage"]>) => onVenture((p) => ({ ...p, advantage: { ...p.advantage, ...patch } }));
   const setCompetition = (patch: Partial<VentureDraft["competition"]>) => onVenture((p) => ({ ...p, competition: { ...p.competition, ...patch } }));
   const setProblem = (patch: Partial<VentureDraft["problem"]>) => onVenture((p) => ({ ...p, problem: { ...p.problem, ...patch } }));
   const setDiff = (patch: Partial<VentureDraft["differentiation"]>) => onVenture((p) => ({ ...p, differentiation: { ...p.differentiation, ...patch } }));
-  const toggleStory = (s: string) => onVenture((p) => ({ ...p, story: p.story.includes(s) ? p.story.filter((x) => x !== s) : [...p.story, s] }));
   return (
     <div className="mt-5 space-y-5">
       <Section title="North star">
@@ -1435,14 +1430,6 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: {
 
       <Part label="Approach" hint="How you'll solve it — never commit to your first idea.">
         <Section title="Options"><ApproachOptions chosen={venture.approachId} onPick={(id) => set("approachId", id)} /></Section>
-        <Section title="Lenses">
-          <p className="-mt-1 mb-3 text-xs text-slate-400">Pressure-test each option through different lenses. Pull the bits that ring true — they feed the story.</p>
-          <LensTabs lensId={lensId} onPick={setLensId} />
-          <div className="mt-3 grid gap-3 lg:grid-cols-2">
-            <LensPanel lens={lens} pulled={venture.story} onPull={toggleStory} />
-            <StoryPanel pulled={venture.story} onRemove={toggleStory} />
-          </div>
-        </Section>
       </Part>
 
       <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} />
@@ -1777,75 +1764,6 @@ function ValidationScorecard({ published }: { published: boolean }) {
       </div>
       {!published && <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400"><Icon name="bolt" className="h-3.5 w-3.5" /> Publish the landing page below to start collecting live signals.</p>}
     </Section>
-  );
-}
-
-/* -------------------------------------------------- synthesis: the lenses */
-
-function LensTabs({ lensId, onPick }: { lensId: string; onPick: (id: string) => void }) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {LENSES.map((l, i) => {
-        const active = l.id === lensId;
-        const bandStart = i > 0 && LENSES[i - 1].band !== l.band;
-        return (
-          <Fragment key={l.id}>
-            {bandStart && <span className="mx-1 hidden h-5 w-px bg-slate-200 sm:block" aria-hidden="true" />}
-            <button onClick={() => onPick(l.id)} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${active ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>
-              <Icon name={l.icon} className="h-3.5 w-3.5" /> {l.name}
-            </button>
-          </Fragment>
-        );
-      })}
-    </div>
-  );
-}
-
-function LensPanel({ lens, pulled, onPull }: { lens: Lens; pulled: string[]; onPull: (s: string) => void }) {
-  return (
-    <div className="rounded-xl border border-slate-200 p-4">
-      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-sage-dark"><Icon name={lens.icon} className="h-4 w-4" /> {lens.name} lens</p>
-      <p className="mt-1.5 text-xs italic text-slate-400">{lens.question}</p>
-      <p className="mt-2 text-sm font-medium text-foreground">{lens.reframe}</p>
-      <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Pull what rings true</p>
-      <div className="mt-2 space-y-2">
-        {lens.insights.map((ins) => {
-          const on = pulled.includes(ins);
-          return (
-            <button key={ins} onClick={() => onPull(ins)} className={`flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left text-sm transition-colors ${on ? "border-sage bg-sage-tint/30 text-foreground" : "border-slate-200 text-slate-700 hover:border-sage/50"}`}>
-              <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${on ? "bg-sage text-white" : "border border-slate-300"}`}>
-                {on && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}
-              </span>
-              <span className="flex-1">{ins}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function StoryPanel({ pulled, onRemove }: { pulled: string[]; onRemove: (s: string) => void }) {
-  return (
-    <div className="rounded-xl border border-sage/40 bg-sage-tint/20 p-4">
-      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-sage-dark">
-        <Icon name="sparkle" className="h-4 w-4" /> Your story so far
-        <span className="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">{pulled.length} pulled</span>
-      </p>
-      {pulled.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">Pull bits from the lenses — they collect here into a clear, concrete story you can build the venture from.</p>
-      ) : (
-        <ul className="mt-3 space-y-1.5">
-          {pulled.map((p) => (
-            <li key={p} className="flex items-start gap-2 rounded-lg bg-white/70 p-2.5 text-sm text-slate-700">
-              <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />
-              <span className="flex-1">{p}</span>
-              <button onClick={() => onRemove(p)} aria-label="Remove from story" className="shrink-0 text-slate-300 transition-colors hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 
