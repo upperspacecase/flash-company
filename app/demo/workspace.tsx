@@ -884,9 +884,8 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
           <RailTitle>Stages</RailTitle>
           {[
             { t: "Opportunity spaces", d: "Agree the broad space.", n: "1" },
-            { t: "Market research", d: "PESTLE's six dimensions.", n: "3" },
+            { t: "Market research", d: "PESTLE's six dimensions.", n: "2" },
             { t: "Angles", d: "Lenses on the opportunity.", n: "3" },
-            { t: "Venture birthing", d: "The space births ventures.", n: "4" },
           ].map((s) => (
             <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage-tint text-xs font-bold text-sage-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
           ))}
@@ -941,20 +940,13 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
             </div>
           </Part>
 
-          <Part label="Venture birthing" hint="The agreed space births a handful of candidate ventures.">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {VENTURES.map((v) => (
-                <div key={v.id} className="rounded-xl border border-slate-200 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground">{v.name}</span>
-                    {v.recommended && <span className="rounded-full bg-sage px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">Top</span>}
-                  </div>
-                  <p className="mt-1 line-clamp-3 text-xs text-slate-500">{v.thesis}</p>
-                </div>
-              ))}
+          <div className="flex flex-col items-start gap-3 rounded-2xl border border-sage/40 bg-sage-tint/20 p-5 sm:flex-row sm:items-center">
+            <div className="flex-1">
+              <p className="text-sm font-bold text-foreground">Agree the space — it births your ventures</p>
+              <p className="mt-0.5 text-xs text-slate-500">Once the team agrees on <span className="font-semibold text-sage-dark">{agreed.text}</span>, Flash births a handful of candidate ventures from it to take into formation.</p>
             </div>
-            <div className="mt-4 flex justify-end"><PrimaryBtn label="Take these into formation" onClick={onNext} icon="sparkle" /></div>
-          </Part>
+            <PrimaryBtn label="Birth ventures" onClick={onNext} icon="sparkle" />
+          </div>
         </div>
       }
       right={
@@ -962,7 +954,7 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
             <RailTitle>Agreed space</RailTitle>
             <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{agreed.text}</p></div>
-            <p className="text-xs text-slate-400">Market-researched through 8 lenses, then used to birth {VENTURES.length} candidate ventures.</p>
+            <p className="text-xs text-slate-400">Researched and viewed through the lenses, then it births your candidate ventures.</p>
           </div>
         </div>
       }
