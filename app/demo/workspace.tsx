@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   AGENT_NAME,
   CHOSEN_ID,
@@ -10,6 +10,7 @@ import {
   DIFFERENTIATION,
   INPUT_STATUS,
   INVITE,
+  LENSES,
   OPPORTUNITY_SPACES,
   PHASES,
   QUESTIONS,
@@ -26,6 +27,7 @@ import {
   revenueDefaults,
   type DeckSlide,
   type IconName,
+  type Lens,
   type Member,
   type VentureDraft,
 } from "./data";
@@ -375,6 +377,10 @@ function Bubble({ agent, text, voice }: { agent?: boolean; text: string; voice?:
 /* ----------------------------------------------------- 2. Synthesis */
 
 function SynthesisPhase({ onNext }: { onNext: () => void }) {
+  const [lensId, setLensId] = useState(LENSES[0].id);
+  const [pulled, setPulled] = useState<string[]>([]);
+  const lens = LENSES.find((l) => l.id === lensId) ?? LENSES[0];
+  const togglePull = (s: string) => setPulled((p) => (p.includes(s) ? p.filter((x) => x !== s) : [...p, s]));
   return (
     <Columns
       left={
@@ -416,7 +422,21 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
               </div>
             ))}
           </div>
-          <div className="mt-6 flex justify-end"><PrimaryBtn label="See venture outlines" onClick={onNext} icon="sparkle" /></div>
+
+          <div className="mt-7">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">See it through lenses</p>
+            <p className="mt-1 mb-3 text-sm text-slate-500">Zoom out to spot the big opportunity, then zoom in to make it real. Pull the bits that ring true — they build your story.</p>
+            <LensTabs lensId={lensId} onPick={setLensId} />
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              <LensPanel lens={lens} pulled={pulled} onPull={togglePull} />
+              <StoryPanel pulled={pulled} onRemove={togglePull} />
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end gap-3">
+            {pulled.length > 0 && <span className="text-xs text-slate-400">{pulled.length} bit{pulled.length > 1 ? "s" : ""} pulled into your story</span>}
+            <PrimaryBtn label={pulled.length > 0 ? "Build ventures from your story" : "See venture outlines"} onClick={onNext} icon="sparkle" />
+          </div>
         </Card>
       }
       right={
@@ -1096,5 +1116,74 @@ function ValidationScorecard({ published }: { published: boolean }) {
       </div>
       {!published && <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400"><Icon name="bolt" className="h-3.5 w-3.5" /> Publish the landing page below to start collecting live signals.</p>}
     </Section>
+  );
+}
+
+/* -------------------------------------------------- synthesis: the lenses */
+
+function LensTabs({ lensId, onPick }: { lensId: string; onPick: (id: string) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {LENSES.map((l, i) => {
+        const active = l.id === lensId;
+        const bandStart = i > 0 && LENSES[i - 1].band !== l.band;
+        return (
+          <Fragment key={l.id}>
+            {bandStart && <span className="mx-1 hidden h-5 w-px bg-slate-200 sm:block" aria-hidden="true" />}
+            <button onClick={() => onPick(l.id)} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${active ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>
+              <Icon name={l.icon} className="h-3.5 w-3.5" /> {l.name}
+            </button>
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+function LensPanel({ lens, pulled, onPull }: { lens: Lens; pulled: string[]; onPull: (s: string) => void }) {
+  return (
+    <div className="rounded-xl border border-slate-200 p-4">
+      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-sage-dark"><Icon name={lens.icon} className="h-4 w-4" /> {lens.name} lens</p>
+      <p className="mt-1.5 text-xs italic text-slate-400">{lens.question}</p>
+      <p className="mt-2 text-sm font-medium text-foreground">{lens.reframe}</p>
+      <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Pull what rings true</p>
+      <div className="mt-2 space-y-2">
+        {lens.insights.map((ins) => {
+          const on = pulled.includes(ins);
+          return (
+            <button key={ins} onClick={() => onPull(ins)} className={`flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left text-sm transition-colors ${on ? "border-sage bg-sage-tint/30 text-foreground" : "border-slate-200 text-slate-700 hover:border-sage/50"}`}>
+              <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${on ? "bg-sage text-white" : "border border-slate-300"}`}>
+                {on && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}
+              </span>
+              <span className="flex-1">{ins}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StoryPanel({ pulled, onRemove }: { pulled: string[]; onRemove: (s: string) => void }) {
+  return (
+    <div className="rounded-xl border border-sage/40 bg-sage-tint/20 p-4">
+      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-sage-dark">
+        <Icon name="sparkle" className="h-4 w-4" /> Your story so far
+        <span className="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">{pulled.length} pulled</span>
+      </p>
+      {pulled.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">Pull bits from the lenses — they collect here into a clear, concrete story you can build the venture from.</p>
+      ) : (
+        <ul className="mt-3 space-y-1.5">
+          {pulled.map((p) => (
+            <li key={p} className="flex items-start gap-2 rounded-lg bg-white/70 p-2.5 text-sm text-slate-700">
+              <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />
+              <span className="flex-1">{p}</span>
+              <button onClick={() => onRemove(p)} aria-label="Remove from story" className="shrink-0 text-slate-300 transition-colors hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

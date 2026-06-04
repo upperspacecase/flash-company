@@ -497,3 +497,105 @@ export function makeVentureDraft(): VentureDraft {
     },
   };
 }
+
+// ------------------------------------------------------- Lenses (Click)
+// The core engine: view the opportunity through different worldviews, pull the
+// bits that ring true, and a clear, concrete venture story assembles. Ordered
+// to zoom out (see the big opportunity) then zoom in (make it real).
+
+export type Lens = {
+  id: string;
+  name: string;
+  icon: IconName;
+  band: "big" | "real"; // see the big opportunity | bring it down to earth
+  question: string; // the question this lens forces
+  reframe: string; // the big opportunity it sees
+  insights: string[]; // pullable bits for the story
+};
+
+export const LENSES: Lens[] = [
+  {
+    id: "click",
+    name: "Click",
+    icon: "sparkle",
+    band: "big",
+    question: "Does the right person instantly get it and switch?",
+    reframe: "It clicks in one line: “Your career didn’t end — it paused.” A returning parent feels that immediately.",
+    insights: [
+      "Lead with the line that clicks: “Your career didn’t end. It paused.”",
+      "Name the switch: from cold job boards to a guided path back.",
+    ],
+  },
+  {
+    id: "firstprinciples",
+    name: "First principles",
+    icon: "bolt",
+    band: "big",
+    question: "Strip it down — why is re-entry actually hard?",
+    reframe: "The real blocker isn’t skills, it’s a broken signal: employers can’t read a gap and parents lose confidence. Solve the signal.",
+    insights: [
+      "The core problem is a trust/signal gap, not a skills gap — design for proof, not training.",
+      "The irreducible job is “restore a credible signal to employers”; a cohort is just one way to deliver it.",
+    ],
+  },
+  {
+    id: "blueocean",
+    name: "Blue Ocean",
+    icon: "target",
+    band: "big",
+    question: "Red ocean, or uncontested space?",
+    reframe: "Job boards and bootcamps fight in a red ocean. The open water is guided re-entry sold as an outcome: back to work, with warm intros.",
+    insights: [
+      "Eliminate the cold search box; make warm employer intros the headline value.",
+      "Compete on “back to work in 8 weeks,” not on listings or courses.",
+    ],
+  },
+  {
+    id: "exo",
+    name: "ExO",
+    icon: "chart",
+    band: "big",
+    question: "What makes this 10x, not 10%?",
+    reframe: "An exponential version leverages community, templates, and hiring data — not headcount — to get returners placed at scale.",
+    insights: [
+      "MTP: “Every capable parent back into meaningful work.”",
+      "Scale via community + templated cohorts + an employer network — asset-light, not staff-heavy.",
+    ],
+  },
+  {
+    id: "xprize",
+    name: "XPRIZE",
+    icon: "star",
+    band: "big",
+    question: "Is there an audacious, measurable moonshot?",
+    reframe: "The moonshot is measurable and world-positive: tens of thousands of parents back into meaningful work, income recovered.",
+    insights: [
+      "Set a measurable moonshot: 100,000 parents placed within 3 years.",
+      "Report impact in placements and income recovered — prize-worthy and fundable.",
+    ],
+  },
+  {
+    id: "trimtab",
+    name: "Trimtab",
+    icon: "scale",
+    band: "real",
+    question: "What’s the smallest lever that moves the biggest system?",
+    reframe: "One small move turns the whole flywheel: a handful of warm employer intros creates proof, word-of-mouth, and pricing power.",
+    insights: [
+      "Trimtab: pre-line 5 warm employer intros per cohort — the smallest move that unlocks everything.",
+      "Start with one community (Maya’s 4k) as the lever, not a broad launch.",
+    ],
+  },
+  {
+    id: "lean",
+    name: "Lean",
+    icon: "refresh",
+    band: "real",
+    question: "What’s the riskiest assumption, and the smallest test?",
+    reframe: "Make it real this week: the riskiest belief is that parents pay before results — test it with a paid pilot of twelve.",
+    insights: [
+      "Riskiest assumption: parents pay before seeing outcomes — test with a paid pilot of 12.",
+      "Smallest test: landing page → waitlist → booked calls; decide at day 30.",
+    ],
+  },
+];
