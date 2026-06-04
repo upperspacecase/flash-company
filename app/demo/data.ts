@@ -340,12 +340,6 @@ export type DeckSlide = {
 };
 
 export const VALIDATION = {
-  hypothesis: "We believe returning parents will pay for a guided cohort if it delivers community, real employer intros, and measurable confidence gains within 8 weeks.",
-  assumptions: [
-    "Parents will give an email to join a returnship waitlist.",
-    "At least 1 in 4 waitlisters will book a call.",
-    "Employers will take a warm intro to a vetted returner.",
-  ],
   // Hosted by us once the team publishes the page.
   liveUrl: "flashco.app/v/relaunch",
   // Live signups feed the validation dashboard (seeded for the demo).
@@ -404,16 +398,24 @@ export const PROBLEM_BREAKDOWN = {
 };
 
 // Differentiation, Click-style — "differentiation makes products click."
-// Simple guidance prompts (capability / insight / contrast) plus a clarity score.
+// A statement plus a clarity score (the founder's-advantage detail now lives
+// in the editable Advantage block: capability / insight / motivation).
 export const DIFFERENTIATION = {
   statement: "Community + cohort ops + real employer intros, in one path. Not a job board.",
   clarity: 4, // 0–5
-  guidance: [
-    { key: "Capability", prompt: "What can only this team do?", text: "A trusted 4,000-parent community, a builder, and a brand that's lived the comeback." },
-    { key: "Insight", prompt: "What do you know that the market doesn't?", text: "Job boards are the worst re-entry path — people need a guided cohort, not a search box." },
-    { key: "Contrast", prompt: "Why you over the gorilla?", text: "Warm, guided, outcome-measured — not cold and self-serve like LinkedIn or job boards." },
-  ],
 };
+
+// The Click validation scorecard — the six questions validation answers.
+export const SCORECARD = [
+  { key: "rightCustomer", label: "Right customer?" },
+  { key: "rightProblem", label: "Right problem?" },
+  { key: "rightApproach", label: "Right approach?" },
+  { key: "willSwitch", label: "Will they switch?" },
+  { key: "rightDifferentiation", label: "Right differentiation?" },
+  { key: "doesItClick", label: "Does it click?" },
+] as const;
+
+export type ScorecardKey = (typeof SCORECARD)[number]["key"];
 
 // Earning potential — each model is a real bottoms-up build a founder would
 // put in front of a VC: editable Year-1 drivers + an annual growth rate, which
@@ -513,6 +515,10 @@ export const CAP_TABLE = { pool: 10, vestingDefault: "4 yr · 1 yr cliff" };
 
 export type VentureDraft = {
   thesis: string;
+  // Click worksheet — the Basics / Advantage / Competition output.
+  basics: { customer: string; problem: string };
+  advantage: { capability: string; insight: string; motivation: string };
+  competition: { gorilla: string; alternatives: string };
   purpose: string;
   problem: { painful: number; frequent: number; whyNow: number; payNow: string };
   solution: string;
@@ -521,6 +527,7 @@ export type VentureDraft = {
   revenue: { id: string; growth: number; drivers: Record<string, number> };
   unique: string;
   story: string[]; // bits pulled from the lenses — the narrative the venture is built on
+  scorecard: Record<ScorecardKey, boolean>; // the Click validation scorecard
   capTable: { pool: number; rows: { memberId: string; role: string; responsibility: string; equity: string; vesting: string }[] };
 };
 
@@ -528,6 +535,19 @@ export type VentureDraft = {
 export function makeVentureDraft(): VentureDraft {
   return {
     thesis: CHOSEN.thesis,
+    basics: {
+      customer: "Parents returning to work after a career break — reachable through Maya's 4,000-member community.",
+      problem: "Going back after a break is cold and confidence-eroding; job boards screen out a career gap.",
+    },
+    advantage: {
+      capability: "A trusted 4,000-parent community, a full-stack builder, and a brand that's lived the comeback.",
+      insight: "Job boards are the worst re-entry path — people need a guided cohort, not a search box.",
+      motivation: "We've watched capable people give up on work that mattered. We want them back.",
+    },
+    competition: {
+      gorilla: "LinkedIn / mainstream job boards",
+      alternatives: "Career coaches, returnship bootcamps, Facebook parent groups",
+    },
     purpose: CHOSEN.purpose,
     problem: { ...PROBLEM_BREAKDOWN },
     solution: "An 8-week guided returnship cohort: community, real employer intros, and rebuilt confidence.",
@@ -536,6 +556,7 @@ export function makeVentureDraft(): VentureDraft {
     revenue: revenueDefaults(REVENUE_MODELS[0]),
     unique: CHOSEN.unique,
     story: [],
+    scorecard: { rightCustomer: true, rightProblem: true, rightApproach: false, willSwitch: false, rightDifferentiation: false, doesItClick: false },
     capTable: {
       pool: CAP_TABLE.pool,
       rows: VENTURE_DETAILS.team.map((r) => ({ memberId: r.memberId, role: r.role, responsibility: r.responsibility, equity: "", vesting: CAP_TABLE.vestingDefault })),

@@ -6,7 +6,6 @@ import {
   CHOSEN_ID,
   COHORT,
   CONVERGENCE_SIGNALS,
-  DIFFERENTIATION,
   INTAKE,
   INTAKE_TOTAL,
   INVITE,
@@ -14,6 +13,7 @@ import {
   OPPORTUNITY_SPACES,
   PHASES,
   REVENUE_MODELS,
+  SCORECARD,
   SPRINT,
   TAGLINE,
   VALIDATION,
@@ -31,6 +31,7 @@ import {
   type IntakeSection,
   type Lens,
   type Member,
+  type ScorecardKey,
   type VentureDraft,
 } from "./data";
 
@@ -177,7 +178,7 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
         {phase === 1 && <InputPhase onNext={() => setPhase(2)} />}
         {phase === 2 && <SynthesisPhase onNext={() => setPhase(3)} />}
         {phase === 3 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(4)} />}
-        {!isFree && phase === 4 && <ValidationPhase name={name} venture={venture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
+        {!isFree && phase === 4 && <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
       </main>
     </div>
   );
@@ -792,7 +793,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const CHANNELS = [{ key: "linkedin", label: "LinkedIn" }, { key: "dm", label: "DM" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }] as const;
 
-function ValidationPhase({ name, venture, checkin, onCheckin, published, onPublish }: { name: string; venture: VentureDraft; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void }) {
+function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void }) {
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
   const v = VALIDATION;
   const deck = buildDeck(venture, name);
@@ -819,11 +820,15 @@ function ValidationPhase({ name, venture, checkin, onCheckin, published, onPubli
       }
       center={
         <Card className="p-6">
-          <CenterHead title={`Validate ${name}`} sub="Test the riskiest assumptions with real people before you build." />
-          <Section title="Hypothesis">
-            <div className="rounded-xl bg-sage-tint/30 p-4 text-foreground">{v.hypothesis}</div>
-            <ul className="mt-3 space-y-1.5">{v.assumptions.map((a) => <li key={a} className="flex items-start gap-2 text-sm text-slate-700"><Icon name="target" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{a}</li>)}</ul>
+          <CenterHead title={`Validate ${name}`} sub="Answer the six questions with real people before you build." />
+          <Section title="Founding hypothesis">
+            <FoundingHypothesis v={venture} />
           </Section>
+
+          <div className="mt-6"><Section title="Scorecard">
+            <p className="-mt-1 mb-3 text-xs text-slate-400">What validation is trying to prove. Tick each as the evidence lands.</p>
+            <ClickScorecard score={venture.scorecard} onToggle={(k) => onVenture((p) => ({ ...p, scorecard: { ...p.scorecard, [k]: !p.scorecard[k] } }))} />
+          </Section></div>
 
           <div className="mt-6"><ValidationScorecard published={published} /></div>
 
@@ -1024,14 +1029,25 @@ function SlideStage({ slide, index, total, name }: { slide: DeckSlide; index: nu
 
 /* ----------------------------------------- editable venture detail (Click) */
 
-function EditableArea({ value, onChange, className = "", rows = 2 }: { value: string; onChange: (v: string) => void; className?: string; rows?: number }) {
+function EditableArea({ value, onChange, className = "", rows = 2, placeholder }: { value: string; onChange: (v: string) => void; className?: string; rows?: number; placeholder?: string }) {
   return (
     <textarea
       value={value}
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
+      placeholder={placeholder}
       className={`-mx-1.5 w-full resize-y rounded-md border border-transparent bg-transparent px-1.5 py-1 leading-snug hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none ${className}`}
     />
+  );
+}
+
+// A labelled worksheet box (Click "The Basics / Advantage / Competition" fields).
+function LabeledBox({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <div>
+      <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <div className="rounded-xl border border-slate-200 p-3"><EditableArea value={value} onChange={onChange} rows={3} placeholder={placeholder} className="text-sm text-foreground" /></div>
+    </div>
   );
 }
 
@@ -1053,11 +1069,36 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: {
   const [lensId, setLensId] = useState(LENSES[0].id);
   const lens = LENSES.find((l) => l.id === lensId) ?? LENSES[0];
   const set = <K extends keyof VentureDraft,>(key: K, val: VentureDraft[K]) => onVenture((p) => ({ ...p, [key]: val }));
+  const setBasics = (patch: Partial<VentureDraft["basics"]>) => onVenture((p) => ({ ...p, basics: { ...p.basics, ...patch } }));
+  const setAdvantage = (patch: Partial<VentureDraft["advantage"]>) => onVenture((p) => ({ ...p, advantage: { ...p.advantage, ...patch } }));
+  const setCompetition = (patch: Partial<VentureDraft["competition"]>) => onVenture((p) => ({ ...p, competition: { ...p.competition, ...patch } }));
   const setProblem = (patch: Partial<VentureDraft["problem"]>) => onVenture((p) => ({ ...p, problem: { ...p.problem, ...patch } }));
   const setDiff = (patch: Partial<VentureDraft["differentiation"]>) => onVenture((p) => ({ ...p, differentiation: { ...p.differentiation, ...patch } }));
   const toggleStory = (s: string) => onVenture((p) => ({ ...p, story: p.story.includes(s) ? p.story.filter((x) => x !== s) : [...p.story, s] }));
   return (
     <div className="mt-5 space-y-5">
+      <Section title="The Basics">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-1"><LabeledBox label="Customer" value={venture.basics.customer} onChange={(v) => setBasics({ customer: v })} placeholder="Who exactly?" /></div>
+          <div className="sm:col-span-2"><LabeledBox label="Problem" value={venture.basics.problem} onChange={(v) => setBasics({ problem: v })} placeholder="What's broken for them?" /></div>
+        </div>
+      </Section>
+
+      <Section title="Advantage">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <LabeledBox label="Capability" value={venture.advantage.capability} onChange={(v) => setAdvantage({ capability: v })} placeholder="What can only you do?" />
+          <LabeledBox label="Insight" value={venture.advantage.insight} onChange={(v) => setAdvantage({ insight: v })} placeholder="What do you know that others don't?" />
+          <LabeledBox label="Motivation" value={venture.advantage.motivation} onChange={(v) => setAdvantage({ motivation: v })} placeholder="Why you, why this?" />
+        </div>
+      </Section>
+
+      <Section title="Competition">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-1"><LabeledBox label="800-pound gorilla" value={venture.competition.gorilla} onChange={(v) => setCompetition({ gorilla: v })} placeholder="The incumbent" /></div>
+          <div className="sm:col-span-2"><LabeledBox label="Top alternatives" value={venture.competition.alternatives} onChange={(v) => setCompetition({ alternatives: v })} placeholder="What they use instead" /></div>
+        </div>
+      </Section>
+
       <Section title="Purpose">
         <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-4">
           <p className="text-xs italic text-slate-400">Start with a clear why.</p>
@@ -1123,15 +1164,6 @@ function DifferentiationBlock({ diff, set }: { diff: VentureDraft["differentiati
         <p className="text-xs italic text-slate-400">Differentiation makes products click.</p>
         <EditableArea value={diff.statement} onChange={(val) => set({ statement: val })} className="mt-1 font-medium text-foreground" />
         <div className="mt-3 max-w-xs"><DotScore label="Clarity" value={diff.clarity} onChange={(n) => set({ clarity: n })} /></div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          {DIFFERENTIATION.guidance.map((g) => (
-            <div key={g.key} className="rounded-lg bg-slate-50 p-3">
-              <p className="text-xs font-bold text-sage-dark">{g.key}</p>
-              <p className="text-[11px] font-medium text-slate-400">{g.prompt}</p>
-              <p className="mt-1 text-sm text-slate-700">{g.text}</p>
-            </div>
-          ))}
-        </div>
       </div>
     </Section>
   );
@@ -1304,7 +1336,7 @@ function PublishBar({ published, onPublish, url }: { published: boolean; onPubli
 
 function ValidationScorecard({ published }: { published: boolean }) {
   return (
-    <Section title="Scorecard · what we're testing">
+    <Section title="Live signals">
       <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {VALIDATION.liveMetrics.map((mt) => (
           <div key={mt.label} className="rounded-xl border border-slate-200 p-3">
@@ -1430,4 +1462,42 @@ function buildDeck(v: VentureDraft, name: string): DeckSlide[] {
 
 function buildLanding(v: VentureDraft): typeof VALIDATION.landing {
   return { ...VALIDATION.landing, subhead: v.solution };
+}
+
+/* ----------------------------------------- validation: Click hypothesis + scorecard */
+
+// The Click "Founding Hypothesis" sentence, composed live from the venture.
+function FoundingHypothesis({ v }: { v: VentureDraft }) {
+  const comp = [v.competition.gorilla, v.competition.alternatives].filter(Boolean).join(" / ") || "competitors";
+  const part = (text: string, fallback: string) => <span className="rounded-md bg-sage-tint px-1.5 py-0.5 font-semibold text-sage-dark">{text || fallback}</span>;
+  return (
+    <div className="rounded-xl border border-slate-200 p-5 text-[15px] leading-relaxed text-slate-700">
+      If we help {part(v.basics.customer, "customer")} solve {part(v.basics.problem, "problem")} with {part(v.solution, "approach")}, they will choose it over {part(comp, "competitors")} because our solution is {part(v.differentiation.statement, "differentiation")}.
+    </div>
+  );
+}
+
+function ClickScorecard({ score, onToggle }: { score: Record<ScorecardKey, boolean>; onToggle: (k: ScorecardKey) => void }) {
+  const done = SCORECARD.filter((s) => score[s.key]).length;
+  return (
+    <div className="rounded-xl border border-slate-200 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm text-slate-500">Six checks to clear before you commit.</p>
+        <span className="rounded-lg bg-sage px-2.5 py-1 text-sm font-bold tabular-nums text-white">{done}/{SCORECARD.length}</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {SCORECARD.map((s) => {
+          const on = score[s.key];
+          return (
+            <button key={s.key} onClick={() => onToggle(s.key)} className={`flex items-center gap-2.5 rounded-lg border p-2.5 text-left text-sm font-semibold transition-colors ${on ? "border-sage bg-sage-tint/30 text-foreground" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>
+              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${on ? "bg-sage text-white" : "border border-slate-300"}`}>
+                {on && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m5 12 5 5L20 7" /></svg>}
+              </span>
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
