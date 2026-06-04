@@ -63,9 +63,7 @@ export type IntakeField =
   | { kind: "long"; voice?: boolean; max?: number; placeholder?: string }
   | { kind: "slider"; min: number; max: number; step: number; unit?: string }
   | { kind: "location"; placeholder?: string }
-  | { kind: "multiLocation" }
   | { kind: "multiSelect"; options: string[]; allowOther?: boolean }
-  | { kind: "select"; options: string[] } // single-select + an optional note
   | { kind: "ranked"; options: string[] }; // ranked multi-select + an optional note
 
 export type IntakeQuestion = { id: string; q: string; help?: string; optional?: boolean; field: IntakeField };
@@ -76,14 +74,25 @@ const ROLE_OPTIONS = ["Founder/CEO", "CTO/Technical lead", "Product manager", "D
 const INDUSTRY_OPTIONS = ["Tech/Startup", "Real estate", "Rural land", "Agriculture", "Creative/Design", "Health/Wellness", "Education", "Finance", "Hospitality", "Environmental"];
 const PUT_IN_OPTIONS = ["Money", "Tools", "Audience", "Introductions", "Space/Equipment"];
 
+// Every free-text question accepts a voice note except the name.
 export const INTAKE: IntakeSection[] = [
   {
     id: "identity", title: "Identity & anchor", blurb: "The basics — who you are and where you're based.",
     questions: [
       { id: "name", q: "What's your name?", field: { kind: "short", placeholder: "Your name" } },
-      { id: "location", q: "What's your primary location?", help: "We'll infer your timezone.", field: { kind: "location", placeholder: "City, Country" } },
-      { id: "otherLocations", q: "Any other locations that shaped who you are?", optional: true, field: { kind: "multiLocation" } },
+      { id: "location", q: "What's your primary location?", help: "As specific as you like — city, region, or exact spot. We'll infer your timezone.", field: { kind: "location", placeholder: "Where are you based?" } },
+      { id: "otherLocations", q: "Any other locations that shaped who you are?", help: "Comma-separated. As specific as you like.", optional: true, field: { kind: "short", placeholder: "e.g. Lisbon, rural Otago, Berlin" } },
       { id: "languages", q: "What languages do you speak fluently?", field: { kind: "multiSelect", options: LANGUAGES, allowOther: true } },
+    ],
+  },
+  {
+    id: "done", title: "What you've done", blurb: "Track record — what you've built and learned.",
+    questions: [
+      { id: "built", q: "What have you built, sold, or run before — even something small?", field: { kind: "long", voice: true, max: 500 } },
+      { id: "roles", q: "What roles have you held in the past 5 years?", field: { kind: "multiSelect", options: ROLE_OPTIONS, allowOther: true } },
+      { id: "orgs", q: "What organisations have you worked for or with?", help: "The most significant — companies, startups, nonprofits, agencies, projects. If they're not well known, add a little context.", field: { kind: "long", voice: true, max: 500 } },
+      { id: "achievements", q: "What major achievements have you made in those roles?", help: "Specific outcomes — revenue, users, systems built, teams led, problems solved.", field: { kind: "long", voice: true, max: 500 } },
+      { id: "failure", q: "Tell us about a time you failed and what you learned.", field: { kind: "long", voice: true, max: 500 } },
     ],
   },
   {
@@ -91,36 +100,26 @@ export const INTAKE: IntakeSection[] = [
     questions: [
       { id: "greatAt", q: "What are you genuinely great at? Not good — great.", field: { kind: "short", voice: true, max: 200 } },
       { id: "paidFor", q: "What have people paid you for?", field: { kind: "short", voice: true, max: 200 } },
-      { id: "superpowers", q: "What are your hidden superpowers others overlook?", field: { kind: "short", max: 500 } },
-    ],
-  },
-  {
-    id: "done", title: "What you've done", blurb: "Track record — what you've built and learned.",
-    questions: [
-      { id: "built", q: "What have you built, sold, or run before — even something small?", field: { kind: "long", max: 500 } },
-      { id: "roles", q: "What roles have you held in the past 5 years?", field: { kind: "multiSelect", options: ROLE_OPTIONS, allowOther: true } },
-      { id: "orgs", q: "What organisations have you worked for or with?", help: "The most significant — companies, startups, nonprofits, agencies, projects. One per line with your role.", field: { kind: "long", max: 500 } },
-      { id: "achievements", q: "What major achievements have you made in those roles?", help: "Specific outcomes — revenue, users, systems built, teams led, problems solved.", field: { kind: "long", max: 500 } },
-      { id: "failure", q: "Tell us about a time you failed and what you learned.", field: { kind: "long", max: 500 } },
+      { id: "superpowers", q: "What are your hidden superpowers others overlook?", field: { kind: "short", voice: true, max: 500 } },
     ],
   },
   {
     id: "work", title: "How you work", blurb: "How you operate, decide, and handle friction.",
     questions: [
-      { id: "decisions", q: "How do you make decisions?", field: { kind: "select", options: ["Fast gut", "Slow data", "Talk it out", "Wait for clarity"] } },
-      { id: "pressure", q: "How are you under pressure?", field: { kind: "select", options: ["Push harder", "Step back", "Freeze", "Find flow"] } },
-      { id: "conflict", q: "How do you prefer to handle conflict?", field: { kind: "select", options: ["Direct", "Avoidant", "Mediate", "Escalate"] } },
+      { id: "decisions", q: "How do you make decisions?", help: "Pick any that fit.", field: { kind: "multiSelect", options: ["Fast gut", "Slow data", "Talk it out", "Wait for clarity"], allowOther: true } },
+      { id: "pressure", q: "How are you under pressure?", help: "Pick any that fit.", field: { kind: "multiSelect", options: ["Push harder", "Step back", "Freeze", "Find flow"], allowOther: true } },
+      { id: "conflict", q: "How do you prefer to handle conflict?", help: "Pick any that fit.", field: { kind: "multiSelect", options: ["Direct", "Avoidant", "Mediate", "Escalate"], allowOther: true } },
       { id: "comms", q: "How do you prefer to communicate?", help: "Tap in order of preference.", field: { kind: "ranked", options: ["Text", "Voice memo", "Video call", "In-person"] } },
       { id: "energizes", q: "What work energises you?", field: { kind: "short", voice: true, max: 200 } },
       { id: "drains", q: "What work drains you?", field: { kind: "short", voice: true, max: 200 } },
-      { id: "boundary", q: "What's your absolute boundary — what makes you quit?", field: { kind: "long", max: 500 } },
+      { id: "boundary", q: "What's your absolute boundary — what makes you quit?", field: { kind: "long", voice: true, max: 500 } },
     ],
   },
   {
     id: "putIn", title: "What you'll put in", blurb: "Who you can reach, and what you can commit.",
     questions: [
       { id: "industries", q: "What industries or communities are you embedded in?", field: { kind: "multiSelect", options: INDUSTRY_OPTIONS, allowOther: true } },
-      { id: "market", q: "What's a market you can reach that most people can't?", field: { kind: "short", max: 200 } },
+      { id: "market", q: "What's a market you can reach that most people can't?", field: { kind: "short", voice: true, max: 200 } },
       { id: "hours", q: "How many hours per week can you commit?", field: { kind: "slider", min: 0, max: 60, step: 5, unit: "hrs/wk" } },
       { id: "runway", q: "How many months of financial runway without income?", field: { kind: "slider", min: 0, max: 24, step: 1, unit: "months" } },
       { id: "putIn", q: "Beyond time, what can you put in?", help: "Money, tools, an audience, introductions.", field: { kind: "multiSelect", options: PUT_IN_OPTIONS, allowOther: true } },

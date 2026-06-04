@@ -299,19 +299,17 @@ function InvitePhase({ onNext }: { onNext: () => void }) {
 // local state and aren't wired anywhere yet.
 
 type MultiVal = { sel: string[]; other: string };
-type SelectVal = { choice: string; note: string };
 type RankedVal = { ranked: string[]; note: string };
 
 const asStr = (v: unknown) => (typeof v === "string" ? v : "");
-const asArr = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
 function asMulti(v: unknown): MultiVal {
   return v && typeof v === "object" && Array.isArray((v as MultiVal).sel) ? (v as MultiVal) : { sel: [], other: "" };
 }
-function asSelect(v: unknown): SelectVal {
-  return v && typeof v === "object" && "choice" in v ? (v as SelectVal) : { choice: "", note: "" };
-}
 function asRanked(v: unknown): RankedVal {
   return v && typeof v === "object" && "ranked" in v ? (v as RankedVal) : { ranked: [], note: "" };
+}
+function isVoiceable(f: IntakeField): boolean {
+  return (f.kind === "short" || f.kind === "long") && !!f.voice;
 }
 function isAnswered(v: unknown): boolean {
   if (v == null) return false;
@@ -386,8 +384,14 @@ function InputPhase({ onNext }: { onNext: () => void }) {
 }
 
 function IntakeNav({ curSi, answeredIn }: { curSi: number; answeredIn: (s: IntakeSection) => number }) {
+  const youDone = INTAKE.reduce((n, s) => n + answeredIn(s), 0);
+  const team = [
+    { id: "maya", done: youDone, you: true },
+    { id: "alex", done: INTAKE_TOTAL, you: false },
+    { id: "priya", done: 19, you: false },
+  ];
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:sticky lg:top-4">
       <RailTitle>Your intake</RailTitle>
       <p className="px-1 text-xs text-slate-400">Six sections, conversational. Anonymous until synthesis.</p>
       <div className="space-y-1.5">
@@ -406,9 +410,24 @@ function IntakeNav({ curSi, answeredIn }: { curSi: number; answeredIn: (s: Intak
           );
         })}
       </div>
-      <div className="flex items-center gap-2 px-1 pt-1">
-        <div className="flex -space-x-2">{COHORT.map((m) => <Avatar key={m.id} m={m} size="h-7 w-7 text-[10px]" />)}</div>
-        <p className="text-xs text-slate-400">Maya (you), Alex, and Priya each answer separately.</p>
+      <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
+        {team.map((t) => {
+          const m = memberById(t.id);
+          const pct = Math.round((t.done / INTAKE_TOTAL) * 100);
+          return (
+            <div key={t.id} className="flex items-center gap-2.5">
+              <Avatar m={m} size="h-7 w-7 text-[10px]" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground">{m.name}{t.you && <span className="font-normal text-slate-400"> (you)</span>}</span>
+                  <span className="tabular-nums text-slate-400">{t.done}/{INTAKE_TOTAL}</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-sage" style={{ width: `${pct}%` }} /></div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -434,6 +453,7 @@ function AgentBubble({ q, text }: { q?: IntakeQuestion; text?: string }) {
       <div className="max-w-lg rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5">
         <p className="text-sm text-slate-700">{q ? q.q : text}</p>
         {q?.help && <p className="mt-1 text-xs text-slate-400">{q.help}</p>}
+        {q && isVoiceable(q.field) && <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-sage-dark"><Icon name="mic" className="h-3 w-3" /> Voice or text</p>}
       </div>
     </div>
   );
@@ -459,17 +479,11 @@ function formatAnswer(f: IntakeField, v: unknown): string {
       return asStr(v);
     case "slider":
       return `${typeof v === "number" ? v : f.min} ${f.unit ?? ""}`.trim();
-    case "multiLocation":
-      return asArr(v).join(", ");
     case "multiSelect": {
       const m = asMulti(v);
       const sel = m.sel.filter((x) => x !== "Other");
       if (m.sel.includes("Other") && m.other) sel.push(m.other);
       return sel.join(", ");
-    }
-    case "select": {
-      const s = asSelect(v);
-      return [s.choice, s.note].filter(Boolean).join(" — ");
     }
     case "ranked": {
       const r = asRanked(v);
@@ -489,9 +503,7 @@ function Composer({ q, value, onChange, voice, onVoice, canSend, onSend }: { q: 
         {(f.kind === "short" || f.kind === "long") && <TextControl value={asStr(value)} onChange={onChange} max={f.max} placeholder={f.placeholder} multiline={f.kind === "long"} voiceable={f.voice} voice={voice} onVoice={onVoice} onEnter={canSend ? onSend : undefined} />}
         {f.kind === "slider" && <SliderControl value={typeof value === "number" ? value : f.min} onChange={onChange} min={f.min} max={f.max} step={f.step} unit={f.unit} />}
         {f.kind === "location" && <LocationControl value={asStr(value)} onChange={onChange} placeholder={f.placeholder} />}
-        {f.kind === "multiLocation" && <ChipsInput value={asArr(value)} onChange={onChange} />}
         {f.kind === "multiSelect" && <MultiSelectControl value={asMulti(value)} onChange={onChange} options={f.options} allowOther={f.allowOther} />}
-        {f.kind === "select" && <SelectControl value={asSelect(value)} onChange={onChange} options={f.options} />}
         {f.kind === "ranked" && <RankedControl value={asRanked(value)} onChange={onChange} options={f.options} />}
       </div>
       <div className="flex items-center justify-end">
@@ -547,20 +559,6 @@ function LocationControl({ value, onChange, placeholder }: { value: string; onCh
   );
 }
 
-function ChipsInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const [draft, setDraft] = useState("");
-  const add = () => { const t = draft.trim(); if (t && !value.includes(t)) onChange([...value, t]); setDraft(""); };
-  return (
-    <div>
-      <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-2 focus-within:border-sage">
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} placeholder="Add a place, press Enter" className="min-w-0 flex-1 px-1 text-sm text-foreground focus:outline-none" />
-        <button onClick={add} className="shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200">Add</button>
-      </div>
-      {value.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{value.map((c) => <span key={c} className="inline-flex items-center gap-1 rounded-lg bg-sage-tint px-2.5 py-1 text-xs font-medium text-sage-dark">{c}<button onClick={() => onChange(value.filter((x) => x !== c))} aria-label={`Remove ${c}`} className="text-sage-dark/60 hover:text-sage-dark"><Icon name="minus" className="h-3 w-3" /></button></span>)}</div>}
-    </div>
-  );
-}
-
 function MultiSelectControl({ value, onChange, options, allowOther }: { value: MultiVal; onChange: (v: MultiVal) => void; options: string[]; allowOther?: boolean }) {
   const toggle = (o: string) => onChange({ ...value, sel: value.sel.includes(o) ? value.sel.filter((x) => x !== o) : [...value.sel, o] });
   const items = allowOther ? [...options, "Other"] : options;
@@ -570,18 +568,6 @@ function MultiSelectControl({ value, onChange, options, allowOther }: { value: M
         {items.map((o) => { const on = value.sel.includes(o); return <button key={o} onClick={() => toggle(o)} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>{o}</button>; })}
       </div>
       {allowOther && value.sel.includes("Other") && <input value={value.other} onChange={(e) => onChange({ ...value, other: e.target.value })} placeholder="Tell us more" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-sage focus:outline-none" />}
-    </div>
-  );
-}
-
-function SelectControl({ value, onChange, options }: { value: SelectVal; onChange: (v: SelectVal) => void; options: string[] }) {
-  const items = [...options, "Other"];
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2">
-        {items.map((o) => { const on = value.choice === o; return <button key={o} onClick={() => onChange({ ...value, choice: o })} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>{o}</button>; })}
-      </div>
-      <input value={value.note} onChange={(e) => onChange({ ...value, note: e.target.value })} placeholder="Add a line if you like" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-sage focus:outline-none" />
     </div>
   );
 }
