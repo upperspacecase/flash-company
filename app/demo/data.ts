@@ -151,24 +151,63 @@ export const CONVERGENCE_SIGNALS: Signal[] = [
   { icon: "chart", kind: "Market signal", tone: "good", text: "The motherhood penalty and the rise of returnships put timing on your side." },
 ];
 
-export type Slider = { spark: number; conviction: number }; // 0–5
+// --- Team ---
 
-export type OpportunitySpace = {
-  id: string;
-  title: string;
-  text: string;
-  votes: number;
-  spark: number;
-  conviction: number;
-  top?: boolean;
+// Energy/skill map. 0–5 energy per skill: high = it energises you ("create"),
+// low = it drains you. Editable in the demo.
+export const SKILLS = ["Product", "Engineering", "Design", "Sales & GTM", "Community", "Ops & Finance", "Brand", "Research"];
+export const SKILL_ENERGY: Record<string, number[]> = {
+  maya: [3, 1, 2, 4, 5, 2, 4, 3],
+  alex: [4, 5, 2, 2, 1, 4, 1, 3],
+  priya: [2, 1, 5, 3, 3, 1, 5, 2],
 };
 
-export const OPPORTUNITY_SPACES: OpportunitySpace[] = [
-  { id: "reentry", title: "Guided re-entry for parents", text: "A supportive, structured path back to work for parents after a career break.", votes: 3, spark: 5, conviction: 5, top: true },
-  { id: "employer", title: "Employer returnship programmes", text: "Help companies run structured returnships and hire from an overlooked talent pool.", votes: 2, spark: 4, conviction: 3 },
-  { id: "confidence", title: "Confidence & coaching for returners", text: "Rebuild the confidence that erodes during time out of the workforce.", votes: 2, spark: 4, conviction: 4 },
-  { id: "flexmatch", title: "Flexible-role matching", text: "Connect returners with genuinely flexible roles, not only 'remote-friendly'.", votes: 1, spark: 3, conviction: 3 },
-  { id: "community", title: "Community for career returners", text: "A place returners swap leads, stories, and accountability.", votes: 2, spark: 4, conviction: 3 },
+// Network map — industry- and location-based opportunities.
+export type NetworkNode = { name: string; kind: "industry" | "location"; members: string[]; opportunity: string };
+export const NETWORK: NetworkNode[] = [
+  { name: "Parent communities", kind: "industry", members: ["maya"], opportunity: "Warm distribution to thousands of returning parents." },
+  { name: "Fintech", kind: "industry", members: ["alex"], opportunity: "Compliance rigor; payments and payroll know-how." },
+  { name: "Creator & design", kind: "industry", members: ["priya"], opportunity: "A content engine and a network of creators for reach." },
+  { name: "Auckland, NZ", kind: "location", members: ["maya", "priya"], opportunity: "Local employer pilots and in-person cohort events." },
+  { name: "Remote / global", kind: "location", members: ["alex"], opportunity: "Async build; reach beyond a single city." },
+];
+
+// Proposed roles & tasks (editable, confirmable).
+export const SYNTH_ROLES = [
+  { memberId: "maya", role: "Community & GTM", tasks: "Recruit cohorts; own brand voice and member trust." },
+  { memberId: "alex", role: "Product & Engineering", tasks: "Build the platform, signup, and employer-intro flow." },
+  { memberId: "priya", role: "Brand & Content", tasks: "Run the comeback-story content engine and brand." },
+];
+
+// --- Opportunity ---
+
+// Votable lists. `votes` = what the OTHER two members have already cast; "you"
+// add up to SYNTH_VOTES_EACH per list in the demo.
+export type Votable = { id: string; text: string; votes: number };
+export const SYNTH_VOTES_EACH = 3;
+
+export const LIVED_PROBLEMS: Votable[] = [
+  { id: "reentry", text: "Parents can't find a supportive path back to work after a break.", votes: 2 },
+  { id: "gap", text: "A career gap gets you screened out before a human ever sees you.", votes: 2 },
+  { id: "confidence", text: "Confidence erodes during time out — people stop applying.", votes: 1 },
+  { id: "flex", text: "'Flexible' roles are rarely actually flexible.", votes: 1 },
+  { id: "isolation", text: "Returning is lonely — no peers going through the same thing.", votes: 0 },
+];
+
+export const OBSESSIONS: Votable[] = [
+  { id: "capable", text: "Helping capable people feel capable again after a setback.", votes: 2 },
+  { id: "comeback", text: "The comeback story — making returning feel normal, not shameful.", votes: 2 },
+  { id: "matching", text: "Matching hidden talent to the employers who'd value it.", votes: 1 },
+  { id: "secondact", text: "Second-act careers and reinvention at any age.", votes: 1 },
+];
+
+export const TARGET_MARKETS: Votable[] = [
+  { id: "parents", text: "Parents returning after a 1–5 year break.", votes: 3 },
+  { id: "employers", text: "Employers running structured returnship programmes.", votes: 1 },
+  { id: "carers", text: "Carers returning after time out for family.", votes: 1 },
+  { id: "changers", text: "Mid-career changers re-entering a new field.", votes: 1 },
+  { id: "expats", text: "Returning expats rebuilding a local network.", votes: 0 },
+  { id: "students", text: "Mature students entering the workforce late.", votes: 0 },
 ];
 
 // ------------------------------------------------------------ Ventures

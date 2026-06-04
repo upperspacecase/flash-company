@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   APPROACH_OPTIONS,
   CHOSEN_ID,
@@ -11,13 +11,20 @@ import {
   INTAKE_TOTAL,
   INVITE,
   LENSES,
+  LIVED_PROBLEMS,
   MARKET_REPORT,
-  OPPORTUNITY_SPACES,
+  NETWORK,
+  OBSESSIONS,
   PHASES,
   REVENUE_MODELS,
   SCORECARD,
+  SKILLS,
+  SKILL_ENERGY,
   SPRINT,
+  SYNTH_ROLES,
+  SYNTH_VOTES_EACH,
   TAGLINE,
+  TARGET_MARKETS,
   VALIDATION,
   VENTURES,
   VENTURE_DETAILS,
@@ -35,6 +42,7 @@ import {
   type Member,
   type ScorecardKey,
   type VentureDraft,
+  type Votable,
 } from "./data";
 
 /* ---------------------------------------------------------------- icons */
@@ -92,9 +100,6 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 function Chip({ children }: { children: React.ReactNode }) {
   return <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{children}</span>;
-}
-function RailIcon({ name }: { name: IconName }) {
-  return <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sage-tint text-sage-dark"><Icon name={name} className="h-4 w-4" /></span>;
 }
 function CheckRow({ label, done = true }: { label: string; done?: boolean }) {
   return (
@@ -600,58 +605,265 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
 /* ----------------------------------------------------- 2. Synthesis */
 
 function SynthesisPhase({ onNext }: { onNext: () => void }) {
+  const [energy, setEnergy] = useState<Record<string, number[]>>(() => ({ maya: [...SKILL_ENERGY.maya], alex: [...SKILL_ENERGY.alex], priya: [...SKILL_ENERGY.priya] }));
+  const [view, setView] = useState("team");
+  const [roles, setRoles] = useState(SYNTH_ROLES.map((r) => ({ ...r })));
+  const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
+  const [problems, setProblems] = useState<Votable[]>(LIVED_PROBLEMS.map((p) => ({ ...p })));
+  const [obsessions, setObsessions] = useState<Votable[]>(OBSESSIONS.map((p) => ({ ...p })));
+  const [markets, setMarkets] = useState<Votable[]>(TARGET_MARKETS.map((p) => ({ ...p })));
+  const [picks, setPicks] = useState<{ problems: string[]; obsessions: string[]; markets: string[] }>({ problems: [], obsessions: [], markets: [] });
+  const [whys, setWhys] = useState<Record<string, string[]>>({});
+
+  const vote = (list: "problems" | "obsessions" | "markets", id: string) =>
+    setPicks((p) => {
+      const cur = p[list];
+      if (cur.includes(id)) return { ...p, [list]: cur.filter((x) => x !== id) };
+      if (cur.length >= SYNTH_VOTES_EACH) return p;
+      return { ...p, [list]: [...cur, id] };
+    });
+
   return (
     <Columns
       left={
         <div className="space-y-4">
-          <RailTitle>What the agent did</RailTitle>
+          <RailTitle>Day 1 window</RailTitle>
+          <Card className="bg-amber-50/40">
+            <CountdownBadge />
+            <p className="mt-2 text-xs text-slate-500">Lists are derived from the last 24h of input and keep updating as people edit.</p>
+          </Card>
+          <RailTitle>Steps</RailTitle>
           {[
-            { icon: "doc" as IconName, t: "Read every answer", d: "Across all three intakes." },
-            { icon: "chart" as IconName, t: "Deep market research", d: "Gaps, documented pain points, first principles." },
-            { icon: "sparkle" as IconName, t: "Best practices", d: "Lean startup, growth hacking, org singularity." },
+            { t: "Review input", d: "All three intakes read.", done: true },
+            { t: "Team", d: "Energy, network, roles." },
+            { t: "Opportunity", d: "Problems, obsessions, markets." },
+            { t: "Outcome", d: "Top picks carry forward." },
           ].map((s) => (
-            <Card key={s.t}><div className="flex gap-3"><RailIcon name={s.icon} /><div><p className="font-bold text-foreground">{s.t}</p><p className="mt-0.5 text-sm text-slate-600">{s.d}</p></div></div></Card>
+            <Card key={s.t}>
+              <div className="flex items-center gap-3">
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${s.done ? "bg-sage text-white" : "bg-slate-100 text-slate-400"}`}>{s.done ? <Icon name="check" className="h-3 w-3" /> : ""}</span>
+                <div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div>
+              </div>
+            </Card>
           ))}
         </div>
       }
       center={
-        <Card className="p-6">
-          <CenterHead title="Synthesis" sub="Your convergence map, and the opportunity spaces it points to." />
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Convergence map</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {CONVERGENCE_SIGNALS.map((s) => (
-              <div key={s.kind} className={`rounded-xl border p-3 ${s.tone === "warn" ? "border-amber-200 bg-amber-50/60" : "border-sage/30 bg-sage-tint/20"}`}>
-                <p className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${s.tone === "warn" ? "text-amber-700" : "text-sage-dark"}`}><Icon name={s.icon} className="h-3.5 w-3.5" />{s.kind}</p>
-                <p className="mt-1 text-sm text-slate-700">{s.text}</p>
-              </div>
-            ))}
-          </div>
+        <div className="space-y-5">
+          <Card className="p-5">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Synthesis</h1>
+            <p className="mt-1 text-slate-500">The agent read all three intakes. Edit, vote, and narrow to a focus.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {CONVERGENCE_SIGNALS.map((s) => (
+                <span key={s.kind} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${s.tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-sage-tint/40 text-sage-dark"}`}><Icon name={s.icon} className="h-3.5 w-3.5" />{s.kind}</span>
+              ))}
+            </div>
+          </Card>
 
-          <p className="mb-3 mt-7 text-xs font-bold uppercase tracking-wide text-slate-400">Opportunity spaces</p>
-          <div className="space-y-3">
-            {OPPORTUNITY_SPACES.map((o) => (
-              <div key={o.id} className={`rounded-xl border p-4 ${o.top ? "border-sage bg-sage-tint/20" : "border-slate-200"}`}>
-                <div className="flex items-center gap-2">
-                  <p className="font-bold text-foreground">{o.title}</p>
-                  {o.top && <span className="rounded-full bg-sage px-2 py-0.5 text-[10px] font-bold uppercase text-white">Top space</span>}
-                  <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-slate-500"><Icon name="thumb" className="h-3.5 w-3.5" />{o.votes}</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-600">{o.text}</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2"><Bars label="Spark" value={o.spark} /><Bars label="Conviction" value={o.conviction} /></div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 flex justify-end"><PrimaryBtn label="See venture outlines" onClick={onNext} icon="sparkle" /></div>
-        </Card>
-      }
-      right={
-        <div className="space-y-4">
-          <RailTitle>Your input</RailTitle>
-          <Card><p className="text-sm text-slate-600">Spark and conviction are your sliders — how much energy and belief each space pulls from the team.</p></Card>
-          <Card className="bg-sage-tint/30"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="comment" className="h-4 w-4 text-sage" /> Comment & vote</p><p className="mt-1 text-sm text-slate-600">Each person weighs in before the agent drafts ventures.</p></Card>
+          <Part label="Team" hint="Who you are together.">
+            <Section title="Energy & skill map">
+              <SkillRadar energy={energy} view={view} onView={setView} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
+            </Section>
+            <Section title="Network map"><NetworkMap /></Section>
+            <Section title="Roles & tasks"><RolesTasks roles={roles} onRoles={setRoles} confirmed={confirmed} onConfirm={(id) => setConfirmed((c) => ({ ...c, [id]: !c[id] }))} /></Section>
+          </Part>
+
+          <Part label="Opportunity" hint="Each person edits, then 3 votes to narrow focus.">
+            <Section title="Lived problems">
+              <VotableList items={problems} onItems={setProblems} picks={picks.problems} onVote={(id) => vote("problems", id)} votesLeft={SYNTH_VOTES_EACH - picks.problems.length} addLabel="problem" whys={whys} onWhys={(id, arr) => setWhys((w) => ({ ...w, [id]: arr }))} />
+            </Section>
+            <Section title="Obsessions & moonshots">
+              <VotableList items={obsessions} onItems={setObsessions} picks={picks.obsessions} onVote={(id) => vote("obsessions", id)} votesLeft={SYNTH_VOTES_EACH - picks.obsessions.length} addLabel="obsession" />
+            </Section>
+            <Section title="Potential target markets">
+              <VotableList items={markets} onItems={setMarkets} picks={picks.markets} onVote={(id) => vote("markets", id)} votesLeft={SYNTH_VOTES_EACH - picks.markets.length} addLabel="market" />
+            </Section>
+          </Part>
+
+          <div className="flex justify-end"><PrimaryBtn label="Lock focus & draft ventures" onClick={onNext} icon="sparkle" /></div>
         </div>
       }
+      right={<OutcomePanel problems={problems} obsessions={obsessions} markets={markets} picks={picks} />}
     />
+  );
+}
+
+function CountdownBadge() {
+  const [s, setS] = useState(23 * 3600 + 47 * 60 + 12);
+  useEffect(() => {
+    const id = setInterval(() => setS((x) => (x > 0 ? x - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-bold tabular-nums text-amber-700">
+      <Icon name="clock" className="h-4 w-4" /> {p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)} left
+    </span>
+  );
+}
+
+function SkillRadar({ energy, view, onView, onEnergy }: { energy: Record<string, number[]>; view: string; onView: (v: string) => void; onEnergy: (id: string, i: number, val: number) => void }) {
+  const n = SKILLS.length, cx = 130, cy = 128, R = 88, max = 5;
+  const pt = (i: number, val: number): [number, number] => {
+    const a = (Math.PI * 2 * i) / n - Math.PI / 2;
+    const r = (val / max) * R;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  };
+  const team = SKILLS.map((_, i) => COHORT.reduce((sum, m) => sum + energy[m.id][i], 0) / COHORT.length);
+  const polyStr = (vals: number[]) => vals.map((v, i) => { const [x, y] = pt(i, v); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(" ");
+  const isMember = view !== "team";
+  return (
+    <div className="grid items-center gap-4 lg:grid-cols-2">
+      <svg viewBox="0 0 260 260" className="mx-auto w-full max-w-[300px]">
+        {[1, 2, 3, 4, 5].map((ring) => <polygon key={ring} points={polyStr(SKILLS.map(() => ring))} fill="none" stroke="#e2e8f0" strokeWidth="1" />)}
+        {SKILLS.map((label, i) => {
+          const [x, y] = pt(i, max);
+          const [lx, ly] = pt(i, max + 0.85);
+          return (
+            <g key={label}>
+              <line x1={cx} y1={cy} x2={x} y2={y} stroke="#e2e8f0" strokeWidth="1" />
+              <text x={lx} y={ly} fontSize="7.5" fill="#64748b" textAnchor={lx > cx + 6 ? "start" : lx < cx - 6 ? "end" : "middle"} dominantBaseline="middle">{label}</text>
+            </g>
+          );
+        })}
+        {!isMember && COHORT.map((m) => <polygon key={m.id} points={polyStr(energy[m.id])} fill="none" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 3" />)}
+        <polygon points={polyStr(isMember ? energy[view] : team)} fill="rgba(111,143,95,0.18)" stroke="#6f8f5f" strokeWidth="2" />
+      </svg>
+      <div>
+        <div className="flex flex-wrap gap-1.5">
+          {["team", ...COHORT.map((m) => m.id)].map((id) => {
+            const active = view === id;
+            return <button key={id} onClick={() => onView(id)} className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${active ? "bg-sage text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{id === "team" ? "Team" : memberById(id).name}</button>;
+          })}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">Outer = energises (create), inner = drains. {isMember ? "Adjust the dots to edit." : "Team is the average; dashed = each person."}</p>
+        {isMember && (
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+            {SKILLS.map((label, i) => <DotScore key={label} label={label} value={energy[view][i]} onChange={(val) => onEnergy(view, i, val)} />)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NetworkMap() {
+  const group = (title: string, kind: "industry" | "location", icon: IconName) => (
+    <div>
+      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">{title}</p>
+      <div className="space-y-2">
+        {NETWORK.filter((node) => node.kind === kind).map((node) => (
+          <div key={node.name} className="rounded-xl border border-slate-200 p-3">
+            <div className="flex items-center gap-2">
+              <Icon name={icon} className="h-4 w-4 shrink-0 text-sage" />
+              <p className="text-sm font-semibold text-foreground">{node.name}</p>
+              <div className="ml-auto flex -space-x-1.5">{node.members.map((id) => <Avatar key={id} m={memberById(id)} size="h-6 w-6 text-[9px]" />)}</div>
+            </div>
+            <p className="mt-1.5 text-sm text-slate-600">{node.opportunity}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+  return <div className="grid gap-4 sm:grid-cols-2">{group("Industries", "industry", "building")}{group("Locations", "location", "target")}</div>;
+}
+
+function RolesTasks({ roles, onRoles, confirmed, onConfirm }: { roles: typeof SYNTH_ROLES; onRoles: (r: typeof SYNTH_ROLES) => void; confirmed: Record<string, boolean>; onConfirm: (id: string) => void }) {
+  const setRole = (id: string, patch: Partial<(typeof SYNTH_ROLES)[number]>) => onRoles(roles.map((r) => (r.memberId === id ? { ...r, ...patch } : r)));
+  return (
+    <div className="space-y-2">
+      {roles.map((r) => {
+        const m = memberById(r.memberId);
+        const ok = confirmed[r.memberId];
+        return (
+          <div key={r.memberId} className="rounded-xl border border-slate-200 p-3">
+            <div className="flex items-center gap-2">
+              <Avatar m={m} size="h-8 w-8 text-[10px]" />
+              <input value={r.role} onChange={(e) => setRole(r.memberId, { role: e.target.value })} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none" />
+              <button onClick={() => onConfirm(r.memberId)} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${ok ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={ok ? "check" : "thumb"} className="h-3.5 w-3.5" />{ok ? "Confirmed" : "Confirm"}</button>
+            </div>
+            <input value={r.tasks} onChange={(e) => setRole(r.memberId, { tasks: e.target.value })} className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-xs text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none" />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function VotableList({ items, onItems, picks, onVote, votesLeft, addLabel, whys, onWhys }: { items: Votable[]; onItems: (v: Votable[]) => void; picks: string[]; onVote: (id: string) => void; votesLeft: number; addLabel: string; whys?: Record<string, string[]>; onWhys?: (id: string, arr: string[]) => void }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [seq, setSeq] = useState(0);
+  const setText = (id: string, text: string) => onItems(items.map((i) => (i.id === id ? { ...i, text } : i)));
+  return (
+    <div>
+      <p className="-mt-1 mb-2 text-xs text-slate-400">Derived from your inputs — edit freely. You have <span className="font-semibold text-sage-dark">{votesLeft}</span> of {SYNTH_VOTES_EACH} votes left.</p>
+      <div className="space-y-2">
+        {items.map((item) => {
+          const mine = picks.includes(item.id);
+          const total = item.votes + (mine ? 1 : 0);
+          const isOpen = open === item.id;
+          return (
+            <div key={item.id} className="rounded-xl border border-slate-200 p-2.5">
+              <div className="flex items-center gap-2">
+                <button onClick={() => onVote(item.id)} disabled={!mine && votesLeft <= 0} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold tabular-nums transition-colors ${mine ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:border-sage/50 disabled:opacity-40"}`}><Icon name="thumb" className="h-3.5 w-3.5" />{total}</button>
+                <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`Add a ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none" />
+                {whys && <button onClick={() => setOpen(isOpen ? null : item.id)} className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors ${isOpen ? "bg-sage-tint text-sage-dark" : "text-slate-400 hover:text-slate-600"}`}>5 Whys</button>}
+                <button onClick={() => onItems(items.filter((i) => i.id !== item.id))} aria-label="Remove" className="shrink-0 text-slate-300 hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
+              </div>
+              {whys && isOpen && <FiveWhys value={whys[item.id] ?? ["", "", "", "", ""]} onChange={(arr) => onWhys?.(item.id, arr)} />}
+            </div>
+          );
+        })}
+      </div>
+      <button onClick={() => { onItems([...items, { id: `c${seq}`, text: "", votes: 0 }]); setSeq(seq + 1); }} className="mt-2 text-sm font-semibold text-sage-dark hover:underline">+ Add a {addLabel}</button>
+    </div>
+  );
+}
+
+function FiveWhys({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const v = value.length === 5 ? value : ["", "", "", "", ""];
+  return (
+    <div className="mt-2 space-y-1.5 rounded-lg bg-slate-50 p-3">
+      <p className="text-[11px] font-semibold text-slate-400">5 Whys — private to you. Keep asking &ldquo;why?&rdquo; to the root cause.</p>
+      {v.map((w, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="w-11 shrink-0 text-[11px] font-bold text-sage-dark">Why {i + 1}</span>
+          <input value={w} onChange={(e) => onChange(v.map((x, idx) => (idx === i ? e.target.value : x)))} placeholder={i === 0 ? "Why is this a problem?" : "…and why is that?"} className="flex-1 rounded-md border border-slate-200 px-2 py-1 text-sm focus:border-sage focus:outline-none" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function topItems(items: Votable[], picks: string[], n: number) {
+  return items.map((i) => ({ ...i, total: i.votes + (picks.includes(i.id) ? 1 : 0) })).filter((i) => i.text.trim()).sort((a, b) => b.total - a.total).slice(0, n);
+}
+
+function OutcomePanel({ problems, obsessions, markets, picks }: { problems: Votable[]; obsessions: Votable[]; markets: Votable[]; picks: { problems: string[]; obsessions: string[]; markets: string[] } }) {
+  const block = (label: string, items: Votable[], picked: string[]) => (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <ol className="mt-1.5 space-y-1.5">
+        {topItems(items, picked, 3).map((i, idx) => (
+          <li key={i.id} className="flex items-start gap-2 text-sm">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sage/15 text-[11px] font-bold text-sage-dark">{idx + 1}</span>
+            <span className="flex-1 text-slate-700">{i.text || "—"}</span>
+            <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-400">{i.total}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+  return (
+    <div className="space-y-4 lg:sticky lg:top-4">
+      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+        <RailTitle>Outcome</RailTitle>
+        <p className="-mt-2 text-xs text-slate-400">Top picks as the votes land — these carry into venture formation.</p>
+        {block("Problems", problems, picks.problems)}
+        {block("Obsessions", obsessions, picks.obsessions)}
+        {block("Target markets", markets, picks.markets)}
+      </div>
+    </div>
   );
 }
 
