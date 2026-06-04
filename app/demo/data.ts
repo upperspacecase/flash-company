@@ -54,34 +54,90 @@ export const INVITE = {
 };
 
 // -------------------------------------------------------------- Input
+// A persona data-dump: six sections of mixed-format questions. Pure intake —
+// answers are NOT yet wired to anything downstream. The logic for turning these
+// into opportunity spaces and ventures comes later.
 
-export type Question = { q: string; a: string; voice?: boolean };
+export type IntakeField =
+  | { kind: "short"; voice?: boolean; max?: number; placeholder?: string }
+  | { kind: "long"; voice?: boolean; max?: number; placeholder?: string }
+  | { kind: "slider"; min: number; max: number; step: number; unit?: string }
+  | { kind: "location"; placeholder?: string }
+  | { kind: "multiLocation" }
+  | { kind: "multiSelect"; options: string[]; allowOther?: boolean }
+  | { kind: "select"; options: string[] } // single-select + an optional note
+  | { kind: "ranked"; options: string[] }; // ranked multi-select + an optional note
 
-// "You" are Maya; these are her answers. 15 questions, sampled from the spec.
-export const QUESTIONS: Question[] = [
-  { q: "What's a problem you keep noticing that nobody is solving well?", a: "Parents in my community ask the same thing constantly: how do I go back to work after a long break without starting from zero?" },
-  { q: "What skill or resource do you have that the other two don't know about?", a: "I've quietly built a 4,000-person community of new parents who trust me.", voice: true },
-  { q: "What's something you've built, sold, or shipped before — even something small?", a: "I ran a paid 6-week parenting course last year — 80 people, sold out twice." },
-  { q: "What would you do for free if you didn't need money?", a: "Help people feel capable again after a setback. That's the thread in everything I do." },
-  { q: "What's the biggest risk you're willing to take right now?", a: "Going public with a paid product to my community and being judged if it flops." },
-  { q: "Who do you have unusual access to — a community, network, or type of customer?", a: "Returning parents, and through them, the small employers who'd hire them." },
-  { q: "What trend are you convinced is about to get much bigger?", a: "Returnships and flexible re-entry — the motherhood penalty is finally in the spotlight." },
-  { q: "What do people consistently ask you for help with?", a: "How to restart a career and how to rebuild confidence after time out.", voice: true },
-  { q: "What's something you believe that most people in your field disagree with?", a: "Job boards are the worst possible re-entry path. People need a guided cohort, not a search box." },
-  { q: "How much time can you give this over the next two weeks?", a: "About 20 hours a week — evenings and the kids' nap windows." },
-  { q: "What could you put in beyond time — money, tools, an audience?", a: "My community as distribution, and a small budget for a landing page." },
-  { q: "What kind of work drains you that you'd want to avoid?", a: "Cold B2B sales. I'd rather build trust at scale than chase logos." },
-  { q: "What would make you proud to have built in a year?", a: "A hundred parents back in work who'd told me they'd given up." },
-  { q: "When did you last see a customer or friend clearly frustrated?", a: "Last week — a friend got ghosted by three employers the moment they saw her two-year gap." },
-  { q: "If this works, what does winning look like for you personally?", a: "Doing work that matters with people I trust, and not having to ask permission to do it." },
+export type IntakeQuestion = { id: string; q: string; help?: string; optional?: boolean; field: IntakeField };
+export type IntakeSection = { id: string; title: string; blurb: string; questions: IntakeQuestion[] };
+
+const LANGUAGES = ["English", "Spanish", "Portuguese", "Mandarin", "French", "German", "Italian", "Greek", "Japanese", "Arabic", "Hindi"];
+const ROLE_OPTIONS = ["Founder/CEO", "CTO/Technical lead", "Product manager", "Designer", "Engineer/Developer", "Sales/Business dev", "Marketing/Growth", "Operations", "Consultant/Advisor", "Researcher/Analyst", "Freelancer"];
+const INDUSTRY_OPTIONS = ["Tech/Startup", "Real estate", "Rural land", "Agriculture", "Creative/Design", "Health/Wellness", "Education", "Finance", "Hospitality", "Environmental"];
+const PUT_IN_OPTIONS = ["Money", "Tools", "Audience", "Introductions", "Space/Equipment"];
+
+export const INTAKE: IntakeSection[] = [
+  {
+    id: "identity", title: "Identity & anchor", blurb: "The basics — who you are and where you're based.",
+    questions: [
+      { id: "name", q: "What's your name?", field: { kind: "short", placeholder: "Your name" } },
+      { id: "location", q: "What's your primary location?", help: "We'll infer your timezone.", field: { kind: "location", placeholder: "City, Country" } },
+      { id: "otherLocations", q: "Any other locations that shaped who you are?", optional: true, field: { kind: "multiLocation" } },
+      { id: "languages", q: "What languages do you speak fluently?", field: { kind: "multiSelect", options: LANGUAGES, allowOther: true } },
+    ],
+  },
+  {
+    id: "bring", title: "What you bring", blurb: "Your edge — the things you're genuinely strong at.",
+    questions: [
+      { id: "greatAt", q: "What are you genuinely great at? Not good — great.", field: { kind: "short", voice: true, max: 200 } },
+      { id: "paidFor", q: "What have people paid you for?", field: { kind: "short", voice: true, max: 200 } },
+      { id: "superpowers", q: "What are your hidden superpowers others overlook?", field: { kind: "short", max: 500 } },
+    ],
+  },
+  {
+    id: "done", title: "What you've done", blurb: "Track record — what you've built and learned.",
+    questions: [
+      { id: "built", q: "What have you built, sold, or run before — even something small?", field: { kind: "long", max: 500 } },
+      { id: "roles", q: "What roles have you held in the past 5 years?", field: { kind: "multiSelect", options: ROLE_OPTIONS, allowOther: true } },
+      { id: "orgs", q: "What organisations have you worked for or with?", help: "The most significant — companies, startups, nonprofits, agencies, projects. One per line with your role.", field: { kind: "long", max: 500 } },
+      { id: "achievements", q: "What major achievements have you made in those roles?", help: "Specific outcomes — revenue, users, systems built, teams led, problems solved.", field: { kind: "long", max: 500 } },
+      { id: "failure", q: "Tell us about a time you failed and what you learned.", field: { kind: "long", max: 500 } },
+    ],
+  },
+  {
+    id: "work", title: "How you work", blurb: "How you operate, decide, and handle friction.",
+    questions: [
+      { id: "decisions", q: "How do you make decisions?", field: { kind: "select", options: ["Fast gut", "Slow data", "Talk it out", "Wait for clarity"] } },
+      { id: "pressure", q: "How are you under pressure?", field: { kind: "select", options: ["Push harder", "Step back", "Freeze", "Find flow"] } },
+      { id: "conflict", q: "How do you prefer to handle conflict?", field: { kind: "select", options: ["Direct", "Avoidant", "Mediate", "Escalate"] } },
+      { id: "comms", q: "How do you prefer to communicate?", help: "Tap in order of preference.", field: { kind: "ranked", options: ["Text", "Voice memo", "Video call", "In-person"] } },
+      { id: "energizes", q: "What work energises you?", field: { kind: "short", voice: true, max: 200 } },
+      { id: "drains", q: "What work drains you?", field: { kind: "short", voice: true, max: 200 } },
+      { id: "boundary", q: "What's your absolute boundary — what makes you quit?", field: { kind: "long", max: 500 } },
+    ],
+  },
+  {
+    id: "putIn", title: "What you'll put in", blurb: "Who you can reach, and what you can commit.",
+    questions: [
+      { id: "industries", q: "What industries or communities are you embedded in?", field: { kind: "multiSelect", options: INDUSTRY_OPTIONS, allowOther: true } },
+      { id: "market", q: "What's a market you can reach that most people can't?", field: { kind: "short", max: 200 } },
+      { id: "hours", q: "How many hours per week can you commit?", field: { kind: "slider", min: 0, max: 60, step: 5, unit: "hrs/wk" } },
+      { id: "runway", q: "How many months of financial runway without income?", field: { kind: "slider", min: 0, max: 24, step: 1, unit: "months" } },
+      { id: "putIn", q: "Beyond time, what can you put in?", help: "Money, tools, an audience, introductions.", field: { kind: "multiSelect", options: PUT_IN_OPTIONS, allowOther: true } },
+    ],
+  },
+  {
+    id: "why", title: "Why you care & what you see", blurb: "The spark — what you notice and what drives you.",
+    questions: [
+      { id: "trend", q: "What inefficiency, annoying problem, or shifting trend in your industry over the last 6 months keeps bouncing around in your head?", field: { kind: "long", voice: true, max: 500 } },
+      { id: "forFree", q: "What do you love doing so much that you'd do it for free?", field: { kind: "short", voice: true, max: 500 } },
+      { id: "obsessed", q: "What are you obsessed with that isn't logical?", field: { kind: "short", voice: true, max: 200 } },
+      { id: "changeWorld", q: "If you could change one thing about the world, what would it be?", field: { kind: "short", voice: true, max: 200 } },
+    ],
+  },
 ];
 
-// Other members' progress (anonymous until synthesis completes).
-export const INPUT_STATUS: Record<string, { done: number; total: number }> = {
-  maya: { done: 0, total: QUESTIONS.length },
-  alex: { done: 15, total: 15 },
-  priya: { done: 12, total: 15 },
-};
+export const INTAKE_TOTAL = INTAKE.reduce((n, s) => n + s.questions.length, 0);
 
 // ----------------------------------------------------------- Synthesis
 

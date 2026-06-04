@@ -3,17 +3,16 @@
 import Link from "next/link";
 import { Fragment, useState } from "react";
 import {
-  AGENT_NAME,
   CHOSEN_ID,
   COHORT,
   CONVERGENCE_SIGNALS,
   DIFFERENTIATION,
-  INPUT_STATUS,
+  INTAKE,
+  INTAKE_TOTAL,
   INVITE,
   LENSES,
   OPPORTUNITY_SPACES,
   PHASES,
-  QUESTIONS,
   REVENUE_MODELS,
   SPRINT,
   TAGLINE,
@@ -27,6 +26,8 @@ import {
   revenueDefaults,
   type DeckSlide,
   type IconName,
+  type IntakeQuestion,
+  type IntakeSection,
   type Lens,
   type Member,
   type VentureDraft,
@@ -154,7 +155,6 @@ function Upsell({ title, text }: { title: string; text: string }) {
 export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
   const isFree = plan === "free";
   const [phase, setPhase] = useState(0);
-  const [answered, setAnswered] = useState(0);
   const [ventureId, setVentureId] = useState(CHOSEN_ID);
   const [name, setName] = useState(VENTURE_DETAILS.name);
   const [recorded, setRecorded] = useState<Record<string, boolean>>(
@@ -173,7 +173,7 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
       <Timeline phase={phase} onJump={go} plan={plan} />
       <main className="mx-auto w-full max-w-[1500px] flex-1 px-5 py-6">
         {phase === 0 && <InvitePhase onNext={() => setPhase(1)} />}
-        {phase === 1 && <InputPhase answered={answered} onAnswer={() => setAnswered((a) => Math.min(QUESTIONS.length, a + 1))} onNext={() => setPhase(2)} />}
+        {phase === 1 && <InputPhase onNext={() => setPhase(2)} />}
         {phase === 2 && <SynthesisPhase onNext={() => setPhase(3)} />}
         {phase === 3 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(4)} />}
         {!isFree && phase === 4 && <ValidationPhase name={name} venture={venture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
@@ -286,68 +286,74 @@ function InvitePhase({ onNext }: { onNext: () => void }) {
 }
 
 /* --------------------------------------------------------- 1. Input */
+// A pure data dump: six sections of mixed-format questions. Answers live in
+// local state and aren't wired anywhere yet.
 
-function InputPhase({ answered, onAnswer, onNext }: { answered: number; onAnswer: () => void; onNext: () => void }) {
-  const next = QUESTIONS[answered];
-  const done = answered >= QUESTIONS.length;
+type MultiVal = { sel: string[]; other: string };
+type SelectVal = { choice: string; note: string };
+type RankedVal = { ranked: string[]; note: string };
+
+const asStr = (v: unknown) => (typeof v === "string" ? v : "");
+const asArr = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
+function asMulti(v: unknown): MultiVal {
+  return v && typeof v === "object" && Array.isArray((v as MultiVal).sel) ? (v as MultiVal) : { sel: [], other: "" };
+}
+function asSelect(v: unknown): SelectVal {
+  return v && typeof v === "object" && "choice" in v ? (v as SelectVal) : { choice: "", note: "" };
+}
+function asRanked(v: unknown): RankedVal {
+  return v && typeof v === "object" && "ranked" in v ? (v as RankedVal) : { ranked: [], note: "" };
+}
+function isAnswered(v: unknown): boolean {
+  if (v == null) return false;
+  if (typeof v === "string") return v.trim().length > 0;
+  if (typeof v === "number") return v > 0;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === "object") return Object.values(v as Record<string, unknown>).some(isAnswered);
+  return false;
+}
+
+function InputPhase({ onNext }: { onNext: () => void }) {
+  const [section, setSection] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  const [voiceMode, setVoiceMode] = useState<Record<string, boolean>>({});
+  const sec = INTAKE[section];
+  const isLast = section === INTAKE.length - 1;
+  const update = (id: string, value: unknown) => setAnswers((a) => ({ ...a, [id]: value }));
+  const answeredIn = (s: IntakeSection) => s.questions.filter((q) => isAnswered(answers[q.id])).length;
+  const total = INTAKE.reduce((n, s) => n + answeredIn(s), 0);
   return (
     <Columns
-      left={
-        <div className="space-y-4">
-          <RailTitle>Team input</RailTitle>
-          <p className="px-1 text-xs text-slate-400">Each person answers privately. Anonymous to the group until synthesis.</p>
-          {COHORT.map((m) => {
-            const st = INPUT_STATUS[m.id];
-            const isYou = m.id === YOU;
-            const doneN = isYou ? answered : st.done;
-            return (
-              <Card key={m.id}>
-                <div className="mb-2 flex items-center gap-2">
-                  <Avatar m={m} size="h-7 w-7 text-[10px]" />
-                  <span className="font-bold text-foreground">{m.name} {isYou && <span className="text-xs font-normal text-slate-400">(you)</span>}</span>
-                  <span className="ml-auto text-xs font-semibold text-sage-dark">{doneN}/{st.total}</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-sage" style={{ width: `${(doneN / st.total) * 100}%` }} /></div>
-                {!isYou && <p className="mt-2 text-xs text-slate-400">{st.done >= st.total ? "Completed · anonymous" : "In progress · anonymous"}</p>}
-              </Card>
-            );
-          })}
-        </div>
-      }
+      left={<IntakeNav current={section} onJump={setSection} answeredIn={answeredIn} />}
       center={
-        <Card className="flex h-full flex-col p-6">
-          <CenterHead title="Your 15 questions" sub="Answer privately — typed or voice. The agent asks one at a time." right={<span className="rounded-full bg-sage-tint px-3 py-1 text-xs font-semibold text-sage-dark">{answered}/{QUESTIONS.length}</span>} />
-          <div className="flex-1 space-y-3">
-            <Bubble agent text={`Welcome. I'll ask ${QUESTIONS.length} short questions — there are no wrong answers. Dump what's true.`} />
-            {QUESTIONS.slice(0, answered).map((q, i) => (
-              <div key={i} className="space-y-3">
-                <Bubble agent text={`${i + 1}. ${q.q}`} />
-                <Bubble text={q.a} voice={q.voice} />
-              </div>
+        <Card className="p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wide text-sage-dark">Section {section + 1} of {INTAKE.length}</span>
+            <span className="text-xs font-semibold text-slate-400">{total}/{INTAKE_TOTAL} answered</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{sec.title}</h1>
+          <p className="mt-1 text-slate-500">{sec.blurb}</p>
+
+          <div className="mt-6 space-y-6">
+            {sec.questions.map((q) => (
+              <QuestionField key={q.id} q={q} value={answers[q.id]} onChange={(v) => update(q.id, v)} voice={!!voiceMode[q.id]} onVoice={() => setVoiceMode((m) => ({ ...m, [q.id]: !m[q.id] }))} />
             ))}
           </div>
-          <div className="mt-5 border-t border-slate-100 pt-4">
-            {!done ? (
-              <button onClick={onAnswer} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-sage/50 bg-sage-tint/20 p-3 text-left transition-colors hover:bg-sage-tint/40">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-sage"><Icon name={next.voice ? "mic" : "message"} className="h-4 w-4" /></span>
-                <span className="min-w-0 flex-1"><span className="block text-[11px] font-bold uppercase tracking-wide text-sage-dark">Question {answered + 1} · answer {next.voice ? "by voice" : "typed"}</span><span className="block truncate text-sm text-slate-600">{next.q}</span></span>
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sage text-white"><Icon name="send" className="h-4 w-4" /></span>
-              </button>
-            ) : (
-              <div className="flex items-center justify-between gap-4 rounded-xl bg-sage-tint/40 p-3">
-                <p className="text-sm font-semibold text-sage-dark">Submitted — private until {AGENT_NAME} synthesises all three.</p>
-                <PrimaryBtn label="Run synthesis" onClick={onNext} icon="sparkle" />
-              </div>
-            )}
+
+          <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-5">
+            <button onClick={() => setSection((s) => Math.max(0, s - 1))} disabled={section === 0} className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40">Back</button>
+            {isLast
+              ? <PrimaryBtn label="Submit intake" onClick={onNext} icon="check" />
+              : <PrimaryBtn label={`Next: ${INTAKE[section + 1].title}`} onClick={() => setSection((s) => s + 1)} icon="send" />}
           </div>
         </Card>
       }
       right={
         <div className="space-y-4">
           <RailTitle>How input works</RailTitle>
-          <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Private link.</span> A simple form — 15–30 minutes.</p></Card>
-          <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Voice option.</span> Up to 2 minutes per answer.</p></Card>
-          <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Anonymous.</span> Hidden from the group until synthesis is complete.</p></Card>
+          <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Just dump it.</span> No wrong answers — get it down, refine later.</p></Card>
+          <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Voice or text.</span> Any prompt with a mic can be a 2-minute voice memo.</p></Card>
+          <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Private.</span> Your answers stay yours until the team synthesis runs.</p></Card>
           <Card className="bg-sage-tint/30"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="clock" className="h-4 w-4 text-sage" /> Deadline</p><p className="mt-1 text-sm text-slate-600">12 hours from team formation.</p></Card>
         </div>
       }
@@ -355,21 +361,151 @@ function InputPhase({ answered, onAnswer, onNext }: { answered: number; onAnswer
   );
 }
 
-function Bubble({ agent, text, voice }: { agent?: boolean; text: string; voice?: boolean }) {
-  if (agent) {
+function IntakeNav({ current, onJump, answeredIn }: { current: number; onJump: (i: number) => void; answeredIn: (s: IntakeSection) => number }) {
+  return (
+    <div className="space-y-4">
+      <RailTitle>Your intake</RailTitle>
+      <p className="px-1 text-xs text-slate-400">Answer in any order. Anonymous to the group until synthesis.</p>
+      <div className="space-y-1.5">
+        {INTAKE.map((s, i) => {
+          const a = answeredIn(s);
+          const done = a === s.questions.length;
+          const active = i === current;
+          return (
+            <button key={s.id} onClick={() => onJump(i)} className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${active ? "border-sage bg-sage-tint/30" : "border-transparent hover:bg-slate-50"}`}>
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${done ? "bg-sage text-white" : active ? "bg-sage/20 text-sage-dark" : "bg-slate-100 text-slate-400"}`}>{done ? <Icon name="check" className="h-3 w-3" /> : i + 1}</span>
+              <span className="min-w-0 flex-1">
+                <span className={`block truncate text-sm font-semibold ${active ? "text-sage-dark" : "text-slate-600"}`}>{s.title}</span>
+                <span className="block text-[11px] text-slate-400">{a}/{s.questions.length}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 px-1 pt-1">
+        <div className="flex -space-x-2">{COHORT.map((m) => <Avatar key={m.id} m={m} size="h-7 w-7 text-[10px]" />)}</div>
+        <p className="text-xs text-slate-400">Maya {`(you)`}, Alex, and Priya each fill this in separately.</p>
+      </div>
+    </div>
+  );
+}
+
+function QuestionField({ q, value, onChange, voice, onVoice }: { q: IntakeQuestion; value: unknown; onChange: (v: unknown) => void; voice: boolean; onVoice: () => void }) {
+  const f = q.field;
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-foreground">{q.q}{q.optional && <span className="ml-1.5 text-xs font-normal text-slate-400">(optional)</span>}</label>
+      {q.help && <p className="mt-0.5 text-xs text-slate-400">{q.help}</p>}
+      <div className="mt-2">
+        {(f.kind === "short" || f.kind === "long") && <TextControl value={asStr(value)} onChange={onChange} max={f.max} placeholder={f.placeholder} multiline={f.kind === "long"} voiceable={f.voice} voice={voice} onVoice={onVoice} />}
+        {f.kind === "slider" && <SliderControl value={typeof value === "number" ? value : f.min} onChange={onChange} min={f.min} max={f.max} step={f.step} unit={f.unit} />}
+        {f.kind === "location" && <LocationControl value={asStr(value)} onChange={onChange} placeholder={f.placeholder} />}
+        {f.kind === "multiLocation" && <ChipsInput value={asArr(value)} onChange={onChange} />}
+        {f.kind === "multiSelect" && <MultiSelectControl value={asMulti(value)} onChange={onChange} options={f.options} allowOther={f.allowOther} />}
+        {f.kind === "select" && <SelectControl value={asSelect(value)} onChange={onChange} options={f.options} />}
+        {f.kind === "ranked" && <RankedControl value={asRanked(value)} onChange={onChange} options={f.options} />}
+      </div>
+    </div>
+  );
+}
+
+function TextControl({ value, onChange, max, placeholder, multiline, voiceable, voice, onVoice }: { value: string; onChange: (v: string) => void; max?: number; placeholder?: string; multiline?: boolean; voiceable?: boolean; voice?: boolean; onVoice: () => void }) {
+  if (voiceable && voice) {
     return (
-      <div className="flex items-start gap-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage text-white"><svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg></span>
-        <p className="max-w-md rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5 text-sm text-slate-700">{text}</p>
+      <div className="flex items-center gap-3 rounded-xl border border-sage bg-sage-tint/20 p-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage text-white"><Icon name="mic" className="h-4 w-4" /></span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-end gap-0.5">{Array.from({ length: 28 }).map((_, i) => <span key={i} className="w-1 rounded-full bg-sage/50" style={{ height: `${5 + ((i * 11) % 16)}px` }} />)}</div>
+          <p className="mt-1 text-xs text-slate-500">Recording · 0:00 / 2:00 <span className="text-slate-400">(demo)</span></p>
+        </div>
+        <button onClick={onVoice} className="shrink-0 text-xs font-semibold text-sage-dark hover:underline">Type instead</button>
       </div>
     );
   }
   return (
-    <div className="flex justify-end">
-      <div className="max-w-md rounded-2xl rounded-tr-sm bg-sage px-4 py-2.5 text-sm text-white">
-        {voice && <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-white/80"><Icon name="mic" className="h-3.5 w-3.5" /> voice memo</span>}
-        {text}
+    <div>
+      <div className="relative">
+        {multiline
+          ? <textarea value={value} onChange={(e) => onChange(e.target.value)} maxLength={max} rows={3} placeholder={placeholder} className="w-full resize-y rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-sage focus:outline-none" />
+          : <input value={value} onChange={(e) => onChange(e.target.value)} maxLength={max} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-sage focus:outline-none" />}
+        {voiceable && <button onClick={onVoice} aria-label="Record voice memo" className="absolute right-2 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-sage"><Icon name="mic" className="h-4 w-4" /></button>}
       </div>
+      {max && <p className="mt-1 text-right text-[11px] text-slate-400">{value.length}/{max}</p>}
+    </div>
+  );
+}
+
+function SliderControl({ value, onChange, min, max, step, unit }: { value: number; onChange: (v: number) => void; min: number; max: number; step: number; unit?: string }) {
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline gap-1.5"><span className="text-2xl font-bold tabular-nums text-foreground">{value}{value === max && "+"}</span>{unit && <span className="text-sm text-slate-500">{unit}</span>}</div>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-sage" />
+      <div className="mt-1 flex justify-between text-[11px] text-slate-400"><span>{min}</span><span>{max}+</span></div>
+    </div>
+  );
+}
+
+function LocationControl({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 focus-within:border-sage">
+      <Icon name="target" className="h-4 w-4 shrink-0 text-slate-400" />
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="min-w-0 flex-1 text-sm text-foreground focus:outline-none" />
+      {value && <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">timezone auto</span>}
+    </div>
+  );
+}
+
+function ChipsInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const [draft, setDraft] = useState("");
+  const add = () => { const t = draft.trim(); if (t && !value.includes(t)) onChange([...value, t]); setDraft(""); };
+  return (
+    <div>
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-2 focus-within:border-sage">
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} placeholder="Add a place, press Enter" className="min-w-0 flex-1 px-1 text-sm text-foreground focus:outline-none" />
+        <button onClick={add} className="shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200">Add</button>
+      </div>
+      {value.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{value.map((c) => <span key={c} className="inline-flex items-center gap-1 rounded-lg bg-sage-tint px-2.5 py-1 text-xs font-medium text-sage-dark">{c}<button onClick={() => onChange(value.filter((x) => x !== c))} aria-label={`Remove ${c}`} className="text-sage-dark/60 hover:text-sage-dark"><Icon name="minus" className="h-3 w-3" /></button></span>)}</div>}
+    </div>
+  );
+}
+
+function MultiSelectControl({ value, onChange, options, allowOther }: { value: MultiVal; onChange: (v: MultiVal) => void; options: string[]; allowOther?: boolean }) {
+  const toggle = (o: string) => onChange({ ...value, sel: value.sel.includes(o) ? value.sel.filter((x) => x !== o) : [...value.sel, o] });
+  const items = allowOther ? [...options, "Other"] : options;
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {items.map((o) => { const on = value.sel.includes(o); return <button key={o} onClick={() => toggle(o)} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>{o}</button>; })}
+      </div>
+      {allowOther && value.sel.includes("Other") && <input value={value.other} onChange={(e) => onChange({ ...value, other: e.target.value })} placeholder="Tell us more" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-sage focus:outline-none" />}
+    </div>
+  );
+}
+
+function SelectControl({ value, onChange, options }: { value: SelectVal; onChange: (v: SelectVal) => void; options: string[] }) {
+  const items = [...options, "Other"];
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {items.map((o) => { const on = value.choice === o; return <button key={o} onClick={() => onChange({ ...value, choice: o })} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>{o}</button>; })}
+      </div>
+      <input value={value.note} onChange={(e) => onChange({ ...value, note: e.target.value })} placeholder="Add a line if you like" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-sage focus:outline-none" />
+    </div>
+  );
+}
+
+function RankedControl({ value, onChange, options }: { value: RankedVal; onChange: (v: RankedVal) => void; options: string[] }) {
+  const toggle = (o: string) => onChange({ ...value, ranked: value.ranked.includes(o) ? value.ranked.filter((x) => x !== o) : [...value.ranked, o] });
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => { const idx = value.ranked.indexOf(o); const on = idx >= 0; return (
+          <button key={o} onClick={() => toggle(o)} className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>
+            {on && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] text-sage-dark">{idx + 1}</span>}{o}
+          </button>
+        ); })}
+      </div>
+      <input value={value.note} onChange={(e) => onChange({ ...value, note: e.target.value })} placeholder="Anything to add" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-sage focus:outline-none" />
     </div>
   );
 }
