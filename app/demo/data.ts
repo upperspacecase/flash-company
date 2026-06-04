@@ -289,6 +289,21 @@ export const VALIDATION = {
     "At least 1 in 4 waitlisters will book a call.",
     "Employers will take a warm intro to a vetted returner.",
   ],
+  // Hosted by us once the team publishes the page.
+  liveUrl: "flashco.app/v/relaunch",
+  // Live signups feed the validation dashboard (seeded for the demo).
+  liveMetrics: [
+    { label: "Visitors", value: "318" },
+    { label: "Signups", value: "47" },
+    { label: "Signup rate", value: "14.8%" },
+    { label: "Calls booked", value: "9" },
+  ],
+  // Each thing we're testing -> the live signal that proves or kills it.
+  scorecard: [
+    { test: "Parents will join the waitlist", metric: "Signups", value: 47, target: 50 },
+    { test: "1 in 4 will book a call", metric: "Calls booked", value: 9, target: 12 },
+    { test: "Employers take a warm intro", metric: "Intros accepted", value: 3, target: 5 },
+  ],
   // Built on the proven 5-part landing formula:
   // value (1) -> how (2) -> visual (3) -> social proof (4) -> next step (5).
   landing: {
@@ -332,3 +347,69 @@ export const VALIDATION = {
     { day: "Day 30", status: "locked", text: "Go / no-go, and rebalance roles & equity." },
   ],
 };
+
+// -------------------------------------- Editable venture detail (Click-aligned)
+// The chosen venture's working draft — everything below is editable in the demo.
+
+// Problem score, broken down: how painful, how frequent, why now, and what
+// people already pay to solve it today. Sub-scores are 0–5.
+export const PROBLEM_BREAKDOWN = {
+  painful: 5,
+  frequent: 4,
+  whyNow: 5,
+  payNow: "Parents already pay $1–3k for coaching and bootcamps with worse fit.",
+};
+
+// Differentiation, Click-style — "differentiation makes products click."
+// Simple guidance prompts (capability / insight / contrast) plus a clarity score.
+export const DIFFERENTIATION = {
+  statement: "Community + cohort ops + real employer intros, in one path. Not a job board.",
+  clarity: 4, // 0–5
+  guidance: [
+    { key: "Capability", prompt: "What can only this team do?", text: "A trusted 4,000-parent community, a builder, and a brand that's lived the comeback." },
+    { key: "Insight", prompt: "What do you know that the market doesn't?", text: "Job boards are the worst re-entry path — people need a guided cohort, not a search box." },
+    { key: "Contrast", prompt: "Why you over the gorilla?", text: "Warm, guided, outcome-measured — not cold and self-serve like LinkedIn or job boards." },
+  ],
+};
+
+// Earning potential, broken down: pick a revenue model, see its fit + implications.
+export type RevenueModel = { id: string; label: string; fit: number; fits: string; doesnt: string };
+export const REVENUE_MODELS: RevenueModel[] = [
+  { id: "cohort", label: "Paid cohort (one-time)", fit: 5, fits: "Matches the 8-week format and a community that already buys courses.", doesnt: "Revenue is lumpy — tied to cohort cadence, not recurring." },
+  { id: "placement", label: "Employer placement fee", fit: 4, fits: "Employers pay well for vetted returner hires.", doesnt: "Slower B2B sale; needs proven placement outcomes first." },
+  { id: "subscription", label: "Membership / subscription", fit: 3, fits: "Smooths revenue across an ongoing community.", doesnt: "Hard to justify a monthly charge once someone is back at work." },
+  { id: "marketplace", label: "Marketplace take rate", fit: 2, fits: "Scales if two-sided liquidity ever arrives.", doesnt: "No marketplace experience on the team; cold-start risk." },
+];
+
+// Cap table — equity blank to start, standard founder vesting + an option pool.
+export const CAP_TABLE = { pool: 10, vestingDefault: "4 yr · 1 yr cliff" };
+
+export type VentureDraft = {
+  thesis: string;
+  purpose: string;
+  problem: { painful: number; frequent: number; whyNow: number; payNow: string };
+  solution: string;
+  market: string;
+  differentiation: { statement: string; clarity: number };
+  revenueId: string;
+  unique: string;
+  capTable: { pool: number; rows: { memberId: string; role: string; responsibility: string; equity: string; vesting: string }[] };
+};
+
+// A working draft of the chosen venture the cohort edits in the demo.
+export function makeVentureDraft(): VentureDraft {
+  return {
+    thesis: CHOSEN.thesis,
+    purpose: CHOSEN.purpose,
+    problem: { ...PROBLEM_BREAKDOWN },
+    solution: CHOSEN.solution,
+    market: CHOSEN.market,
+    differentiation: { statement: DIFFERENTIATION.statement, clarity: DIFFERENTIATION.clarity },
+    revenueId: REVENUE_MODELS[0].id,
+    unique: CHOSEN.unique,
+    capTable: {
+      pool: CAP_TABLE.pool,
+      rows: VENTURE_DETAILS.team.map((r) => ({ memberId: r.memberId, role: r.role, responsibility: r.responsibility, equity: "", vesting: CAP_TABLE.vestingDefault })),
+    },
+  };
+}

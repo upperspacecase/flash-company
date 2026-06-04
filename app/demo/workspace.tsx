@@ -7,21 +7,25 @@ import {
   CHOSEN_ID,
   COHORT,
   CONVERGENCE_SIGNALS,
+  DIFFERENTIATION,
   INPUT_STATUS,
   INVITE,
   OPPORTUNITY_SPACES,
   PHASES,
   QUESTIONS,
+  REVENUE_MODELS,
   SPRINT,
   TAGLINE,
   VALIDATION,
   VENTURES,
   VENTURE_DETAILS,
   YOU,
+  makeVentureDraft,
   memberById,
   type DeckSlide,
   type IconName,
   type Member,
+  type VentureDraft,
 } from "./data";
 
 /* ---------------------------------------------------------------- icons */
@@ -153,6 +157,8 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
     Object.fromEntries(VENTURE_DETAILS.commitments.map((c) => [c.memberId, c.recorded]))
   );
   const [checkin, setCheckin] = useState("Day 7");
+  const [venture, setVenture] = useState<VentureDraft>(makeVentureDraft);
+  const [published, setPublished] = useState(false);
 
   // Free stops at the venture outlines; validation is locked.
   const go = (i: number) => setPhase(isFree && i >= 4 ? 3 : i);
@@ -165,8 +171,8 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
         {phase === 0 && <InvitePhase onNext={() => setPhase(1)} />}
         {phase === 1 && <InputPhase answered={answered} onAnswer={() => setAnswered((a) => Math.min(QUESTIONS.length, a + 1))} onNext={() => setPhase(2)} />}
         {phase === 2 && <SynthesisPhase onNext={() => setPhase(3)} />}
-        {phase === 3 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(4)} />}
-        {!isFree && phase === 4 && <ValidationPhase name={name} checkin={checkin} onCheckin={setCheckin} />}
+        {phase === 3 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(4)} />}
+        {!isFree && phase === 4 && <ValidationPhase name={name} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
       </main>
     </div>
   );
@@ -424,10 +430,11 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
 
 /* ------------------------------------------------------ 3. Ventures */
 
-function VenturesPhase({ plan, ventureId, onSelect, name, onName, recorded, onRecord, onNext }: { plan: "free" | "full"; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+function VenturesPhase({ plan, ventureId, onSelect, name, onName, venture, onVenture, recorded, onRecord, onNext }: { plan: "free" | "full"; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
   const isFree = plan === "free";
   const v = VENTURES.find((x) => x.id === ventureId)!;
   const isChosen = v.id === CHOSEN_ID;
+  const editable = isChosen && !isFree;
   return (
     <Columns
       left={
@@ -455,29 +462,34 @@ function VenturesPhase({ plan, ventureId, onSelect, name, onName, recorded, onRe
             <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500"><Icon name="bolt" className="h-3.5 w-3.5 text-sage" /> rename<input value={name} onChange={(e) => onName(e.target.value)} className="ml-1 w-24 border-b border-slate-300 bg-transparent text-foreground focus:border-sage focus:outline-none" /></span>
           ) : undefined} />
 
-          <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-4"><p className="text-foreground">{v.thesis}</p></div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Field label="Problem score" value={`${v.problemScore}/10`} />
-            <Field label="Solution" value={v.solution} />
-            <Field label="Market" value={v.market} />
-            <Field label="Differentiation" value={v.differentiation} />
-            <Field label="Purpose" value={v.purpose} />
-            <Field label="Earning potential" value={v.earn} />
-          </div>
-          <div className="mt-3 rounded-xl border border-slate-200 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Only we can do this</p>
-            <p className="mt-1 text-sm text-foreground">{v.unique}</p>
+          <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-4">
+            {editable
+              ? <EditableArea value={venture.thesis} onChange={(val) => onVenture((p) => ({ ...p, thesis: val }))} className="text-foreground" />
+              : <p className="text-foreground">{v.thesis}</p>}
           </div>
 
-          {isChosen ? (
-            isFree ? (
-              <div className="mt-6"><Upsell title="Full venture details are part of Seed" text="Origin story, team & equity, financials, the 7-day sprint, risk register, and the commitment ritual — plus the validation engine." /></div>
-            ) : (
-              <FullVentureDetails recorded={recorded} onRecord={onRecord} onNext={onNext} />
-            )
+          {editable ? (
+            <RichVentureDetail venture={venture} onVenture={onVenture} earn={v.earn} recorded={recorded} onRecord={onRecord} onNext={onNext} />
           ) : (
-            <div className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Select <span className="font-semibold text-foreground">{VENTURE_DETAILS.name}</span> (the top-voted venture) to see full details.</div>
+            <>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <Field label="Problem score" value={`${v.problemScore}/10`} />
+                <Field label="Solution" value={v.solution} />
+                <Field label="Market" value={v.market} />
+                <Field label="Differentiation" value={v.differentiation} />
+                <Field label="Purpose" value={v.purpose} />
+                <Field label="Earning potential" value={v.earn} />
+              </div>
+              <div className="mt-3 rounded-xl border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Only we can do this</p>
+                <p className="mt-1 text-sm text-foreground">{v.unique}</p>
+              </div>
+              {isChosen ? (
+                <div className="mt-6"><Upsell title="Full venture details are part of Seed" text="Origin story, team & equity, financials, the 7-day sprint, risk register, and the commitment ritual — plus the validation engine." /></div>
+              ) : (
+                <div className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Select <span className="font-semibold text-foreground">{VENTURE_DETAILS.name}</span> (the top-voted venture) to see full details.</div>
+              )}
+            </>
           )}
         </Card>
       }
@@ -502,32 +514,18 @@ function Field({ label, value }: { label: string; value: string }) {
   return <div className="rounded-xl border border-slate-200 p-3"><p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p><p className="mt-0.5 text-sm text-foreground">{value}</p></div>;
 }
 
-function FullVentureDetails({ recorded, onRecord, onNext }: { recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
   const d = VENTURE_DETAILS;
+  const setRow = (i: number, patch: Partial<VentureDraft["capTable"]["rows"][number]>) =>
+    onVenture((p) => ({ ...p, capTable: { ...p.capTable, rows: p.capTable.rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) } }));
+  const setPool = (pool: number) => onVenture((p) => ({ ...p, capTable: { ...p.capTable, pool } }));
   return (
-    <div className="mt-6 space-y-6 border-t border-slate-100 pt-6">
+    <div className="space-y-6 border-t border-slate-100 pt-6">
       <Section title="The origin story">
         <div className="space-y-2 text-sm text-slate-700">{d.origin.map((p, i) => <p key={i}>{p}</p>)}</div>
       </Section>
 
-      <Section title="Team & resource map">
-        <div className="space-y-2">
-          {d.team.map((r) => { const m = memberById(r.memberId); return (
-            <div key={r.memberId} className="rounded-xl border border-slate-200 p-3">
-              <div className="flex items-center gap-3">
-                <Avatar m={m} size="h-8 w-8 text-[10px]" />
-                <p className="flex-1 text-sm font-semibold text-foreground">{m.name} · {r.role}</p>
-                <span className="rounded-lg bg-sage px-2.5 py-1 text-sm font-bold text-white">{r.equity}%</span>
-              </div>
-              <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
-                <p><span className="font-semibold text-slate-400">Responsibility:</span> {r.responsibility}</p>
-                <p><span className="font-semibold text-slate-400">First tasks:</span> {r.tasks}</p>
-                <p className="sm:col-span-2"><span className="font-semibold text-slate-400">Brings:</span> {r.resource}</p>
-              </div>
-            </div>
-          ); })}
-        </div>
-      </Section>
+      <CapTable capTable={venture.capTable} setRow={setRow} setPool={setPool} />
 
       <Section title="Financials">
         <p className="mb-2 text-xs text-slate-400">{d.financials.note}</p>
@@ -570,7 +568,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const CHANNELS = [{ key: "linkedin", label: "LinkedIn" }, { key: "dm", label: "DM" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }] as const;
 
-function ValidationPhase({ name, checkin, onCheckin }: { name: string; checkin: string; onCheckin: (d: string) => void }) {
+function ValidationPhase({ name, checkin, onCheckin, published, onPublish }: { name: string; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void }) {
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
   const v = VALIDATION;
   return (
@@ -601,8 +599,11 @@ function ValidationPhase({ name, checkin, onCheckin }: { name: string; checkin: 
             <ul className="mt-3 space-y-1.5">{v.assumptions.map((a) => <li key={a} className="flex items-start gap-2 text-sm text-slate-700"><Icon name="target" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{a}</li>)}</ul>
           </Section>
 
+          <div className="mt-6"><ValidationScorecard published={published} /></div>
+
           <div className="mt-6"><Section title="Landing page">
             <p className="-mt-1 mb-3 text-xs text-slate-400">The proven 5-part formula — value, how, visual, social proof, next step.</p>
+            <PublishBar published={published} onPublish={onPublish} url={v.liveUrl} />
             <LandingHero name={name} landing={v.landing} />
           </Section></div>
 
@@ -627,7 +628,7 @@ function ValidationPhase({ name, checkin, onCheckin }: { name: string; checkin: 
         <div className="space-y-4">
           <RailTitle>What you walk away with</RailTitle>
           <Card className="bg-sage-tint/20"><p className="font-bold text-foreground">{name}</p><p className="mt-0.5 text-sm text-slate-600">Venture locked. Validation assets generated.</p></Card>
-          <Card><ul className="space-y-1.5">{["Venture details & roles", "Team alignment & clarity", "Landing page to test", "Pitch deck", "Outreach copy"].map((x) => <CheckRow key={x} label={x} />)}</ul></Card>
+          <Card><ul className="space-y-1.5">{["Venture details & roles", "Team alignment & cap table", "Hosted landing page", "Live signups dashboard", "Pitch deck", "Outreach copy"].map((x) => <CheckRow key={x} label={x} />)}</ul></Card>
           <Card className="bg-slate-50"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="heart" className="h-4 w-4 text-sage" /> The Flash Fund</p><p className="mt-1 text-sm text-slate-600">Part of every buy-in seeds ventures that emerge here.</p></Card>
         </div>
       }
@@ -792,5 +793,231 @@ function SlideStage({ slide, index, total, name }: { slide: DeckSlide; index: nu
         <p className="shrink-0 text-center text-xs font-medium text-slate-400">{slide.footnote}</p>
       )}
     </div>
+  );
+}
+
+/* ----------------------------------------- editable venture detail (Click) */
+
+function EditableArea({ value, onChange, className = "", rows = 2 }: { value: string; onChange: (v: string) => void; className?: string; rows?: number }) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      rows={rows}
+      className={`-mx-1.5 w-full resize-y rounded-md border border-transparent bg-transparent px-1.5 py-1 leading-snug hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none ${className}`}
+    />
+  );
+}
+
+// 0–5 score. Editable when onChange is passed; read-only otherwise.
+function DotScore({ value, onChange, label }: { value: number; onChange?: (v: number) => void; label?: string }) {
+  return (
+    <div>
+      {label && <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-500">{label}</span><span className="font-semibold tabular-nums text-sage-dark">{value}/5</span></div>}
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} type="button" disabled={!onChange} onClick={() => onChange?.(n)} aria-label={`${label ?? "score"}: ${n} of 5`} className={`h-2.5 flex-1 rounded-full transition-colors ${n <= value ? "bg-sage" : "bg-slate-200"} ${onChange ? "cursor-pointer hover:opacity-80" : ""}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RichVentureDetail({ venture, onVenture, earn, recorded, onRecord, onNext }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; earn: string; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+  const set = <K extends keyof VentureDraft,>(key: K, val: VentureDraft[K]) => onVenture((p) => ({ ...p, [key]: val }));
+  const setProblem = (patch: Partial<VentureDraft["problem"]>) => onVenture((p) => ({ ...p, problem: { ...p.problem, ...patch } }));
+  const setDiff = (patch: Partial<VentureDraft["differentiation"]>) => onVenture((p) => ({ ...p, differentiation: { ...p.differentiation, ...patch } }));
+  return (
+    <div className="mt-5 space-y-5">
+      <Section title="Purpose">
+        <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-4">
+          <p className="text-xs italic text-slate-400">Start with a clear why.</p>
+          <EditableArea value={venture.purpose} onChange={(val) => set("purpose", val)} className="mt-1 text-foreground" />
+        </div>
+      </Section>
+
+      <ProblemBreakdown problem={venture.problem} set={setProblem} />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Section title="Solution"><div className="h-full rounded-xl border border-slate-200 p-4"><EditableArea value={venture.solution} onChange={(val) => set("solution", val)} className="text-sm text-foreground" rows={3} /></div></Section>
+        <Section title="Market"><div className="h-full rounded-xl border border-slate-200 p-4"><EditableArea value={venture.market} onChange={(val) => set("market", val)} className="text-sm text-foreground" rows={3} /></div></Section>
+      </div>
+
+      <DifferentiationBlock diff={venture.differentiation} set={setDiff} />
+      <RevenueBreakdown revenueId={venture.revenueId} onPick={(id) => set("revenueId", id)} earn={earn} />
+
+      <Section title="Only we can do this">
+        <div className="rounded-xl border border-slate-200 p-4"><EditableArea value={venture.unique} onChange={(val) => set("unique", val)} className="text-sm text-foreground" /></div>
+      </Section>
+
+      <FullVentureDetails venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} />
+    </div>
+  );
+}
+
+function ProblemBreakdown({ problem, set }: { problem: VentureDraft["problem"]; set: (patch: Partial<VentureDraft["problem"]>) => void }) {
+  const overall = Math.round(((problem.painful + problem.frequent + problem.whyNow) / 15) * 10);
+  return (
+    <Section title="Problem score">
+      <div className="rounded-xl border border-slate-200 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm text-slate-500">How real is this problem?</p>
+          <span className="rounded-lg bg-sage px-2.5 py-1 text-sm font-bold tabular-nums text-white">{overall}/10</span>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <DotScore label="How painful?" value={problem.painful} onChange={(n) => set({ painful: n })} />
+          <DotScore label="How frequent?" value={problem.frequent} onChange={(n) => set({ frequent: n })} />
+          <DotScore label="Why now?" value={problem.whyNow} onChange={(n) => set({ whyNow: n })} />
+        </div>
+        <div className="mt-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">What do they pay to solve it now?</p>
+          <EditableArea value={problem.payNow} onChange={(val) => set({ payNow: val })} className="mt-1 text-sm text-foreground" />
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function DifferentiationBlock({ diff, set }: { diff: VentureDraft["differentiation"]; set: (patch: Partial<VentureDraft["differentiation"]>) => void }) {
+  return (
+    <Section title="Differentiation">
+      <div className="rounded-xl border border-slate-200 p-4">
+        <p className="text-xs italic text-slate-400">Differentiation makes products click.</p>
+        <EditableArea value={diff.statement} onChange={(val) => set({ statement: val })} className="mt-1 font-medium text-foreground" />
+        <div className="mt-3 max-w-xs"><DotScore label="Clarity" value={diff.clarity} onChange={(n) => set({ clarity: n })} /></div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          {DIFFERENTIATION.guidance.map((g) => (
+            <div key={g.key} className="rounded-lg bg-slate-50 p-3">
+              <p className="text-xs font-bold text-sage-dark">{g.key}</p>
+              <p className="text-[11px] font-medium text-slate-400">{g.prompt}</p>
+              <p className="mt-1 text-sm text-slate-700">{g.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function RevenueBreakdown({ revenueId, onPick, earn }: { revenueId: string; onPick: (id: string) => void; earn: string }) {
+  const model = REVENUE_MODELS.find((m) => m.id === revenueId) ?? REVENUE_MODELS[0];
+  return (
+    <Section title="Earning potential">
+      <div className="rounded-xl border border-slate-200 p-4">
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Revenue model</p>
+        <div className="flex flex-wrap gap-2">
+          {REVENUE_MODELS.map((m) => (
+            <button key={m.id} onClick={() => onPick(m.id)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.id === revenueId ? "bg-sage text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{m.label}</button>
+          ))}
+        </div>
+        <div className="mt-3 max-w-xs"><DotScore label="Model fit" value={model.fit} /></div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="rounded-lg border border-sage/30 bg-sage-tint/20 p-3"><p className="text-xs font-bold text-sage-dark">What fits</p><p className="mt-0.5 text-sm text-slate-700">{model.fits}</p></div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3"><p className="text-xs font-bold text-amber-700">What doesn&rsquo;t</p><p className="mt-0.5 text-sm text-slate-700">{model.doesnt}</p></div>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">Projected over 3 years: <span className="font-semibold text-slate-600">{earn}</span></p>
+      </div>
+    </Section>
+  );
+}
+
+function CapTable({ capTable, setRow, setPool }: { capTable: VentureDraft["capTable"]; setRow: (i: number, patch: Partial<VentureDraft["capTable"]["rows"][number]>) => void; setPool: (n: number) => void }) {
+  const allocated = capTable.rows.reduce((s, r) => s + (Number(r.equity) || 0), 0);
+  const unalloc = 100 - capTable.pool - allocated;
+  return (
+    <Section title="Cap table">
+      <p className="-mt-1 mb-2 text-xs text-slate-400">Equity starts blank — agree the splits together. Founders + option pool + unallocated = 100%.</p>
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <table className="w-full min-w-[34rem] text-sm">
+          <thead>
+            <tr className="bg-slate-50 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">
+              <th className="p-3">Holder</th>
+              <th className="p-3">Responsibility</th>
+              <th className="w-24 p-3">Equity</th>
+              <th className="w-40 p-3">Vesting</th>
+            </tr>
+          </thead>
+          <tbody>
+            {capTable.rows.map((r, i) => { const m = memberById(r.memberId); return (
+              <tr key={r.memberId} className="border-t border-slate-100 align-middle">
+                <td className="p-3"><div className="flex items-center gap-2"><Avatar m={m} size="h-7 w-7 text-[10px]" /><div className="min-w-0"><p className="font-semibold text-foreground">{m.name}</p><p className="truncate text-xs text-slate-500">{r.role}</p></div></div></td>
+                <td className="p-3 text-slate-600">{r.responsibility}</td>
+                <td className="p-3"><div className="flex items-center gap-1"><input inputMode="numeric" value={r.equity} placeholder="—" onChange={(e) => setRow(i, { equity: e.target.value.replace(/[^0-9]/g, "").slice(0, 3) })} className="w-12 rounded-md border border-slate-200 px-2 py-1 text-right tabular-nums focus:border-sage focus:outline-none" /><span className="text-slate-400">%</span></div></td>
+                <td className="p-3"><input value={r.vesting} onChange={(e) => setRow(i, { vesting: e.target.value })} className="-mx-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none" /></td>
+              </tr>
+            ); })}
+            <tr className="border-t border-slate-100 bg-slate-50/40">
+              <td className="p-3"><p className="font-semibold text-foreground">Option pool</p><p className="text-xs text-slate-500">Reserved</p></td>
+              <td className="p-3 text-slate-500">Future hires</td>
+              <td className="p-3"><div className="flex items-center gap-1"><input inputMode="numeric" value={capTable.pool} onChange={(e) => setPool(Number(e.target.value.replace(/[^0-9]/g, "").slice(0, 3)) || 0)} className="w-12 rounded-md border border-slate-200 px-2 py-1 text-right tabular-nums focus:border-sage focus:outline-none" /><span className="text-slate-400">%</span></div></td>
+              <td className="p-3 text-slate-400">—</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-slate-200">
+              <td className="p-3 font-bold text-foreground" colSpan={2}>Unallocated</td>
+              <td className={`p-3 font-bold tabular-nums ${unalloc < 0 ? "text-amber-600" : "text-foreground"}`}>{unalloc}%</td>
+              <td className="p-3" />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </Section>
+  );
+}
+
+/* ----------------------------------------- validation: publish + scorecard */
+
+function PublishBar({ published, onPublish, url }: { published: boolean; onPublish: (p: boolean) => void; url: string }) {
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      {published ? (
+        <>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-sage/15 px-2.5 py-1 text-xs font-bold text-sage-dark"><span className="h-2 w-2 rounded-full bg-sage" /> Live</span>
+          <code className="text-sm text-slate-600">{url}</code>
+          <button className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"><Icon name="copy" className="h-3.5 w-3.5" /> Copy link</button>
+          <span className="ml-auto hidden items-center gap-1.5 text-xs text-slate-400 sm:flex"><Icon name="shield" className="h-3.5 w-3.5" /> Hosted by Flash Company · collecting signups</span>
+          <button onClick={() => onPublish(false)} className="text-xs font-semibold text-slate-400 hover:text-slate-600">Unpublish</button>
+        </>
+      ) : (
+        <>
+          <span className="text-sm text-slate-600">Launch a hosted page and start collecting signups.</span>
+          <button onClick={() => onPublish(true)} className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="bolt" className="h-4 w-4" /> Publish</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ValidationScorecard({ published }: { published: boolean }) {
+  return (
+    <Section title="Scorecard · what we're testing">
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {VALIDATION.liveMetrics.map((mt) => (
+          <div key={mt.label} className="rounded-xl border border-slate-200 p-3">
+            <p className="text-xs text-slate-500">{mt.label}</p>
+            <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{published ? mt.value : "—"}</p>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2">
+        {VALIDATION.scorecard.map((s) => {
+          const value = published ? s.value : 0;
+          const pct = Math.min(100, Math.round((value / s.target) * 100));
+          const hit = value >= s.target;
+          return (
+            <div key={s.test} className="rounded-xl border border-slate-200 p-3">
+              <div className="flex items-center gap-2">
+                <Icon name="target" className="h-4 w-4 shrink-0 text-sage" />
+                <p className="text-sm font-semibold text-foreground">{s.test}</p>
+                <span className="ml-auto text-sm font-bold tabular-nums text-sage-dark">{value}/{s.target} <span className="text-xs font-normal text-slate-400">{s.metric}</span></span>
+              </div>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${hit ? "bg-sage" : "bg-sage/60"}`} style={{ width: `${pct}%` }} /></div>
+            </div>
+          );
+        })}
+      </div>
+      {!published && <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400"><Icon name="bolt" className="h-3.5 w-3.5" /> Publish the landing page below to start collecting live signals.</p>}
+    </Section>
   );
 }
