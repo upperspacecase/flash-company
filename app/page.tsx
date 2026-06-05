@@ -6,19 +6,20 @@ const BOLT = "M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z";
 
 const SECTIONS = [
   { id: "hero", label: "Start" },
+  { id: "problem", label: "The problem" },
   { id: "beats", label: "Convergence" },
   { id: "worries", label: "How it works" },
   { id: "deliverables", label: "What you get" },
   { id: "pricing", label: "Pricing" },
+  { id: "fund", label: "Flash Fund" },
   { id: "faq", label: "Questions" },
   { id: "start", label: "Get started" },
 ];
 
 const HOW = [
-  { n: "01", title: "Invite your group", text: "One link, up to three people. The 72-hour window starts once everyone's in. No accounts, no app to download." },
-  { n: "02", title: "Everyone adds what they know", text: "Solo and async — skills, problems you keep noticing, people you can reach. A few minutes each, by text or voice." },
-  { n: "03", title: "The agent finds the venture", text: "It reads across all of you, surfaces the opportunity you're best placed to win, and shapes it into one concrete venture." },
-  { n: "04", title: "You leave with proof to test", text: "A validation page, a deck, and outreach copy. Then the agent goes quiet, checking back at day 7, 14, 21 and 30." },
+  { n: "01", title: "Form your trio", text: "Pick two people. Any two — friends, colleagues, strangers who should meet. You each pay €10 and get access to a shared AI agent tuned for venture design." },
+  { n: "02", title: "48-hour ideation sprint", text: "Your agent interviews all three of you, maps your overlapping skills, and guides you through a structured ideation process. At the end: one venture concept worth testing." },
+  { n: "03", title: "30-day validation plan", text: "Add €40 per person to unlock a detailed validation roadmap — experiments, metrics, and a go/no-go decision framework. Run it. Prove it. Or kill it fast." },
 ];
 
 const DELIVERABLES = [
@@ -32,22 +33,21 @@ const DELIVERABLES = [
   "Commitment ritual",
 ];
 
-type Tier = { name: string; price: string; period: string; tagline: string; cta: string; href: string; featured?: boolean; features: string[] };
+type Tier = { name: string; price: string; period: string; desc: string; featured?: boolean };
 
 const PRICING: Tier[] = [
-  { name: "Free", price: "$0", period: "", tagline: "See what you're sitting on.", cta: "Start free", href: "/demo/free", features: ["Invite up to 3 people", "Agent access for 24 hours", "Basic venture outline", "Up to 5 potential ventures"] },
-  { name: "Seed", price: "$50", period: "/ person", tagline: "Part goes to the Flash Fund for fast seed funding.", cta: "Start the sprint", href: "/demo", featured: true, features: ["Up to 3-person team", "Agent access for 48 hours", "7-day validation roadmap", "3–5 venture outlines + venture building"] },
-  { name: "Venture Launch", price: "$250", period: "upfront + $100/mo", tagline: "When you're ready to incorporate.", cta: "Talk to us", href: "/demo", features: ["Legal + financial setup", "Stripe Atlas + Estonia / LLC"] },
-  { name: "Venture Grow", price: "$200–5,000", period: "/ month", tagline: "Scale the venture with agents.", cta: "Talk to us", href: "/demo", features: ["Agent orchestration", "Agent swarms"] },
+  { name: "Ideation Sprint", price: "€10", period: "/ person", desc: "Your trio plus a shared AI agent. A 48-hour sprint down to one venture concept worth testing.", featured: true },
+  { name: "Validation Plan", price: "+€40", period: "/ person", desc: "Unlock the 30-day validation roadmap — experiments, metrics, and a go/no-go decision framework." },
+  { name: "Enterprise", price: "€2,000", period: "/ month", desc: "Run Flash Company across your organisation — up to 100 teams." },
 ];
 
 const FAQS = [
-  { q: "How many people can join a sprint?", a: "Up to three. Small enough to move fast, broad enough to bring a real range of skills and networks." },
-  { q: "How long does it take?", a: "One 72-hour window — about three days. The time limit is the point: it forces a decision instead of a drawn-out maybe." },
+  { q: "How many people can join a sprint?", a: "Three — you and two others. Small enough to move fast, broad enough to bring a real range of skills and networks." },
+  { q: "How long does it take?", a: "A 48-hour ideation sprint — about two days — then an optional 30-day validation plan. The time limit is the point: it forces a decision instead of a drawn-out maybe." },
   { q: "Do we need an idea already?", a: "No. You bring what you know — skills, problems you keep seeing, people you can reach. The agent finds the venture from there." },
   { q: "Isn't this another group chat?", a: "The opposite. Everyone contributes on their own into one shared agent, so there's no thread to keep up with." },
-  { q: "What does it cost?", a: "A one-time buy-in for the group — everyone chips into the kitty, so everyone has skin in the game." },
-  { q: "What happens after the three days?", a: "The agent goes quiet and checks back at day 7, 14, 21 and 30. The work stays with your team." },
+  { q: "What does it cost?", a: "€10 a person for the sprint, plus €40 a person to unlock validation. A one-time buy-in, so everyone has skin in the game. No subscriptions, no lock-in." },
+  { q: "What happens after the sprint?", a: "The agent goes quiet and checks back at day 7, 14, 21 and 30. The work stays with your team." },
   { q: "Is our input private?", a: "Your sprint is private to your group. Nothing leaves it unless you choose to share it." },
 ];
 
@@ -101,7 +101,7 @@ function H({ children }: { children: React.ReactNode }) {
 function Convergence() {
   const c = { r: 52, fill: "rgba(255,255,255,0.03)", stroke: "rgba(255,255,255,0.35)", strokeWidth: 1.3 };
   return (
-    <svg viewBox="0 0 240 252" className="w-48 shrink-0 sm:w-56" role="img" aria-label="Skills, Networks and Insights converge">
+    <svg viewBox="0 0 240 252" className="w-96 max-w-full sm:w-[28rem]" role="img" aria-label="Skills, Networks and Insights converge">
       <circle cx={120} cy={92} {...c} />
       <circle cx={88} cy={150} {...c} />
       <circle cx={152} cy={150} {...c} />
@@ -122,7 +122,7 @@ function Convergence() {
 
 function ArrowRight() {
   return (
-    <svg viewBox="0 0 64 24" className="w-10 shrink-0 rotate-90 lg:rotate-0" aria-hidden="true">
+    <svg viewBox="0 0 64 24" className="w-20 shrink-0 rotate-90 xl:rotate-0" aria-hidden="true">
       <path d="M4 12h50 M46 5l9 7-9 7" fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -131,7 +131,7 @@ function ArrowRight() {
 function Wireframe() {
   const line = "rgba(255,255,255,0.4)";
   return (
-    <svg viewBox="0 0 300 270" className="w-60 shrink-0 sm:w-72" role="img" aria-label="A landing page that is actionable, shareable and testable">
+    <svg viewBox="0 0 300 270" className="w-[30rem] max-w-full sm:w-[36rem]" role="img" aria-label="A landing page that is actionable, shareable and testable">
       <rect x={44} y={48} width={168} height={172} rx={10} fill="rgba(255,255,255,0.03)" stroke={line} strokeWidth={1.4} />
       <path d="M44 66 H212" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
       <circle cx={56} cy={57} r={2.4} fill="rgba(255,255,255,0.3)" />
@@ -216,10 +216,20 @@ export default function Home() {
         </div>
       </Section>
 
+      {/* PROBLEM */}
+      <Section id="problem">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">The problem</p>
+        <div className="mt-7 max-w-3xl space-y-5">
+          <p className="text-2xl font-medium leading-snug text-white/80 sm:text-3xl">Most people have the skills, the network, and the curiosity to start something.</p>
+          <p className="text-2xl font-medium leading-snug text-white/80 sm:text-3xl">What they don&rsquo;t have is the trigger — a forcing function that turns &ldquo;we should do something together&rdquo; into an actual company.</p>
+          <p className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl">Flash Company is that trigger.</p>
+        </div>
+      </Section>
+
       {/* CONVERGENCE → OUTPUT */}
       <section id="beats" className="relative z-10 flex min-h-screen w-full snap-start items-center justify-center px-6 py-24">
-        <div className="w-full max-w-5xl">
-          <div className="flex flex-col items-center justify-center gap-6 lg:flex-row lg:gap-12">
+        <div className="w-full max-w-7xl">
+          <div className="flex flex-col items-center justify-center gap-8 xl:flex-row xl:gap-12">
             <Convergence />
             <ArrowRight />
             <Wireframe />
@@ -233,7 +243,7 @@ export default function Home() {
       {/* HOW IT WORKS */}
       <Section id="worries">
         <H>How it works.</H>
-        <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid gap-8 sm:grid-cols-3">
           {HOW.map((s) => (
             <div key={s.n}>
               <p className="text-3xl font-extrabold tracking-tight text-accent">{s.n}</p>
@@ -250,7 +260,7 @@ export default function Home() {
       {/* DELIVERABLES */}
       <Section id="deliverables">
         <H>What you walk away with.</H>
-        <p className="mt-6 max-w-xl text-lg text-white/60">One venture, the whole thing, ready to share on day 3.</p>
+        <p className="mt-6 max-w-xl text-lg text-white/60">One venture, the whole thing, ready to put in front of people.</p>
         <div className="mt-10 grid gap-x-10 gap-y-px sm:grid-cols-2">
           {DELIVERABLES.map((d) => (
             <div key={d} className="flex items-start gap-3 border-t border-white/10 py-4 text-white/80">
@@ -264,24 +274,27 @@ export default function Home() {
       {/* PRICING */}
       <Section id="pricing">
         <H>What it costs.</H>
-        <p className="mt-6 max-w-xl text-lg text-white/60">Everyone chips into the kitty, so everyone has skin in the game.</p>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-4 sm:grid-cols-3">
           {PRICING.map((t) => (
             <div key={t.name} className={`flex flex-col rounded-xl border p-6 ${t.featured ? "border-accent bg-accent/5" : "border-white/15 bg-white/5"}`}>
-              {t.featured && <span className="mb-3 w-fit rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">Most popular</span>}
+              {t.featured && <span className="mb-3 w-fit rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">Start here</span>}
               <p className="text-sm font-semibold text-white">{t.name}</p>
               <p className="mt-2"><span className="text-3xl font-extrabold text-white">{t.price}</span> <span className="text-xs text-white/40">{t.period}</span></p>
-              <p className="mt-1 text-xs text-white/40">{t.tagline}</p>
-              <ul className="mt-4 flex-1 space-y-2">
-                {t.features.map((f) => (
-                  <li key={f} className="flex gap-2 text-xs text-white/70"><span className="text-accent">+</span><span>{f}</span></li>
-                ))}
-              </ul>
-              <a href={t.href} className={`mt-5 inline-flex h-10 items-center justify-center rounded-md px-4 text-xs font-semibold transition-colors ${t.featured ? "bg-accent text-black hover:bg-accent/90" : "border border-white/20 text-white hover:bg-white/10"}`}>{t.cta}</a>
+              <p className="mt-3 text-sm leading-relaxed text-white/55">{t.desc}</p>
             </div>
           ))}
         </div>
-        <p className="mt-6 text-xs text-white/30">Draft pricing from the working session — not final.</p>
+        <p className="mt-6 text-sm text-white/60">No subscriptions. No lock-in. Pay for the sprint, keep the company.</p>
+      </Section>
+
+      {/* FLASH FUND */}
+      <Section id="fund">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Flash Fund</p>
+        <h2 className="mt-7 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl">Every Flash Company contributes to the Flash Fund.</h2>
+        <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">
+          A percentage of all revenue goes into a fast seed fund. Ventures that complete the 30-day validation with strong signals get fast, non-dilutive seed funding — no pitch decks, no 6-month raises. Just proof, then capital.
+        </p>
+        <p className="mt-7 max-w-2xl text-2xl font-bold leading-snug text-white">You don&rsquo;t just start a company. You fund the next one.</p>
       </Section>
 
       {/* FAQ */}
@@ -303,7 +316,7 @@ export default function Home() {
       {/* GET STARTED */}
       <Section id="start">
         <h2 className="text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">Get started.</h2>
-        <p className="mt-7 max-w-xl text-lg text-white/60">Stop saying &ldquo;we should build something.&rdquo; Give your group 72 hours and a structure — and leave with one idea made actionable, and the page, deck, and copy to share it.</p>
+        <p className="mt-7 max-w-xl text-lg text-white/60">Stop saying &ldquo;we should build something.&rdquo; Give your group 48 hours and a structure — and leave with one venture worth testing, and a plan to prove it.</p>
         <div className="mt-9">
           <EmailCapture />
         </div>
@@ -311,7 +324,7 @@ export default function Home() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">A note from Ty &amp; River</p>
           {NOTE.map((p) => <p key={p}>{p}</p>)}
         </div>
-        <p className="mt-12 text-xs text-white/30">Flash Company · A 72-hour sprint to turn a group into a venture.</p>
+        <p className="mt-12 text-xs text-white/30">Flash Company · A 48-hour sprint to turn a group into a venture.</p>
       </Section>
     </main>
   );
