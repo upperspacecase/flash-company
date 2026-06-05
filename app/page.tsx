@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 const NAV = [
   { label: "How it works", href: "#how" },
   { label: "What you get", href: "#deliverables" },
@@ -94,6 +92,49 @@ function Avatars() {
   );
 }
 
+function HeroVenn() {
+  const circle = { r: 96, fill: "var(--sage)", fillOpacity: 0.12, stroke: "var(--sage)", strokeOpacity: 0.6, strokeWidth: 1.5 };
+  const cap = { textAnchor: "middle" as const, fill: "var(--sage-dark)", className: "font-serif italic", style: { fontWeight: 700 } };
+  const sub = { textAnchor: "middle" as const, fill: "#475569", style: { fontSize: 9.5, fontWeight: 500 } };
+  const iconBox = { fill: "none", stroke: "var(--sage-dark)", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  return (
+    <svg viewBox="0 0 360 308" role="img" aria-label="Skills, Networks, and Insights overlap to reveal your best venture opportunity" className="h-auto w-full">
+      <circle cx={180} cy={112} {...circle} />
+      <circle cx={132} cy={196} {...circle} />
+      <circle cx={228} cy={196} {...circle} />
+
+      {/* Skills */}
+      <svg x={168} y={50} width={24} height={24} viewBox="0 0 24 24" {...iconBox}>
+        <path d="M12 3a6 6 0 0 0-3.7 10.8c.5.4.9 1 .9 1.7v.5h5.6v-.5c0-.7.4-1.3.9-1.7A6 6 0 0 0 12 3z" />
+        <path d="M9.5 18.5h5" /><path d="M10.5 21h3" />
+      </svg>
+      <text x={180} y={92} {...cap} style={{ ...cap.style, fontSize: 16, letterSpacing: "0.06em" }}>SKILLS</text>
+      <text x={180} y={108} {...sub}>What we can do</text>
+
+      {/* Networks */}
+      <text x={96} y={186} {...cap} style={{ ...cap.style, fontSize: 15, letterSpacing: "0.04em" }}>NETWORKS</text>
+      <svg x={84} y={194} width={24} height={24} viewBox="0 0 24 24" {...iconBox}>
+        <path d="M17 21v-2a4 4 0 0 0-3-3.87" /><path d="M7 21v-2a4 4 0 0 1 3-3.87" /><path d="M12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /><path d="M5 11a2.5 2.5 0 1 0 0-5" /><path d="M19 11a2.5 2.5 0 1 0 0-5" />
+      </svg>
+      <text x={96} y={226} {...sub}>Who we know</text>
+
+      {/* Insights */}
+      <text x={264} y={186} {...cap} style={{ ...cap.style, fontSize: 15, letterSpacing: "0.04em" }}>INSIGHTS</text>
+      <svg x={252} y={194} width={24} height={24} viewBox="0 0 24 24" {...iconBox}>
+        <path d="M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z" /><path d="M15.5 15.5l4.5 4.5" />
+      </svg>
+      <text x={264} y={226} {...sub}>What we know</text>
+
+      {/* Center — triple overlap */}
+      <svg x={171} y={138} width={18} height={18} viewBox="0 0 24 24" fill="var(--sage-dark)" stroke="none">
+        <path d="M12 4l1.6 4.8L18 10l-4.4 1.2L12 16l-1.6-4.8L6 10l4.4-1.2L12 4z" />
+      </svg>
+      <text x={180} y={170} {...cap} style={{ ...cap.style, fontSize: 10.5, letterSpacing: "0.02em" }}>Best Venture</text>
+      <text x={180} y={183} {...cap} style={{ ...cap.style, fontSize: 10.5, letterSpacing: "0.02em" }}>Opportunity</text>
+    </svg>
+  );
+}
+
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-white">
@@ -129,7 +170,7 @@ export default function Home() {
         </div>
         {/* 3 — Visual */}
         <div className="w-full">
-          <Image src="/venn.png" alt="Skills, Networks, and Insights overlap to reveal your best venture opportunity" width={1254} height={1254} priority className="h-auto w-full" />
+          <HeroVenn />
         </div>
       </section>
 
