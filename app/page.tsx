@@ -188,12 +188,10 @@ export default function Home() {
 
       {/* PROBLEM */}
       <Section id="problem">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">The problem</p>
-        <div className="mt-7 max-w-3xl space-y-5">
-          <p className="text-2xl font-medium leading-snug text-white/80 sm:text-3xl">Most people have the skills, the network, and the curiosity to start something.</p>
-          <p className="text-2xl font-medium leading-snug text-white/80 sm:text-3xl">What they don&rsquo;t have is the trigger — a forcing function that turns &ldquo;we should do something together&rdquo; into an actual company.</p>
-          <p className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl">Flash Company is that trigger.</p>
-        </div>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Problem</p>
+        <h2 className="mt-7 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl">You don&rsquo;t need more ideas. You need the right next step.</h2>
+        <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">Most people have dozens of half-formed ideas and a contacts list full of potential co-founders. What they lack is a guided process that maps one to the other — that asks the right questions, finds the overlap, and turns scattered curiosity into a focused venture concept.</p>
+        <p className="mt-7 max-w-2xl text-2xl font-bold leading-snug text-white">Flash Company is the next step.</p>
       </Section>
 
       {/* CONVERGENCE → OUTPUT */}
