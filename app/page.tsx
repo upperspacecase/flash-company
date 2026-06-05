@@ -9,10 +9,8 @@ const SECTIONS = [
   { id: "problem", label: "The problem" },
   { id: "beats", label: "Convergence" },
   { id: "worries", label: "How it works" },
-  { id: "deliverables", label: "What you get" },
   { id: "pricing", label: "Pricing" },
   { id: "fund", label: "Flash Fund" },
-  { id: "faq", label: "Questions" },
   { id: "start", label: "Get started" },
 ];
 
@@ -22,33 +20,12 @@ const HOW = [
   { n: "03", title: "30-day validation plan", text: "Add €40 per person to unlock a detailed validation roadmap — experiments, metrics, and a go/no-go decision framework. Run it. Prove it. Or kill it fast." },
 ];
 
-const DELIVERABLES = [
-  "Thesis — customer, problem, differentiation, chosen approach",
-  "Roles & equity framework",
-  "30-day roadmap",
-  "Pitch deck (YC seed-deck format)",
-  "Landing page",
-  "Outreach copy",
-  "Validation report",
-  "Commitment ritual",
-];
-
 type Tier = { name: string; price: string; period: string; desc: string; featured?: boolean };
 
 const PRICING: Tier[] = [
   { name: "Ideation Sprint", price: "€10", period: "/ person", desc: "Your trio plus a shared AI agent. A 48-hour sprint down to one venture concept worth testing.", featured: true },
   { name: "Validation Plan", price: "+€40", period: "/ person", desc: "Unlock the 30-day validation roadmap — experiments, metrics, and a go/no-go decision framework." },
   { name: "Enterprise", price: "€2,000", period: "/ month", desc: "Run Flash Company across your organisation — up to 100 teams." },
-];
-
-const FAQS = [
-  { q: "How many people can join a sprint?", a: "Three — you and two others. Small enough to move fast, broad enough to bring a real range of skills and networks." },
-  { q: "How long does it take?", a: "A 48-hour ideation sprint — about two days — then an optional 30-day validation plan. The time limit is the point: it forces a decision instead of a drawn-out maybe." },
-  { q: "Do we need an idea already?", a: "No. You bring what you know — skills, problems you keep seeing, people you can reach. The agent finds the venture from there." },
-  { q: "Isn't this another group chat?", a: "The opposite. Everyone contributes on their own into one shared agent, so there's no thread to keep up with." },
-  { q: "What does it cost?", a: "€10 a person for the sprint, plus €40 a person to unlock validation. A one-time buy-in, so everyone has skin in the game. No subscriptions, no lock-in." },
-  { q: "What happens after the sprint?", a: "The agent goes quiet and checks back at day 7, 14, 21 and 30. The work stays with your team." },
-  { q: "Is our input private?", a: "Your sprint is private to your group. Nothing leaves it unless you choose to share it." },
 ];
 
 const NOTE = [
@@ -257,20 +234,6 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* DELIVERABLES */}
-      <Section id="deliverables">
-        <H>What you walk away with.</H>
-        <p className="mt-6 max-w-xl text-lg text-white/60">One venture, the whole thing, ready to put in front of people.</p>
-        <div className="mt-10 grid gap-x-10 gap-y-px sm:grid-cols-2">
-          {DELIVERABLES.map((d) => (
-            <div key={d} className="flex items-start gap-3 border-t border-white/10 py-4 text-white/80">
-              <span className="text-accent">+</span>
-              <span className="text-sm">{d}</span>
-            </div>
-          ))}
-        </div>
-      </Section>
-
       {/* PRICING */}
       <Section id="pricing">
         <H>What it costs.</H>
@@ -295,22 +258,6 @@ export default function Home() {
           A percentage of all revenue goes into a fast seed fund. Ventures that complete the 30-day validation with strong signals get fast, non-dilutive seed funding — no pitch decks, no 6-month raises. Just proof, then capital.
         </p>
         <p className="mt-7 max-w-2xl text-2xl font-bold leading-snug text-white">You don&rsquo;t just start a company. You fund the next one.</p>
-      </Section>
-
-      {/* FAQ */}
-      <Section id="faq">
-        <H>Questions.</H>
-        <div className="mt-10 max-w-3xl divide-y divide-white/10 border-y border-white/10">
-          {FAQS.map((f) => (
-            <details key={f.q} className="group py-5">
-              <summary className="flex cursor-pointer items-center justify-between gap-4 text-lg font-semibold text-white marker:content-['']">
-                {f.q}
-                <span className="text-xl leading-none text-accent transition-transform group-open:rotate-45">+</span>
-              </summary>
-              <p className="mt-3 text-white/55">{f.a}</p>
-            </details>
-          ))}
-        </div>
       </Section>
 
       {/* GET STARTED */}
