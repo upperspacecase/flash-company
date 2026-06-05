@@ -14,16 +14,26 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 export default async function Dashboard() {
-  const sql = getSql();
-  const [signupRows, visitRows, signup30Rows, recent] = await Promise.all([
-    sql`SELECT count(*)::int AS count FROM signups`,
-    sql`SELECT count(*)::int AS count FROM visits`,
-    sql`SELECT count(*)::int AS count FROM signups WHERE created_at > now() - interval '30 days'`,
-    sql`SELECT email, created_at FROM signups ORDER BY created_at DESC LIMIT 12`,
-  ]);
-  const signups = signupRows[0].count as number;
-  const visits = visitRows[0].count as number;
-  const signups30 = signup30Rows[0].count as number;
+  let dbError = false;
+  let signups = 0;
+  let visits = 0;
+  let signups30 = 0;
+  let recent: { email: string; created_at: string }[] = [];
+  try {
+    const sql = getSql();
+    const [s, v, s30, r] = await Promise.all([
+      sql`SELECT count(*)::int AS count FROM signups`,
+      sql`SELECT count(*)::int AS count FROM visits`,
+      sql`SELECT count(*)::int AS count FROM signups WHERE created_at > now() - interval '30 days'`,
+      sql`SELECT email, created_at FROM signups ORDER BY created_at DESC LIMIT 12`,
+    ]);
+    signups = s[0].count;
+    visits = v[0].count;
+    signups30 = s30[0].count;
+    recent = r as { email: string; created_at: string }[];
+  } catch {
+    dbError = true;
+  }
   const rate = visits > 0 ? ((signups / visits) * 100).toFixed(1) : "0.0";
 
   return (
@@ -37,6 +47,12 @@ export default async function Dashboard() {
           </div>
           <UserButton />
         </header>
+
+        {dbError && (
+          <div className="mt-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            Couldn&rsquo;t reach the database. Set <code className="font-mono">POSTGRES_URL</code> and create the tables (run <code className="font-mono">db/schema.sql</code>).
+          </div>
+        )}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Visitors" value={visits.toLocaleString()} sub="sessions tracked" />

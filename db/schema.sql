@@ -1,5 +1,6 @@
--- Flash Company metrics schema. Run once against your Neon database
--- (Neon dashboard SQL editor, or: psql "$DATABASE_URL" -f db/schema.sql).
+-- Flash Company metrics schema. Run once against your Neon database.
+-- Easiest: node --env-file=.env.local scripts/init-db.mjs
+-- Or paste the statements below into the Neon dashboard SQL editor.
 
 CREATE TABLE IF NOT EXISTS signups (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
