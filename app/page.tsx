@@ -14,9 +14,9 @@ const SECTIONS = [
 ];
 
 const HOW = [
-  { n: "01", title: "Form your trio", text: "Pick two people. Any two — friends, colleagues, strangers who should meet. You each pay €10 and get access to a shared AI agent tuned for venture design." },
-  { n: "02", title: "48-hour ideation sprint", text: "Your agent interviews all three of you, maps your overlapping skills, and guides you through a structured ideation process. At the end: one venture concept worth testing." },
-  { n: "03", title: "30-day validation plan", text: "Add €40 per person to unlock a detailed validation roadmap — experiments, metrics, and a go/no-go decision framework. Run it. Prove it. Or kill it fast." },
+  { n: "01", title: "Form your team", text: "Invite two people. Any two — friends, colleagues, strangers who should meet. You each invest €10 and get access to a shared AI agent tuned for venture design." },
+  { n: "02", title: "48-hour ideation sprint", text: "About an hour each over a 48-hour window. The agent maps your overlapping skills and guides you through a structured ideation process. At the end: one venture concept worth testing." },
+  { n: "03", title: "30-day validation", text: "Invest an additional €40 per person to unlock a detailed validation roadmap — experiments, metrics, and a go/no-go decision framework. Run it. Prove it. Launch it. Or kill it fast." },
 ];
 
 type Tier = { name: string; price: string; period: string; desc: string; featured?: boolean };
@@ -35,13 +35,25 @@ const NOTE = [
 
 function EmailCapture({ note }: { note?: string }) {
   const [email, setEmail] = useState("");
-  const [done, setDone] = useState(false);
-  if (done) {
-    return <p className="text-sm font-semibold text-accent">Thanks — we&rsquo;ll email you when the next window opens.</p>;
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  if (status === "done") {
+    return <p className="text-sm font-semibold text-accent">Thanks — we&rsquo;ll email you when the next Flash cohort opens.</p>;
   }
   return (
     <div>
-      <form onSubmit={(e) => { e.preventDefault(); setDone(true); }} className="flex w-full max-w-md flex-col gap-3 sm:flex-row">
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setStatus("loading");
+          const res = await fetch("/api/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          setStatus(res.ok ? "done" : "error");
+        }}
+        className="flex w-full max-w-md flex-col gap-3 sm:flex-row"
+      >
         <input
           type="email"
           required
@@ -49,13 +61,17 @@ function EmailCapture({ note }: { note?: string }) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
           aria-label="Email address"
-          className="h-36 flex-1 rounded-md border border-white/20 bg-white/5 px-4 text-sm text-white placeholder:text-white/35 focus:border-accent focus:outline-none sm:h-12"
+          className="h-12 rounded-md border border-white/20 bg-white/5 px-4 text-sm text-white placeholder:text-white/35 focus:border-accent focus:outline-none sm:flex-1"
         />
-        <button type="submit" className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-6 text-sm font-semibold text-black transition-colors hover:bg-accent/90">
-          Get early access
+        <button type="submit" disabled={status === "loading"} className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-6 text-sm font-semibold text-black transition-colors hover:bg-accent/90 disabled:opacity-60">
+          {status === "loading" ? "…" : "Get early access"}
         </button>
       </form>
-      {note && <p className="mt-3 text-xs text-white/35">{note}</p>}
+      {status === "error" ? (
+        <p className="mt-3 text-xs text-red-400">Something went wrong — please try again.</p>
+      ) : (
+        note && <p className="mt-3 text-xs text-white/35">{note}</p>
+      )}
     </div>
   );
 }
@@ -103,7 +119,7 @@ function CyclingWord() {
 
 function FlowArrow({ logo }: { logo?: boolean }) {
   return (
-    <div className="flex shrink-0 flex-col items-center gap-2">
+    <div className="flex shrink-0 flex-col items-center gap-8 xl:gap-2">
       {logo && (
         <span className="flex items-center gap-1.5">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-accent" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
@@ -140,6 +156,12 @@ export default function Home() {
       if (el) obs.observe(el);
     }
     return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("fc_visit")) return;
+    sessionStorage.setItem("fc_visit", "1");
+    void fetch("/api/track", { method: "POST" });
   }, []);
 
   const go = (i: number) => document.getElementById(SECTIONS[i].id)?.scrollIntoView({ behavior: "smooth" });
@@ -180,7 +202,7 @@ export default function Home() {
       {/* PROBLEM */}
       <Section id="problem">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Problem</p>
-        <h2 className="mt-7 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl">You don&rsquo;t need more ideas. You need the right next step.</h2>
+        <h2 className="mt-7 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl">You don&rsquo;t need more ideas.<br />You need the right next step.</h2>
         <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">Most people have dozens of half-formed ideas and a contacts list full of potential co-founders. What they lack is a guided process that maps one to the other — that asks the right questions, finds the overlap, and turns scattered curiosity into a focused venture concept.</p>
         <p className="mt-7 max-w-2xl text-2xl font-bold leading-snug text-white">Flash Company is the next step.</p>
       </Section>
@@ -241,7 +263,7 @@ export default function Home() {
 
       {/* GET STARTED */}
       <Section id="start">
-        <p className="max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl">We believe the future doesn&rsquo;t need more experts. It needs more people starting things together.</p>
+        <p className="max-w-3xl text-[1.575rem] font-extrabold leading-[1.05] tracking-tight text-white sm:text-[2.1rem]">We believe the future doesn&rsquo;t need more experts. It needs more people starting things together.</p>
         <h2 className="mt-12 text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">Get started.</h2>
         <div className="mt-9">
           <EmailCapture />

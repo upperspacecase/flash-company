@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -12,10 +13,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description =
+  "Ever wonder what you and 2 friends could build? A guided 48-hour ideation sprint that turns your combined skills, networks, and insights into an idea worth sharing.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://flashcompany.org"),
   title: "Flash Company",
-  description:
-    "Ideas are cheap. Making one actionable is the whole game. A 72-hour, AI-guided sprint that turns what a small group knows into one venture you can act on and share.",
+  description,
+  openGraph: {
+    title: "Flash Company",
+    description,
+    url: "https://flashcompany.org",
+    siteName: "Flash Company",
+    type: "website",
+    images: [{ url: "/og.png", width: 1588, height: 806 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Flash Company",
+    description,
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({
@@ -28,7 +46,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ClerkProvider>{children}</ClerkProvider>
+      </body>
     </html>
   );
 }
