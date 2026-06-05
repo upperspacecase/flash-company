@@ -97,7 +97,7 @@ function Avatar({ m, size = "h-8 w-8 text-xs" }: { m: Member; size?: string }) {
   return <span className={`flex ${size} items-center justify-center rounded-full font-bold ring-2 ring-white ${m.ring}`}>{m.initials}</span>;
 }
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-slate-200 bg-white p-4 ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl border border-slate-200 bg-white/5 p-4 ${className}`}>{children}</div>;
 }
 function Chip({ children }: { children: React.ReactNode }) {
   return <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{children}</span>;
@@ -178,7 +178,9 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
   const go = (i: number) => setPhase(isFree && i >= 5 ? 4 : i);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50/70">
+    <div className="relative flex min-h-screen flex-col bg-black">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
+      <div className="relative z-10 flex flex-1 flex-col">
       <Header phase={phase} plan={plan} />
       <Timeline phase={phase} onJump={go} plan={plan} />
       <main className="mx-auto w-full max-w-[1500px] flex-1 px-5 py-6">
@@ -189,6 +191,7 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
         {phase === 4 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(5)} />}
         {!isFree && phase === 5 && <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
       </main>
+      </div>
     </div>
   );
 }
@@ -197,7 +200,7 @@ function Header({ phase, plan }: { phase: number; plan: "free" | "full" }) {
   const p = PHASES[phase];
   const isFree = plan === "free";
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="border-b border-slate-200 bg-white/5">
       <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-4 px-5 py-3">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-sage"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
@@ -219,7 +222,7 @@ function Header({ phase, plan }: { phase: number; plan: "free" | "full" }) {
 function Timeline({ phase, onJump, plan }: { phase: number; onJump: (n: number) => void; plan: "free" | "full" }) {
   const isFree = plan === "free";
   return (
-    <nav className="border-b border-slate-200 bg-white">
+    <nav className="border-b border-slate-200 bg-white/5">
       <ol className="mx-auto flex w-full max-w-[1500px] gap-2 overflow-x-auto px-5 py-3">
         {PHASES.map((p, i) => {
           const locked = isFree && i >= 5;
@@ -263,7 +266,7 @@ function InvitePhase({ onNext }: { onNext: () => void }) {
           <div className="rounded-xl border border-slate-200 p-4">
             <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
             <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-sage"><Icon name="link" className="h-4 w-4" /></span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-sage"><Icon name="link" className="h-4 w-4" /></span>
               <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{INVITE.url}</code>
               <button className="inline-flex items-center gap-1.5 rounded-md bg-sage px-3 py-1.5 text-xs font-bold text-white"><Icon name="copy" className="h-3.5 w-3.5" /> Copy</button>
             </div>
@@ -581,7 +584,7 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
       <div className="flex flex-wrap gap-2">
         {options.map((o) => { const idx = value.ranked.indexOf(o); const on = idx >= 0; return (
           <button key={o} onClick={() => toggle(o)} className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>
-            {on && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] text-sage-dark">{idx + 1}</span>}{o}
+            {on && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/5 text-[10px] text-sage-dark">{idx + 1}</span>}{o}
           </button>
         ); })}
       </div>
@@ -783,10 +786,10 @@ function RolesTasks({ roles, onRoles, confirmed, onConfirm }: { roles: typeof SY
           <div key={r.memberId} className="rounded-xl border border-slate-200 p-3">
             <div className="flex items-center gap-2">
               <Avatar m={m} size="h-8 w-8 text-[10px]" />
-              <input value={r.role} onChange={(e) => setRole(r.memberId, { role: e.target.value })} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none" />
+              <input value={r.role} onChange={(e) => setRole(r.memberId, { role: e.target.value })} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
               <button onClick={() => onConfirm(r.memberId)} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${ok ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={ok ? "check" : "thumb"} className="h-3.5 w-3.5" />{ok ? "Confirmed" : "Confirm"}</button>
             </div>
-            <input value={r.tasks} onChange={(e) => setRole(r.memberId, { tasks: e.target.value })} className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-xs text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none" />
+            <input value={r.tasks} onChange={(e) => setRole(r.memberId, { tasks: e.target.value })} className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-xs text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
           </div>
         );
       })}
@@ -810,7 +813,7 @@ function VotableList({ items, onItems, picks, onVote, votesLeft, addLabel, whys,
             <div key={item.id} className="rounded-xl border border-slate-200 p-2.5">
               <div className="flex items-center gap-2">
                 <button onClick={() => onVote(item.id)} disabled={!mine && votesLeft <= 0} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold tabular-nums transition-colors ${mine ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:border-sage/50 disabled:opacity-40"}`}><Icon name="thumb" className="h-3.5 w-3.5" />{total}</button>
-                <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`Add a ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none" />
+                <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`Add a ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
                 {whys && <button onClick={() => setOpen(isOpen ? null : item.id)} className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors ${isOpen ? "bg-sage-tint text-sage-dark" : "text-slate-400 hover:text-slate-600"}`}>5 Whys</button>}
                 <button onClick={() => onItems(items.filter((i) => i.id !== item.id))} aria-label="Remove" className="shrink-0 text-slate-300 hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
               </div>
@@ -860,7 +863,7 @@ function OutcomePanel({ problems, obsessions, markets, picks }: { problems: Vota
   );
   return (
     <div className="space-y-4 lg:sticky lg:top-4">
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white/5 p-5">
         <RailTitle>Outcome</RailTitle>
         <p className="-mt-2 text-xs text-slate-400">Top picks as the votes land — these carry into venture formation.</p>
         {block("Problems", problems, picks.problems)}
@@ -951,7 +954,7 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
       }
       right={
         <div className="space-y-4 lg:sticky lg:top-4">
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
             <RailTitle>Agreed space</RailTitle>
             <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{agreed.text}</p></div>
             <p className="text-xs text-slate-400">Researched and viewed through the lenses, then it births your candidate ventures.</p>
@@ -1033,7 +1036,7 @@ function VenturesPhase({ plan, ventureId, onSelect, name, onName, venture, onVen
         </section>
         <aside className="lg:w-80 lg:shrink-0">
           <div className="lg:sticky lg:top-4 lg:self-start">
-            <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="space-y-4 rounded-2xl border border-slate-200 bg-white/5 p-5">
               <RailTitle>Deliberation</RailTitle>
               <div className="grid gap-3"><Bars label="Spark" value={v.spark} /><Bars label="Conviction" value={v.conviction} /></div>
               <div className="flex gap-2">
@@ -1182,12 +1185,12 @@ function FlashMark({ className = "h-5 w-5 text-sage" }: { className?: string }) 
 
 function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATION.landing }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/5 shadow-sm">
       <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-        <span className="ml-3 rounded-md bg-white px-2 py-0.5 text-[11px] text-slate-400">relaunch.co</span>
+        <span className="ml-3 rounded-md bg-white/5 px-2 py-0.5 text-[11px] text-slate-400">relaunch.co</span>
       </div>
       <div className="p-6 sm:p-8">
         <div className="mb-7 flex items-center gap-2">
@@ -1237,7 +1240,7 @@ function DeckViewer({ slides, name }: { slides: DeckSlide[]; name: string }) {
   return (
     <div className="space-y-3">
       <div className="relative">
-        <div className="aspect-[16/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="aspect-[16/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white/5 shadow-sm">
           <SlideStage slide={slides[i]} index={i} total={total} name={name} />
         </div>
         <button onClick={() => go(i - 1)} aria-label="Previous slide" className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-sage-dark">
@@ -1319,7 +1322,7 @@ function SlideStage({ slide, index, total, name }: { slide: DeckSlide; index: nu
             )}
 
             {slide.kind === "market" && slide.footnote && (
-              <div className="mt-4 inline-flex items-center gap-2 self-start rounded-xl bg-foreground px-4 py-2 text-sm font-bold text-white">
+              <div className="mt-4 inline-flex items-center gap-2 self-start rounded-xl bg-accent px-4 py-2 text-sm font-bold text-white">
                 <Icon name="chart" className="h-4 w-4" /> {slide.footnote}
               </div>
             )}
@@ -1343,7 +1346,7 @@ function EditableArea({ value, onChange, className = "", rows = 2, placeholder }
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       placeholder={placeholder}
-      className={`-mx-1.5 w-full resize-y rounded-md border border-transparent bg-transparent px-1.5 py-1 leading-snug hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none ${className}`}
+      className={`-mx-1.5 w-full resize-y rounded-md border border-transparent bg-transparent px-1.5 py-1 leading-snug hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none ${className}`}
     />
   );
 }
@@ -1607,7 +1610,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
               <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Assumptions</p>
               <div className="space-y-2">
                 {model.drivers.map((d) => (
-                  <div key={d.key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-2.5">
+                  <div key={d.key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white/5 p-2.5">
                     <span className="text-sm text-slate-600">{d.label}</span>
                     <span className="flex items-center gap-0.5">
                       {d.prefix && <span className="text-sm text-slate-400">{d.prefix}</span>}
@@ -1616,7 +1619,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
                     </span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-2.5">
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white/5 p-2.5">
                   <span className="text-sm text-slate-600">Annual growth</span>
                   <span className="flex items-center gap-0.5">
                     <input inputMode="numeric" value={revenue.growth} onChange={(e) => onChange({ ...revenue, growth: Number(e.target.value.replace(/[^0-9]/g, "")) || 0 })} className="w-24 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-sage focus:outline-none" />
@@ -1638,7 +1641,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
                   </div>
                 ))}
               </div>
-              <div className="mt-3 rounded-lg bg-foreground px-3 py-2 text-center">
+              <div className="mt-3 rounded-lg bg-accent px-3 py-2 text-center">
                 <p className="text-[11px] uppercase tracking-wide text-white/60">Year 3 {model.unit}</p>
                 <p className="text-xl font-bold tabular-nums text-white">{money(build[2])}</p>
               </div>
@@ -1678,7 +1681,7 @@ function CapTable({ capTable, setRow, setPool }: { capTable: VentureDraft["capTa
                 <td className="p-3"><div className="flex items-center gap-2"><Avatar m={m} size="h-7 w-7 text-[10px]" /><div className="min-w-0"><p className="font-semibold text-foreground">{m.name}</p><p className="truncate text-xs text-slate-500">{r.role}</p></div></div></td>
                 <td className="p-3 text-slate-600">{r.responsibility}</td>
                 <td className="p-3"><div className="flex items-center gap-1"><input inputMode="numeric" value={r.equity} placeholder="—" onChange={(e) => setRow(i, { equity: e.target.value.replace(/[^0-9]/g, "").slice(0, 3) })} className="w-12 rounded-md border border-slate-200 px-2 py-1 text-right tabular-nums focus:border-sage focus:outline-none" /><span className="text-slate-400">%</span></div></td>
-                <td className="p-3"><input value={r.vesting} onChange={(e) => setRow(i, { vesting: e.target.value })} className="-mx-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white focus:outline-none" /></td>
+                <td className="p-3"><input value={r.vesting} onChange={(e) => setRow(i, { vesting: e.target.value })} className="-mx-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" /></td>
               </tr>
             ); })}
             <tr className="border-t border-slate-100 bg-slate-50/40">
@@ -1710,7 +1713,7 @@ function PublishBar({ published, onPublish, url }: { published: boolean; onPubli
         <>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-sage/15 px-2.5 py-1 text-xs font-bold text-sage-dark"><span className="h-2 w-2 rounded-full bg-sage" /> Live</span>
           <code className="text-sm text-slate-600">{url}</code>
-          <button className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"><Icon name="copy" className="h-3.5 w-3.5" /> Copy link</button>
+          <button className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"><Icon name="copy" className="h-3.5 w-3.5" /> Copy link</button>
           <span className="ml-auto hidden items-center gap-1.5 text-xs text-slate-400 sm:flex"><Icon name="shield" className="h-3.5 w-3.5" /> Hosted by Flash Company · collecting signups</span>
           <button onClick={() => onPublish(false)} className="text-xs font-semibold text-slate-400 hover:text-slate-600">Unpublish</button>
         </>
