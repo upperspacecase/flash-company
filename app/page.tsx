@@ -184,9 +184,9 @@ export default function Home() {
 
       {/* HERO */}
       <Section id="hero">
-        <h1 className="text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">Ideas are cheap.</h1>
-        <p className="mt-7 max-w-xl text-lg leading-8 text-white/60">
-          Making one actionable is the whole game. Flash Company takes what your group knows — solo, on your own time — and turns it into one venture you can act on by Monday and share by Friday.
+        <h1 className="max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">What if 48 hours from now you had a company idea worth sharing?</h1>
+        <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">
+          A guided ideation process that maps your skills, stories, and curiosities into one venture concept worth growing.
         </p>
         <div className="mt-9">
           <EmailCapture note="Early access — no spam, just a note when the next window opens." />
