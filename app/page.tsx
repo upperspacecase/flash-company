@@ -74,45 +74,49 @@ function H({ children }: { children: React.ReactNode }) {
 }
 
 function Convergence() {
-  const c = { r: 52, fill: "rgba(255,255,255,0.03)", stroke: "rgba(255,255,255,0.35)", strokeWidth: 1.3 };
   return (
-    <svg viewBox="0 0 240 252" className="w-80 max-w-full sm:w-96" role="img" aria-label="Skills, Networks and Insights converge">
-      <circle cx={120} cy={92} {...c} />
-      <circle cx={88} cy={150} {...c} />
-      <circle cx={152} cy={150} {...c} />
-      <circle cx={120} cy={131} r={4} fill="var(--accent)" />
-      <g stroke="rgba(255,255,255,0.18)" strokeWidth={1}>
-        <path d="M58 228 L78 192" />
-        <path d="M182 228 L166 192" />
-      </g>
-      <text x={120} y={24} textAnchor="middle" fill="rgba(255,255,255,0.72)" style={{ fontSize: 13, fontWeight: 700 }}>Skills</text>
-      <text x={120} y={37} textAnchor="middle" fill="rgba(255,255,255,0.3)" style={{ fontSize: 9 }}>what we can do</text>
-      <text x={46} y={236} textAnchor="middle" fill="rgba(255,255,255,0.72)" style={{ fontSize: 13, fontWeight: 700 }}>Networks</text>
-      <text x={46} y={249} textAnchor="middle" fill="rgba(255,255,255,0.3)" style={{ fontSize: 9 }}>who we know</text>
-      <text x={194} y={236} textAnchor="middle" fill="rgba(255,255,255,0.72)" style={{ fontSize: 13, fontWeight: 700 }}>Insights</text>
-      <text x={194} y={249} textAnchor="middle" fill="rgba(255,255,255,0.3)" style={{ fontSize: 9 }}>what we know</text>
-    </svg>
-  );
-}
+    <svg viewBox="0 0 400 400" className="w-96 max-w-full sm:w-[28rem]" role="img" aria-label="Skills, Networks and Insights overlap to reveal the best venture opportunity">
+      <defs>
+        <clipPath id="vennA"><circle cx={200} cy={150} r={120} /></clipPath>
+        <clipPath id="vennB"><circle cx={140} cy={250} r={120} /></clipPath>
+        <clipPath id="vennC"><circle cx={260} cy={250} r={120} /></clipPath>
+        <filter id="vennGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation={5} />
+        </filter>
+      </defs>
 
-function ThreePeople() {
-  const glyph = "M12 11.5a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8z|M5.5 19.5a6.5 6.5 0 0 1 13 0";
-  const person = (key: string, x: number, y: number) => (
-    <svg key={key} x={x} y={y} width={52} height={52} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-      {glyph.split("|").map((d, i) => <path key={i} d={d} />)}
-    </svg>
-  );
-  return (
-    <svg viewBox="0 0 240 240" className="w-56 max-w-full sm:w-64" role="img" aria-label="Three people coming together">
-      <g stroke="rgba(255,255,255,0.22)" strokeWidth={1.2}>
-        <path d="M120 80 L120 116" />
-        <path d="M86 168 L110 130" />
-        <path d="M154 168 L130 130" />
+      <g fill="rgba(255,255,255,0.018)" stroke="rgba(255,255,255,0.38)" strokeWidth={1.3}>
+        <circle cx={200} cy={150} r={120} />
+        <circle cx={140} cy={250} r={120} />
+        <circle cx={260} cy={250} r={120} />
       </g>
-      <circle cx={120} cy={122} r={5} fill="var(--accent)" />
-      {person("a", 94, 22)}
-      {person("b", 34, 146)}
-      {person("c", 154, 146)}
+
+      <g clipPath="url(#vennA)"><g clipPath="url(#vennB)"><g clipPath="url(#vennC)">
+        <rect x={0} y={0} width={400} height={400} fill="rgba(255,90,0,0.3)" />
+      </g></g></g>
+
+      <g filter="url(#vennGlow)" fill="none" stroke="var(--accent)" strokeWidth={4} opacity={0.5}>
+        <g clipPath="url(#vennB)"><g clipPath="url(#vennC)"><circle cx={200} cy={150} r={120} /></g></g>
+        <g clipPath="url(#vennA)"><g clipPath="url(#vennC)"><circle cx={140} cy={250} r={120} /></g></g>
+        <g clipPath="url(#vennA)"><g clipPath="url(#vennB)"><circle cx={260} cy={250} r={120} /></g></g>
+      </g>
+
+      <g fill="none" stroke="var(--accent)" strokeWidth={2}>
+        <g clipPath="url(#vennB)"><g clipPath="url(#vennC)"><circle cx={200} cy={150} r={120} /></g></g>
+        <g clipPath="url(#vennA)"><g clipPath="url(#vennC)"><circle cx={140} cy={250} r={120} /></g></g>
+        <g clipPath="url(#vennA)"><g clipPath="url(#vennB)"><circle cx={260} cy={250} r={120} /></g></g>
+      </g>
+
+      <text x={200} y={96} textAnchor="middle" fill="#fff" style={{ fontSize: 21, fontWeight: 700 }}>Skills</text>
+      <text x={200} y={119} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontSize: 13 }}>What we can do</text>
+      <text x={110} y={260} textAnchor="middle" fill="#fff" style={{ fontSize: 21, fontWeight: 700 }}>Networks</text>
+      <text x={110} y={283} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontSize: 13 }}>Who we know</text>
+      <text x={290} y={260} textAnchor="middle" fill="#fff" style={{ fontSize: 21, fontWeight: 700 }}>Insights</text>
+      <text x={290} y={283} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontSize: 13 }}>What we know</text>
+
+      <text x={200} y={190} textAnchor="middle" fill="var(--accent)" style={{ fontSize: 13, fontWeight: 700 }}>Best</text>
+      <text x={200} y={204} textAnchor="middle" fill="var(--accent)" style={{ fontSize: 13, fontWeight: 700 }}>Venture</text>
+      <text x={200} y={218} textAnchor="middle" fill="var(--accent)" style={{ fontSize: 13, fontWeight: 700 }}>Opportunity</text>
     </svg>
   );
 }
@@ -131,7 +135,7 @@ function FlowArrow({ label }: { label?: string }) {
 function Wireframe() {
   const line = "rgba(255,255,255,0.4)";
   return (
-    <svg viewBox="0 0 300 270" className="w-[26rem] max-w-full sm:w-[30rem]" role="img" aria-label="A landing page that is actionable, shareable and testable">
+    <svg viewBox="0 0 300 270" className="w-[30rem] max-w-full sm:w-[36rem]" role="img" aria-label="A landing page that is actionable, shareable and testable">
       <rect x={44} y={48} width={168} height={172} rx={10} fill="rgba(255,255,255,0.03)" stroke={line} strokeWidth={1.4} />
       <path d="M44 66 H212" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
       <circle cx={56} cy={57} r={2.4} fill="rgba(255,255,255,0.3)" />
@@ -202,9 +206,9 @@ export default function Home() {
 
       {/* HERO */}
       <Section id="hero">
-        <h1 className="max-w-4xl text-5xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">ever wonder what you and 2 friends could build?</h1>
+        <h1 className="max-w-4xl text-5xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">Ever wonder what you and 2 friends could build?</h1>
         <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">
-          Invite two people into a guided ideation process that maps your combined skills, networks, and insights into a <span className="text-accent">ready-to-test</span> business blueprint.
+          Invite two people into a guided ideation process that maps your combined skills, networks, and insights into an idea <span className="text-accent">worth sharing</span>.
         </p>
         <div className="mt-9">
           <EmailCapture note="Early access — no spam, just a note when the next window opens." />
@@ -222,9 +226,7 @@ export default function Home() {
       {/* CONVERGENCE → OUTPUT */}
       <section id="beats" className="relative z-10 flex min-h-screen w-full snap-start items-center justify-center px-6 py-24">
         <div className="w-full max-w-7xl">
-          <div className="flex flex-col items-center justify-center gap-6 xl:flex-row xl:gap-6">
-            <ThreePeople />
-            <FlowArrow />
+          <div className="flex flex-col items-center justify-center gap-8 xl:flex-row xl:gap-10">
             <Convergence />
             <FlowArrow label="Flash Company" />
             <Wireframe />
