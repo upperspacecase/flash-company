@@ -179,7 +179,7 @@ export default function Home() {
       <Section id="hero">
         <h1 className="text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">build together.</h1>
         <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">
-          A guided ideation process that maps your skills, stories, and curiosities into one venture concept worth growing.
+          Invite two people into a guided ideation process that maps your combined skills, networks, and insights into a <span className="text-accent">ready-to-test</span> business blueprint.
         </p>
         <div className="mt-9">
           <EmailCapture note="Early access — no spam, just a note when the next window opens." />
