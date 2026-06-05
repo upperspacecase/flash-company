@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const BOLT = "M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z";
-
 const SECTIONS = [
   { id: "hero", label: "Start" },
   { id: "problem", label: "The problem" },
@@ -163,11 +161,6 @@ export default function Home() {
   return (
     <main ref={scrollRef} className="relative h-screen snap-y snap-mandatory overflow-y-scroll scroll-smooth bg-black text-white">
       <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
-
-      <a href="#hero" onClick={(e) => { e.preventDefault(); go(0); }} className="fixed left-6 top-6 z-30 flex items-center gap-2 sm:left-10">
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-accent" aria-hidden="true"><path d={BOLT} /></svg>
-        <span className="text-sm font-bold tracking-tight text-white">Flash Company</span>
-      </a>
 
       <nav aria-label="Sections" className="fixed right-5 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-3 sm:flex">
         {SECTIONS.map((s, i) => (
