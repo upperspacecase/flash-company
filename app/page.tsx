@@ -76,7 +76,7 @@ function H({ children }: { children: React.ReactNode }) {
 function Convergence() {
   const c = { r: 52, fill: "rgba(255,255,255,0.03)", stroke: "rgba(255,255,255,0.35)", strokeWidth: 1.3 };
   return (
-    <svg viewBox="0 0 240 252" className="w-96 max-w-full sm:w-[28rem]" role="img" aria-label="Skills, Networks and Insights converge">
+    <svg viewBox="0 0 240 252" className="w-80 max-w-full sm:w-96" role="img" aria-label="Skills, Networks and Insights converge">
       <circle cx={120} cy={92} {...c} />
       <circle cx={88} cy={150} {...c} />
       <circle cx={152} cy={150} {...c} />
@@ -95,18 +95,43 @@ function Convergence() {
   );
 }
 
-function ArrowRight() {
-  return (
-    <svg viewBox="0 0 64 24" className="w-20 shrink-0 rotate-90 xl:rotate-0" aria-hidden="true">
-      <path d="M4 12h50 M46 5l9 7-9 7" fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+function ThreePeople() {
+  const glyph = "M12 11.5a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8z|M5.5 19.5a6.5 6.5 0 0 1 13 0";
+  const person = (key: string, x: number, y: number) => (
+    <svg key={key} x={x} y={y} width={52} height={52} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      {glyph.split("|").map((d, i) => <path key={i} d={d} />)}
     </svg>
+  );
+  return (
+    <svg viewBox="0 0 240 240" className="w-56 max-w-full sm:w-64" role="img" aria-label="Three people coming together">
+      <g stroke="rgba(255,255,255,0.22)" strokeWidth={1.2}>
+        <path d="M120 80 L120 116" />
+        <path d="M86 168 L110 130" />
+        <path d="M154 168 L130 130" />
+      </g>
+      <circle cx={120} cy={122} r={5} fill="var(--accent)" />
+      {person("a", 94, 22)}
+      {person("b", 34, 146)}
+      {person("c", 154, 146)}
+    </svg>
+  );
+}
+
+function FlowArrow({ label }: { label?: string }) {
+  return (
+    <div className="flex shrink-0 flex-col items-center gap-2">
+      {label && <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent">{label}</span>}
+      <svg viewBox="0 0 64 24" className="w-16 rotate-90 xl:rotate-0" aria-hidden="true">
+        <path d="M4 12h50 M46 5l9 7-9 7" fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
   );
 }
 
 function Wireframe() {
   const line = "rgba(255,255,255,0.4)";
   return (
-    <svg viewBox="0 0 300 270" className="w-[30rem] max-w-full sm:w-[36rem]" role="img" aria-label="A landing page that is actionable, shareable and testable">
+    <svg viewBox="0 0 300 270" className="w-[26rem] max-w-full sm:w-[30rem]" role="img" aria-label="A landing page that is actionable, shareable and testable">
       <rect x={44} y={48} width={168} height={172} rx={10} fill="rgba(255,255,255,0.03)" stroke={line} strokeWidth={1.4} />
       <path d="M44 66 H212" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
       <circle cx={56} cy={57} r={2.4} fill="rgba(255,255,255,0.3)" />
@@ -197,9 +222,11 @@ export default function Home() {
       {/* CONVERGENCE → OUTPUT */}
       <section id="beats" className="relative z-10 flex min-h-screen w-full snap-start items-center justify-center px-6 py-24">
         <div className="w-full max-w-7xl">
-          <div className="flex flex-col items-center justify-center gap-8 xl:flex-row xl:gap-12">
+          <div className="flex flex-col items-center justify-center gap-6 xl:flex-row xl:gap-6">
+            <ThreePeople />
+            <FlowArrow />
             <Convergence />
-            <ArrowRight />
+            <FlowArrow label="Flash Company" />
             <Wireframe />
           </div>
           <p className="mx-auto mt-12 max-w-xl text-center text-lg text-white/55">
