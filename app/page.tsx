@@ -16,10 +16,9 @@ const AVATARS = [
 ];
 
 const FEATURES = [
-  { icon: "M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z", title: "Everyone contributes solo", text: "No group chat. Each person feeds the same agent on their own time, so the loudest voice doesn't decide the venture." },
-  { icon: "M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z", title: "The agent finds the pattern", text: "It reads across all of you and surfaces the overlaps, tensions, and the venture you're best placed to build." },
-  { icon: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18|M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10|M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2", title: "You leave with proof, not a vibe", text: "A ranked opportunity, a clear customer, a testable hypothesis, and a validation page ready to share." },
-  { icon: "M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z|M8 11V7a4 4 0 0 1 8 0v4", title: "Then it gets out of your way", text: "After day 3 the agent goes quiet, checking back at day 7, 14, 21 and 30. The work stays with your team." },
+  { icon: "M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z", title: "Cheap: anyone can name an idea", text: "Your group chat is the proof. Thinking of something was never the hard part — turning one into a thing you can move on is." },
+  { icon: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18|M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10|M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2", title: "Actionable: a plan you can run", text: "Roles, a 30-day path, and a hypothesis with a clear pass or fail. You leave knowing the first move and who makes it." },
+  { icon: "M22 2 11 13|M22 2l-7 20-4-9-9-4z", title: "Shareable: links you can send", text: "A validation page, a pitch deck, and outreach copy — the things you put in front of customers and backers, not another message in the chat." },
 ];
 
 const OBJECTIONS = [
@@ -40,12 +39,6 @@ const DELIVERABLES = [
   "Commitment ritual",
 ];
 
-const TESTIMONIALS = [
-  { quote: "We'd been circling the same idea in a chat for a year. Three days here and we had a real plan and a page to test.", who: "Pilot team" },
-  { quote: "The part that worked was contributing on my own time. No meetings, and somehow we still ended up aligned.", who: "Pilot participant" },
-  { quote: "It picked the venture none of us would have landed on alone, and told us how to test it first.", who: "Pilot team" },
-];
-
 const PRICING = [
   { name: "Free", price: "$0", period: "", tagline: "See what you're sitting on.", cta: "Start free", href: "/demo/free", features: ["Invite up to 3 people", "Agent access for 24 hours", "Basic venture outline", "Up to 5 potential ventures"] },
   { name: "Seed", price: "$50", period: "/ person", tagline: "Part goes to the Flash Fund for fast seed funding.", cta: "Run a sprint", href: "/demo", featured: true, features: ["Up to 3-person team", "Agent access for 48 hours", "7-day validation roadmap", "3–5 venture outlines + venture building"] },
@@ -54,7 +47,7 @@ const PRICING = [
 ];
 
 const FAQS = [
-  { q: "How many people can join a sprint?", a: "Up to five. Small enough to move fast, broad enough to bring real range of skills and networks." },
+  { q: "How many people can join a sprint?", a: "Up to three. Small enough to move fast, broad enough to bring a real range of skills and networks." },
   { q: "How long does it take?", a: "One 72-hour window — about three days. The time limit is the point: it forces a decision instead of a drawn-out maybe." },
   { q: "Do we need an idea already?", a: "No. You bring what you know — skills, problems you keep seeing, people you can reach. The agent finds the venture from there." },
   { q: "Isn't this another group chat?", a: "The opposite. Everyone contributes on their own into one shared agent, so there's no thread to keep up with." },
@@ -110,7 +103,7 @@ export default function Home() {
           <nav className="hidden items-center gap-8 md:flex">
             {NAV.map((n) => <a key={n.href} href={n.href} className="text-sm font-semibold text-slate-600 hover:text-foreground">{n.label}</a>)}
           </nav>
-          <a href="/demo" className="inline-flex h-10 items-center rounded-xl bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark">Run a sprint</a>
+          <a href="/demo" className="inline-flex h-10 items-center rounded-xl bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark">Start the sprint</a>
         </div>
       </header>
 
@@ -119,15 +112,15 @@ export default function Home() {
         <div className="flex flex-col items-start">
           {/* 1 — Title */}
           <h1 className="text-5xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
-            Turn a promising group chat into a <span className="text-sage">testable business.</span>
+            Ideas are cheap. Making one <span className="text-sage">actionable</span> is the whole game.
           </h1>
           {/* 2 — Subtitle */}
           <p className="mt-7 max-w-lg text-lg leading-8 text-slate-600">
-            Flash Company is a 72-hour, AI-guided sprint. Invite up to five people you trust, each adds what they know, and you walk away with one venture worth testing — a clear customer, a sharp hypothesis, and a validation page.
+            Your group has no shortage of &ldquo;we should build something.&rdquo; Flash Company takes what each of you knows — solo, on your own time — and turns it into one venture you can act on by Monday and share by Friday.
           </p>
           {/* 5 — CTA */}
-          <CtaButton className="mt-10">Run a sprint</CtaButton>
-          <p className="mt-3 text-sm font-medium text-slate-500">Up to 5 people · one 72-hour window · no group chat.</p>
+          <CtaButton className="mt-10">Start the sprint</CtaButton>
+          <p className="mt-3 text-sm font-medium text-slate-500">Up to 3 people · one 72-hour window · no group chat.</p>
           {/* 4 — Social proof (above the fold) */}
           <div className="mt-8 flex items-center gap-3">
             <Avatars />
@@ -143,9 +136,9 @@ export default function Home() {
       {/* 6 — FEATURES (make the value concrete) */}
       <section id="how" className="border-y border-slate-100 bg-slate-50/60">
         <div className="mx-auto w-full max-w-7xl px-6 py-20 sm:px-10">
-          <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">From group chat to tested venture — in 72 hours.</h2>
-          <p className="mt-3 max-w-xl text-lg text-slate-600">Here&rsquo;s what happens inside the window.</p>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+          <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">The idea was never the bottleneck. The structure was.</h2>
+          <p className="mt-3 max-w-xl text-lg text-slate-600">Flash Company makes one of your group&rsquo;s ideas actionable enough to run and sharp enough to send.</p>
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
             {FEATURES.map((f) => (
               <div key={f.title} className="rounded-3xl border border-slate-200 bg-white p-7">
                 <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-tint text-sage-dark"><Glyph d={f.icon} className="h-6 w-6" /></span>
@@ -181,14 +174,6 @@ export default function Home() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-sage" aria-hidden="true"><path d="m5 12 5 5L20 7" /></svg>
                 <span className="text-sm font-medium text-slate-700">{d}</span>
               </div>
-            ))}
-          </div>
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            {TESTIMONIALS.map((t) => (
-              <figure key={t.quote} className="rounded-3xl border border-slate-200 bg-white p-7">
-                <blockquote className="text-lg leading-relaxed text-foreground">&ldquo;{t.quote}&rdquo;</blockquote>
-                <figcaption className="mt-4 text-sm font-semibold text-slate-500">— {t.who}</figcaption>
-              </figure>
             ))}
           </div>
         </div>
@@ -242,9 +227,9 @@ export default function Home() {
       <section className="bg-foreground">
         <div className="mx-auto w-full max-w-7xl px-6 py-20 text-center sm:px-10">
           <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl">Stop saying &ldquo;we should build something.&rdquo;</h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-white/70">Give your group 72 hours and a structure. Walk away with a venture worth testing — and the page to test it with.</p>
-          <CtaButton className="mt-9">Run a sprint</CtaButton>
-          <p className="mt-3 text-sm font-medium text-white/50">Up to 5 people · one window · no group chat.</p>
+          <p className="mx-auto mt-4 max-w-xl text-lg text-white/70">Give your group 72 hours and a structure. Leave with one idea made actionable — and the page, deck, and copy to share it.</p>
+          <CtaButton className="mt-9">Start the sprint</CtaButton>
+          <p className="mt-3 text-sm font-medium text-white/50">Up to 3 people · one window · no group chat.</p>
         </div>
       </section>
 
