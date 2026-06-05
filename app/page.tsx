@@ -75,6 +75,7 @@ function H({ children }: { children: React.ReactNode }) {
 }
 
 const ROLES = ["friends", "colleagues", "classmates", "mentors", "siblings", "grandmas", "entrepreneurs"];
+const LONGEST = ROLES.reduce((a, b) => (b.length > a.length ? b : a));
 
 function CyclingWord() {
   const [i, setI] = useState(0);
@@ -92,61 +93,23 @@ function CyclingWord() {
       { duration: 380, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
     );
   }, [i]);
-  return <span ref={ref} className="inline-block text-accent">{ROLES[i]}</span>;
-}
-
-function Convergence() {
   return (
-    <svg viewBox="0 0 400 400" className="w-96 max-w-full sm:w-[28rem]" role="img" aria-label="Skills, Networks and Insights overlap to reveal the best venture opportunity">
-      <defs>
-        <clipPath id="vennA"><circle cx={200} cy={150} r={120} /></clipPath>
-        <clipPath id="vennB"><circle cx={140} cy={250} r={120} /></clipPath>
-        <clipPath id="vennC"><circle cx={260} cy={250} r={120} /></clipPath>
-        <filter id="vennGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation={5} />
-        </filter>
-      </defs>
-
-      <g fill="rgba(255,255,255,0.018)" stroke="rgba(255,255,255,0.38)" strokeWidth={1.3}>
-        <circle cx={200} cy={150} r={120} />
-        <circle cx={140} cy={250} r={120} />
-        <circle cx={260} cy={250} r={120} />
-      </g>
-
-      <g clipPath="url(#vennA)"><g clipPath="url(#vennB)"><g clipPath="url(#vennC)">
-        <rect x={0} y={0} width={400} height={400} fill="rgba(255,90,0,0.3)" />
-      </g></g></g>
-
-      <g filter="url(#vennGlow)" fill="none" stroke="var(--accent)" strokeWidth={4} opacity={0.5}>
-        <g clipPath="url(#vennB)"><g clipPath="url(#vennC)"><circle cx={200} cy={150} r={120} /></g></g>
-        <g clipPath="url(#vennA)"><g clipPath="url(#vennC)"><circle cx={140} cy={250} r={120} /></g></g>
-        <g clipPath="url(#vennA)"><g clipPath="url(#vennB)"><circle cx={260} cy={250} r={120} /></g></g>
-      </g>
-
-      <g fill="none" stroke="var(--accent)" strokeWidth={2}>
-        <g clipPath="url(#vennB)"><g clipPath="url(#vennC)"><circle cx={200} cy={150} r={120} /></g></g>
-        <g clipPath="url(#vennA)"><g clipPath="url(#vennC)"><circle cx={140} cy={250} r={120} /></g></g>
-        <g clipPath="url(#vennA)"><g clipPath="url(#vennB)"><circle cx={260} cy={250} r={120} /></g></g>
-      </g>
-
-      <text x={200} y={96} textAnchor="middle" fill="#fff" style={{ fontSize: 21, fontWeight: 700 }}>Skills</text>
-      <text x={200} y={119} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontSize: 13 }}>What we can do</text>
-      <text x={110} y={260} textAnchor="middle" fill="#fff" style={{ fontSize: 21, fontWeight: 700 }}>Networks</text>
-      <text x={110} y={283} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontSize: 13 }}>Who we know</text>
-      <text x={290} y={260} textAnchor="middle" fill="#fff" style={{ fontSize: 21, fontWeight: 700 }}>Insights</text>
-      <text x={290} y={283} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontSize: 13 }}>What we know</text>
-
-      <text x={200} y={190} textAnchor="middle" fill="var(--accent)" style={{ fontSize: 13, fontWeight: 700 }}>Best</text>
-      <text x={200} y={204} textAnchor="middle" fill="var(--accent)" style={{ fontSize: 13, fontWeight: 700 }}>Venture</text>
-      <text x={200} y={218} textAnchor="middle" fill="var(--accent)" style={{ fontSize: 13, fontWeight: 700 }}>Opportunity</text>
-    </svg>
+    <span className="relative inline-block text-accent">
+      <span aria-hidden="true" className="invisible">{LONGEST}</span>
+      <span ref={ref} className="absolute inset-x-0 top-0 text-center">{ROLES[i]}</span>
+    </span>
   );
 }
 
-function FlowArrow({ label }: { label?: string }) {
+function FlowArrow({ logo }: { logo?: boolean }) {
   return (
     <div className="flex shrink-0 flex-col items-center gap-2">
-      {label && <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent">{label}</span>}
+      {logo && (
+        <span className="flex items-center gap-1.5">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-accent" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
+          <span className="text-sm font-bold tracking-tight text-white">Flash Company</span>
+        </span>
+      )}
       <svg viewBox="0 0 64 24" className="w-16 rotate-90 xl:rotate-0" aria-hidden="true">
         <path d="M4 12h50 M46 5l9 7-9 7" fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -226,8 +189,8 @@ export default function Home() {
       <section id="beats" className="relative z-10 flex min-h-screen w-full snap-start items-center justify-center px-6 py-24">
         <div className="w-full max-w-7xl">
           <div className="flex flex-col items-center justify-center gap-8 xl:flex-row xl:gap-10">
-            <Convergence />
-            <FlowArrow label="Flash Company" />
+            <Image src="/venn-diagram.png" alt="Skills, Networks and Insights overlap to reveal the best venture opportunity" width={1254} height={1254} className="h-auto w-96 max-w-full rounded-xl sm:w-[28rem]" />
+            <FlowArrow logo />
             <Image src="/output-preview.png" alt="A finished landing page and a signups dashboard" width={1122} height={1402} className="h-auto w-[24rem] max-w-full rounded-xl sm:w-[28rem]" />
           </div>
         </div>
