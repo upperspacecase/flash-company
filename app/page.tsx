@@ -262,8 +262,8 @@ export default function Home() {
 
       {/* GET STARTED */}
       <Section id="start">
-        <h2 className="text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">Get started.</h2>
-        <p className="mt-7 max-w-xl text-lg text-white/60">Stop saying &ldquo;we should build something.&rdquo; Give your group 48 hours and a structure — and leave with one venture worth testing, and a plan to prove it.</p>
+        <p className="max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl">We believe the future doesn&rsquo;t need more experts. It needs more people starting things together.</p>
+        <h2 className="mt-12 text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">Get started.</h2>
         <div className="mt-9">
           <EmailCapture />
         </div>
