@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 const SECTIONS = [
@@ -73,6 +74,27 @@ function H({ children }: { children: React.ReactNode }) {
   return <h2 className="text-5xl font-extrabold leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">{children}</h2>;
 }
 
+const ROLES = ["friends", "colleagues", "classmates", "mentors", "siblings", "grandmas", "entrepreneurs"];
+
+function CyclingWord() {
+  const [i, setI] = useState(0);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    const id = setInterval(() => setI((n) => (n + 1) % ROLES.length), 2000);
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => {
+    ref.current?.animate(
+      [
+        { opacity: 0, transform: "translateY(0.35em)" },
+        { opacity: 1, transform: "translateY(0)" },
+      ],
+      { duration: 380, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+    );
+  }, [i]);
+  return <span ref={ref} className="inline-block text-accent">{ROLES[i]}</span>;
+}
+
 function Convergence() {
   return (
     <svg viewBox="0 0 400 400" className="w-96 max-w-full sm:w-[28rem]" role="img" aria-label="Skills, Networks and Insights overlap to reveal the best venture opportunity">
@@ -132,34 +154,6 @@ function FlowArrow({ label }: { label?: string }) {
   );
 }
 
-function Wireframe() {
-  const line = "rgba(255,255,255,0.4)";
-  return (
-    <svg viewBox="0 0 300 270" className="w-[30rem] max-w-full sm:w-[36rem]" role="img" aria-label="A landing page that is actionable, shareable and testable">
-      <rect x={44} y={48} width={168} height={172} rx={10} fill="rgba(255,255,255,0.03)" stroke={line} strokeWidth={1.4} />
-      <path d="M44 66 H212" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-      <circle cx={56} cy={57} r={2.4} fill="rgba(255,255,255,0.3)" />
-      <circle cx={66} cy={57} r={2.4} fill="rgba(255,255,255,0.3)" />
-      <circle cx={76} cy={57} r={2.4} fill="rgba(255,255,255,0.3)" />
-      <rect x={58} y={82} width={104} height={14} rx={3} fill="rgba(255,255,255,0.16)" />
-      <rect x={172} y={82} width={40} height={40} rx={4} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.18)" strokeWidth={1} />
-      <rect x={58} y={106} width={120} height={5} rx={2.5} fill="rgba(255,255,255,0.1)" />
-      <rect x={58} y={116} width={90} height={5} rx={2.5} fill="rgba(255,255,255,0.1)" />
-      <rect x={58} y={132} width={68} height={21} rx={5} fill="none" stroke="var(--accent)" strokeWidth={1.5} />
-      <rect x={58} y={170} width={104} height={19} rx={4} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
-      <rect x={166} y={170} width={32} height={19} rx={4} fill="var(--accent)" opacity={0.85} />
-      <g stroke="rgba(255,119,0,0.45)" strokeWidth={1}>
-        <path d="M128 32 V46" />
-        <path d="M222 116 H214" />
-        <path d="M128 244 V222" />
-      </g>
-      <text x={128} y={26} textAnchor="middle" fill="var(--accent)" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em" }}>ACTIONABLE</text>
-      <text x={226} y={120} textAnchor="start" fill="var(--accent)" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em" }}>SHAREABLE</text>
-      <text x={128} y={258} textAnchor="middle" fill="var(--accent)" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em" }}>TESTABLE</text>
-    </svg>
-  );
-}
-
 export default function Home() {
   const scrollRef = useRef<HTMLElement | null>(null);
   const [active, setActive] = useState(0);
@@ -191,6 +185,11 @@ export default function Home() {
     <main ref={scrollRef} className="relative h-screen snap-y snap-mandatory overflow-y-scroll scroll-smooth bg-black text-white">
       <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
 
+      <a href="#hero" onClick={(e) => { e.preventDefault(); go(0); }} className="fixed left-6 top-6 z-30 flex items-center gap-2 sm:left-10">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-accent" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
+        <span className="text-sm font-bold tracking-tight text-white">Flash Company</span>
+      </a>
+
       <nav aria-label="Sections" className="fixed right-5 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-3 sm:flex">
         {SECTIONS.map((s, i) => (
           <button
@@ -206,7 +205,7 @@ export default function Home() {
 
       {/* HERO */}
       <Section id="hero">
-        <h1 className="max-w-4xl text-5xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">Ever wonder what you and 2 friends could build?</h1>
+        <h1 className="max-w-4xl text-5xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">Ever wonder what you and 2 <CyclingWord /> could build?</h1>
         <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">
           Invite two people into a guided ideation process that maps your combined skills, networks, and insights into an idea <span className="text-accent">worth sharing</span>.
         </p>
@@ -229,11 +228,8 @@ export default function Home() {
           <div className="flex flex-col items-center justify-center gap-8 xl:flex-row xl:gap-10">
             <Convergence />
             <FlowArrow label="Flash Company" />
-            <Wireframe />
+            <Image src="/output-preview.png" alt="A finished landing page and a signups dashboard" width={1122} height={1402} className="h-auto w-[24rem] max-w-full rounded-xl sm:w-[28rem]" />
           </div>
-          <p className="mx-auto mt-12 max-w-xl text-center text-lg text-white/55">
-            What your group already knows, turned into one venture you can put in front of people.
-          </p>
         </div>
       </section>
 
@@ -278,7 +274,6 @@ export default function Home() {
           A percentage of all Flash Company revenue goes into the Flash Fund. Ventures that complete 30-day validation with real traction can get access to fast seed funding.
         </p>
         <p className="mt-7 max-w-2xl text-2xl font-bold leading-snug text-white">You don&rsquo;t just build your future. You fund someone else&rsquo;s.</p>
-        <p className="mt-10 max-w-3xl text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">What if 48 hours from now you had a company idea worth sharing?</p>
       </Section>
 
       {/* GET STARTED */}
