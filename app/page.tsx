@@ -48,7 +48,7 @@ function EmailCapture({ note }: { note?: string }) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
           aria-label="Email address"
-          className="h-12 flex-1 rounded-md border border-white/20 bg-white/5 px-4 text-sm text-white placeholder:text-white/35 focus:border-accent focus:outline-none"
+          className="h-36 flex-1 rounded-md border border-white/20 bg-white/5 px-4 text-sm text-white placeholder:text-white/35 focus:border-accent focus:outline-none sm:h-12"
         />
         <button type="submit" className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-6 text-sm font-semibold text-black transition-colors hover:bg-accent/90">
           Get early access
@@ -202,7 +202,7 @@ export default function Home() {
 
       {/* HERO */}
       <Section id="hero">
-        <h1 className="text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">build together.</h1>
+        <h1 className="max-w-4xl text-5xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">ever wonder what you and 2 friends could build?</h1>
         <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">
           Invite two people into a guided ideation process that maps your combined skills, networks, and insights into a <span className="text-accent">ready-to-test</span> business blueprint.
         </p>
@@ -273,9 +273,10 @@ export default function Home() {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Flash Fund</p>
         <h2 className="mt-7 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl">Every Flash Company contributes to the Flash Fund.</h2>
         <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">
-          A percentage of all revenue goes into a fast seed fund. Ventures that complete the 30-day validation with strong signals get fast, non-dilutive seed funding — no pitch decks, no 6-month raises. Just proof, then capital.
+          A percentage of all Flash Company revenue goes into the Flash Fund. Ventures that complete 30-day validation with real traction can get access to fast seed funding.
         </p>
-        <p className="mt-7 max-w-2xl text-2xl font-bold leading-snug text-white">You don&rsquo;t just start a company. You fund the next one.</p>
+        <p className="mt-7 max-w-2xl text-2xl font-bold leading-snug text-white">You don&rsquo;t just build your future. You fund someone else&rsquo;s.</p>
+        <p className="mt-10 max-w-3xl text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">What if 48 hours from now you had a company idea worth sharing?</p>
       </Section>
 
       {/* GET STARTED */}
