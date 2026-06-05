@@ -1,22 +1,23 @@
-const NAV = [
-  { label: "How it works", href: "#how" },
-  { label: "What you get", href: "#deliverables" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+const BOLT = "M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z";
+
+const SECTIONS = [
+  { id: "hero", label: "Start" },
+  { id: "beats", label: "The idea" },
+  { id: "worries", label: "Worries" },
+  { id: "deliverables", label: "What you get" },
+  { id: "pricing", label: "Pricing" },
+  { id: "faq", label: "Questions" },
+  { id: "start", label: "Get started" },
 ];
 
-const AVATARS = [
-  { initials: "MA", cls: "bg-emerald-100 text-emerald-700" },
-  { initials: "AL", cls: "bg-sky-100 text-sky-700" },
-  { initials: "PR", cls: "bg-amber-100 text-amber-700" },
-  { initials: "JO", cls: "bg-violet-100 text-violet-700" },
-  { initials: "SA", cls: "bg-rose-100 text-rose-700" },
-];
-
-const FEATURES = [
-  { icon: "M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z", title: "Cheap: anyone can name an idea", text: "Your group chat is the proof. Thinking of something was never the hard part — turning one into a thing you can move on is." },
-  { icon: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18|M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10|M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2", title: "Actionable: a plan you can run", text: "Roles, a 30-day path, and a hypothesis with a clear pass or fail. You leave knowing the first move and who makes it." },
-  { icon: "M22 2 11 13|M22 2l-7 20-4-9-9-4z", title: "Shareable: links you can send", text: "A validation page, a pitch deck, and outreach copy — the things you put in front of customers and backers, not another message in the chat." },
+const BEATS = [
+  { k: "Cheap", title: "Anyone can name an idea", text: "Your group chat is the proof. Thinking of something was never the hard part — turning one into a thing you can move on is." },
+  { k: "Actionable", title: "A plan you can run", text: "Roles, a 30-day path, and a hypothesis with a clear pass or fail. You leave knowing the first move and who makes it." },
+  { k: "Shareable", title: "Links you can send", text: "A validation page, a pitch deck, and outreach copy — the things you put in front of customers and backers, not another message in the chat." },
 ];
 
 const OBJECTIONS = [
@@ -37,9 +38,11 @@ const DELIVERABLES = [
   "Commitment ritual",
 ];
 
-const PRICING = [
+type Tier = { name: string; price: string; period: string; tagline: string; cta: string; href: string; featured?: boolean; features: string[] };
+
+const PRICING: Tier[] = [
   { name: "Free", price: "$0", period: "", tagline: "See what you're sitting on.", cta: "Start free", href: "/demo/free", features: ["Invite up to 3 people", "Agent access for 24 hours", "Basic venture outline", "Up to 5 potential ventures"] },
-  { name: "Seed", price: "$50", period: "/ person", tagline: "Part goes to the Flash Fund for fast seed funding.", cta: "Run a sprint", href: "/demo", featured: true, features: ["Up to 3-person team", "Agent access for 48 hours", "7-day validation roadmap", "3–5 venture outlines + venture building"] },
+  { name: "Seed", price: "$50", period: "/ person", tagline: "Part goes to the Flash Fund for fast seed funding.", cta: "Start the sprint", href: "/demo", featured: true, features: ["Up to 3-person team", "Agent access for 48 hours", "7-day validation roadmap", "3–5 venture outlines + venture building"] },
   { name: "Venture Launch", price: "$250", period: "upfront + $100/mo", tagline: "When you're ready to incorporate.", cta: "Talk to us", href: "/demo", features: ["Legal + financial setup", "Stripe Atlas + Estonia / LLC"] },
   { name: "Venture Grow", price: "$200–5,000", period: "/ month", tagline: "Scale the venture with agents.", cta: "Talk to us", href: "/demo", features: ["Agent orchestration", "Agent swarms"] },
 ];
@@ -54,244 +57,189 @@ const FAQS = [
   { q: "Is our input private?", a: "Your sprint is private to your group. Nothing leaves it unless you choose to share it." },
 ];
 
-function Glyph({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      {d.split("|").map((seg, i) => <path key={i} d={seg} />)}
-    </svg>
-  );
-}
+const NOTE = [
+  "We've watched too many good group chats die in the \"we should build something\" phase.",
+  "The people are right. The ideas are there. What's missing is a way to turn that energy into one clear thing to test — before the momentum fades and the chat goes quiet.",
+  "So we built Flash Company: a short, structured window where a small group adds what they know, an agent finds the venture you're best placed to build, and you leave with something real to put in front of people.",
+];
 
-const BOLT = "M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z";
-
-function Logo() {
+function OrangeButton({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <span className="flex items-center gap-2.5">
-      <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-sage" aria-hidden="true"><path d={BOLT} /></svg>
-      <span className="text-lg font-bold tracking-tight text-foreground">Flash Company</span>
-    </span>
-  );
-}
-
-function CtaButton({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <a href="/demo" className={`group inline-flex h-14 items-center gap-3 rounded-2xl bg-sage px-8 text-lg font-bold text-white shadow-lg shadow-sage/30 transition-colors hover:bg-sage-dark ${className}`}>
+    <a href={href} className="inline-flex items-center rounded-md border border-accent px-6 py-3 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-black">
       {children}
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
     </a>
   );
 }
 
-function Avatars() {
+function Section({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <div className="flex -space-x-2">
-      {AVATARS.map((a) => (
-        <span key={a.initials} className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ring-2 ring-white ${a.cls}`}>{a.initials}</span>
-      ))}
-    </div>
+    <section id={id} className="relative z-10 flex min-h-screen w-full snap-start items-center py-24">
+      <div className="w-full px-6 sm:px-12 lg:px-24">
+        <div className="max-w-6xl">{children}</div>
+      </div>
+    </section>
   );
 }
 
-function HeroVenn() {
-  const circle = { r: 96, fill: "var(--sage)", fillOpacity: 0.12, stroke: "var(--sage)", strokeOpacity: 0.6, strokeWidth: 1.5 };
-  const cap = { textAnchor: "middle" as const, fill: "var(--sage-dark)", className: "font-serif italic", style: { fontWeight: 700 } };
-  const sub = { textAnchor: "middle" as const, fill: "#475569", style: { fontSize: 9.5, fontWeight: 500 } };
-  const iconBox = { fill: "none", stroke: "var(--sage-dark)", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  return (
-    <svg viewBox="0 0 360 308" role="img" aria-label="Skills, Networks, and Insights overlap to reveal your best venture opportunity" className="h-auto w-full">
-      <circle cx={180} cy={112} {...circle} />
-      <circle cx={132} cy={196} {...circle} />
-      <circle cx={228} cy={196} {...circle} />
-
-      {/* Skills */}
-      <svg x={168} y={50} width={24} height={24} viewBox="0 0 24 24" {...iconBox}>
-        <path d="M12 3a6 6 0 0 0-3.7 10.8c.5.4.9 1 .9 1.7v.5h5.6v-.5c0-.7.4-1.3.9-1.7A6 6 0 0 0 12 3z" />
-        <path d="M9.5 18.5h5" /><path d="M10.5 21h3" />
-      </svg>
-      <text x={180} y={92} {...cap} style={{ ...cap.style, fontSize: 16, letterSpacing: "0.06em" }}>SKILLS</text>
-      <text x={180} y={108} {...sub}>What we can do</text>
-
-      {/* Networks */}
-      <text x={96} y={186} {...cap} style={{ ...cap.style, fontSize: 15, letterSpacing: "0.04em" }}>NETWORKS</text>
-      <svg x={84} y={194} width={24} height={24} viewBox="0 0 24 24" {...iconBox}>
-        <path d="M17 21v-2a4 4 0 0 0-3-3.87" /><path d="M7 21v-2a4 4 0 0 1 3-3.87" /><path d="M12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /><path d="M5 11a2.5 2.5 0 1 0 0-5" /><path d="M19 11a2.5 2.5 0 1 0 0-5" />
-      </svg>
-      <text x={96} y={226} {...sub}>Who we know</text>
-
-      {/* Insights */}
-      <text x={264} y={186} {...cap} style={{ ...cap.style, fontSize: 15, letterSpacing: "0.04em" }}>INSIGHTS</text>
-      <svg x={252} y={194} width={24} height={24} viewBox="0 0 24 24" {...iconBox}>
-        <path d="M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z" /><path d="M15.5 15.5l4.5 4.5" />
-      </svg>
-      <text x={264} y={226} {...sub}>What we know</text>
-
-      {/* Center — triple overlap */}
-      <svg x={171} y={138} width={18} height={18} viewBox="0 0 24 24" fill="var(--sage-dark)" stroke="none">
-        <path d="M12 4l1.6 4.8L18 10l-4.4 1.2L12 16l-1.6-4.8L6 10l4.4-1.2L12 4z" />
-      </svg>
-      <text x={180} y={170} {...cap} style={{ ...cap.style, fontSize: 10.5, letterSpacing: "0.02em" }}>Best Venture</text>
-      <text x={180} y={183} {...cap} style={{ ...cap.style, fontSize: 10.5, letterSpacing: "0.02em" }}>Opportunity</text>
-    </svg>
-  );
+function H({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-5xl font-extrabold leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">{children}</h2>;
 }
 
 export default function Home() {
+  const scrollRef = useRef<HTMLElement | null>(null);
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            const i = SECTIONS.findIndex((s) => s.id === e.target.id);
+            if (i >= 0) setActive(i);
+          }
+        }
+      },
+      { root, threshold: 0.55 },
+    );
+    for (const s of SECTIONS) {
+      const el = document.getElementById(s.id);
+      if (el) obs.observe(el);
+    }
+    return () => obs.disconnect();
+  }, []);
+
+  const go = (i: number) => document.getElementById(SECTIONS[i].id)?.scrollIntoView({ behavior: "smooth" });
+
   return (
-    <div className="flex flex-1 flex-col bg-white">
-      <header className="border-b border-slate-100">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 sm:px-10">
-          <a href="/"><Logo /></a>
-          <nav className="hidden items-center gap-8 md:flex">
-            {NAV.map((n) => <a key={n.href} href={n.href} className="text-sm font-semibold text-slate-600 hover:text-foreground">{n.label}</a>)}
-          </nav>
-          <a href="/demo" className="inline-flex h-10 items-center rounded-xl bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark">Start the sprint</a>
-        </div>
-      </header>
+    <main ref={scrollRef} className="relative h-screen snap-y snap-mandatory overflow-y-scroll scroll-smooth bg-black text-white">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
 
-      {/* ABOVE THE FOLD */}
-      <section className="mx-auto grid w-full max-w-7xl items-center gap-12 px-6 py-16 sm:px-10 lg:grid-cols-2 lg:gap-16 lg:py-24">
-        <div className="flex flex-col items-start">
-          {/* 1 — Title */}
-          <h1 className="text-5xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
-            Ideas are cheap. Making one <span className="text-sage">actionable</span> is the whole game.
-          </h1>
-          {/* 2 — Subtitle */}
-          <p className="mt-7 max-w-lg text-lg leading-8 text-slate-600">
-            Your group has no shortage of &ldquo;we should build something.&rdquo; Flash Company takes what each of you knows — solo, on your own time — and turns it into one venture you can act on by Monday and share by Friday.
-          </p>
-          {/* 5 — CTA */}
-          <CtaButton className="mt-10">Start the sprint</CtaButton>
-          <p className="mt-3 text-sm font-medium text-slate-500">Up to 3 people · one 72-hour window · no group chat.</p>
-          {/* 4 — Social proof (above the fold) */}
-          <div className="mt-8 flex items-center gap-3">
-            <Avatars />
-            <p className="text-sm font-medium text-slate-600">Made for small teams of founders, operators, and creators.</p>
-          </div>
-        </div>
-        {/* 3 — Visual */}
-        <div className="w-full">
-          <HeroVenn />
-        </div>
-      </section>
+      <a href="#hero" onClick={(e) => { e.preventDefault(); go(0); }} className="fixed left-6 top-6 z-30 flex items-center gap-2 sm:left-10">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-accent" aria-hidden="true"><path d={BOLT} /></svg>
+        <span className="text-sm font-bold tracking-tight text-white">Flash Company</span>
+      </a>
 
-      {/* 6 — FEATURES (make the value concrete) */}
-      <section id="how" className="border-y border-slate-100 bg-slate-50/60">
-        <div className="mx-auto w-full max-w-7xl px-6 py-20 sm:px-10">
-          <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">The idea was never the bottleneck. The structure was.</h2>
-          <p className="mt-3 max-w-xl text-lg text-slate-600">Flash Company makes one of your group&rsquo;s ideas actionable enough to run and sharp enough to send.</p>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="rounded-3xl border border-slate-200 bg-white p-7">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-tint text-sage-dark"><Glyph d={f.icon} className="h-6 w-6" /></span>
-                <h3 className="mt-5 text-xl font-bold text-foreground">{f.title}</h3>
-                <p className="mt-2 text-slate-600">{f.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <nav aria-label="Sections" className="fixed right-5 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-3 sm:flex">
+        {SECTIONS.map((s, i) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => go(i)}
+            aria-label={s.label}
+            aria-current={active === i ? "true" : undefined}
+            className={`h-2.5 w-2.5 rounded-full transition-all ${active === i ? "scale-125 bg-white" : "bg-white/30 hover:bg-white/60"}`}
+          />
+        ))}
+      </nav>
 
-      {/* 6 — OBJECTIONS (handle them) */}
-      <section className="mx-auto w-full max-w-7xl px-6 py-20 sm:px-10">
-        <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">What teams worry about — handled.</h2>
-        <div className="mt-10 grid gap-x-12 gap-y-8 sm:grid-cols-2">
-          {OBJECTIONS.map((o) => (
-            <div key={o.q} className="border-l-2 border-sage pl-5">
-              <p className="text-lg font-bold text-foreground">&ldquo;{o.q}&rdquo;</p>
-              <p className="mt-1.5 text-slate-600">{o.a}</p>
+      {/* HERO */}
+      <Section id="hero">
+        <span className="inline-flex items-center rounded-full border border-white/25 px-3 py-1 text-xs font-medium tracking-wide text-white/70">Up to 3 people · 72 hours · no group chat</span>
+        <h1 className="mt-6 text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">Ideas are cheap.</h1>
+        <p className="mt-7 max-w-xl text-lg leading-8 text-white/60">
+          Making one actionable is the whole game. Flash Company takes what your group knows — solo, on your own time — and turns it into one venture you can act on by Monday and share by Friday.
+        </p>
+        <div className="mt-9">
+          <OrangeButton href="/demo">Start the sprint</OrangeButton>
+        </div>
+      </Section>
+
+      {/* BEATS */}
+      <Section id="beats">
+        <H>The idea was never the bottleneck.</H>
+        <p className="mt-6 max-w-xl text-lg text-white/60">Flash Company makes one of your group&rsquo;s ideas actionable enough to run and sharp enough to send.</p>
+        <div className="mt-12 grid gap-8 sm:grid-cols-3">
+          {BEATS.map((b) => (
+            <div key={b.k}>
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-accent">{b.k}</p>
+              <h3 className="mt-3 text-xl font-bold text-white">{b.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/55">{b.text}</p>
             </div>
           ))}
         </div>
-      </section>
+      </Section>
 
-      {/* 7 — SOCIAL PROOF: deliverables + testimonials */}
-      <section id="deliverables" className="border-y border-slate-100 bg-sage-tint/30">
-        <div className="mx-auto w-full max-w-7xl px-6 py-20 sm:px-10">
-          <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">What you walk away with on day 3.</h2>
-          <p className="mt-3 max-w-xl text-lg text-slate-600">One venture birth certificate — the whole thing, ready to share.</p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {DELIVERABLES.map((d) => (
-              <div key={d} className="flex items-start gap-2.5 rounded-2xl border border-slate-200 bg-white p-4">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-sage" aria-hidden="true"><path d="m5 12 5 5L20 7" /></svg>
-                <span className="text-sm font-medium text-slate-700">{d}</span>
-              </div>
-            ))}
-          </div>
+      {/* WORRIES */}
+      <Section id="worries">
+        <H>What teams worry about.</H>
+        <div className="mt-12 grid gap-x-12 gap-y-8 sm:grid-cols-2">
+          {OBJECTIONS.map((o) => (
+            <div key={o.q} className="border-l-2 border-accent pl-5">
+              <p className="text-lg font-bold text-white">&ldquo;{o.q}&rdquo;</p>
+              <p className="mt-1.5 text-white/55">{o.a}</p>
+            </div>
+          ))}
         </div>
-      </section>
+      </Section>
+
+      {/* DELIVERABLES */}
+      <Section id="deliverables">
+        <H>What you walk away with.</H>
+        <p className="mt-6 max-w-xl text-lg text-white/60">One venture, the whole thing, ready to share on day 3.</p>
+        <div className="mt-10 grid gap-x-10 gap-y-px sm:grid-cols-2">
+          {DELIVERABLES.map((d) => (
+            <div key={d} className="flex items-start gap-3 border-t border-white/10 py-4 text-white/80">
+              <span className="text-accent">+</span>
+              <span className="text-sm">{d}</span>
+            </div>
+          ))}
+        </div>
+      </Section>
 
       {/* PRICING */}
-      <section id="pricing" className="border-y border-slate-100 bg-slate-50/60">
-        <div className="mx-auto w-full max-w-7xl px-6 py-20 sm:px-10">
-          <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Pricing that runs on buy-in.</h2>
-          <p className="mt-3 max-w-xl text-lg text-slate-600">Everyone chips into the kitty, so everyone has skin in the game.</p>
-          <div className="mt-10 grid gap-6 lg:grid-cols-4">
-            {PRICING.map((t) => (
-              <div key={t.name} className={`relative flex flex-col rounded-3xl border bg-white p-7 ${t.featured ? "border-sage ring-1 ring-sage" : "border-slate-200"}`}>
-                {t.featured && <span className="absolute -top-3 left-7 rounded-full bg-sage px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Most popular</span>}
-                <p className="font-bold text-foreground">{t.name}</p>
-                <p className="mt-3"><span className="text-3xl font-bold text-foreground">{t.price}</span> <span className="text-sm text-slate-500">{t.period}</span></p>
-                <p className="mt-1 text-sm text-slate-500">{t.tagline}</p>
-                <ul className="mt-5 flex-1 space-y-2.5">
-                  {t.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-sage" aria-hidden="true"><path d="m5 12 5 5L20 7" /></svg>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <a href={t.href} className={`mt-6 inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-bold transition-colors ${t.featured ? "bg-sage text-white hover:bg-sage-dark" : "border border-slate-200 text-foreground hover:bg-slate-50"}`}>{t.cta}</a>
-              </div>
-            ))}
-          </div>
-          <p className="mt-6 text-sm text-slate-400">Draft pricing from the working session — not final.</p>
+      <Section id="pricing">
+        <H>What it costs.</H>
+        <p className="mt-6 max-w-xl text-lg text-white/60">Everyone chips into the kitty, so everyone has skin in the game.</p>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {PRICING.map((t) => (
+            <div key={t.name} className={`flex flex-col rounded-xl border p-6 ${t.featured ? "border-accent bg-accent/5" : "border-white/15 bg-white/5"}`}>
+              {t.featured && <span className="mb-3 w-fit rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">Most popular</span>}
+              <p className="text-sm font-semibold text-white">{t.name}</p>
+              <p className="mt-2"><span className="text-3xl font-extrabold text-white">{t.price}</span> <span className="text-xs text-white/40">{t.period}</span></p>
+              <p className="mt-1 text-xs text-white/40">{t.tagline}</p>
+              <ul className="mt-4 flex-1 space-y-2">
+                {t.features.map((f) => (
+                  <li key={f} className="flex gap-2 text-xs text-white/70"><span className="text-accent">+</span><span>{f}</span></li>
+                ))}
+              </ul>
+              <a href={t.href} className={`mt-5 inline-flex h-10 items-center justify-center rounded-md px-4 text-xs font-semibold transition-colors ${t.featured ? "bg-accent text-black hover:bg-accent/90" : "border border-white/20 text-white hover:bg-white/10"}`}>{t.cta}</a>
+            </div>
+          ))}
         </div>
-      </section>
+        <p className="mt-6 text-xs text-white/30">Draft pricing from the working session — not final.</p>
+      </Section>
 
-      {/* 8 — FAQ */}
-      <section id="faq" className="mx-auto w-full max-w-3xl px-6 py-20 sm:px-10">
-        <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Questions, answered.</h2>
-        <div className="mt-8 divide-y divide-slate-200 border-y border-slate-200">
+      {/* FAQ */}
+      <Section id="faq">
+        <H>Questions.</H>
+        <div className="mt-10 max-w-3xl divide-y divide-white/10 border-y border-white/10">
           {FAQS.map((f) => (
             <details key={f.q} className="group py-5">
-              <summary className="flex cursor-pointer items-center justify-between gap-4 text-lg font-semibold text-foreground marker:content-['']">
+              <summary className="flex cursor-pointer items-center justify-between gap-4 text-lg font-semibold text-white marker:content-['']">
                 {f.q}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0 text-sage transition-transform group-open:rotate-45" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                <span className="text-xl leading-none text-accent transition-transform group-open:rotate-45">+</span>
               </summary>
-              <p className="mt-3 text-slate-600">{f.a}</p>
+              <p className="mt-3 text-white/55">{f.a}</p>
             </details>
           ))}
         </div>
-      </section>
+      </Section>
 
-      {/* 9 — SECOND CTA */}
-      <section className="bg-foreground">
-        <div className="mx-auto w-full max-w-7xl px-6 py-20 text-center sm:px-10">
-          <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl">Stop saying &ldquo;we should build something.&rdquo;</h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-white/70">Give your group 72 hours and a structure. Leave with one idea made actionable — and the page, deck, and copy to share it.</p>
-          <CtaButton className="mt-9">Start the sprint</CtaButton>
-          <p className="mt-3 text-sm font-medium text-white/50">Up to 3 people · one window · no group chat.</p>
+      {/* GET STARTED */}
+      <Section id="start">
+        <h2 className="text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">Get started.</h2>
+        <p className="mt-7 max-w-xl text-lg text-white/60">Stop saying &ldquo;we should build something.&rdquo; Give your group 72 hours and a structure — and leave with one idea made actionable, and the page, deck, and copy to share it.</p>
+        <div className="mt-9">
+          <OrangeButton href="/demo">Start the sprint</OrangeButton>
         </div>
-      </section>
-
-      {/* 10 — FOUNDER'S NOTE */}
-      <section className="mx-auto w-full max-w-3xl px-6 py-20 sm:px-10">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-sage">A note from the team</h2>
-        <div className="mt-5 space-y-4 text-lg leading-relaxed text-slate-700">
-          <p>We&rsquo;ve watched too many good group chats die in the &ldquo;we should build something&rdquo; phase.</p>
-          <p>The people are right. The ideas are there. What&rsquo;s missing is a way to turn that energy into one clear thing to test — before the momentum fades and the chat goes quiet.</p>
-          <p>So we built Flash Company: a short, structured window where a small group adds what they know, an agent finds the venture you&rsquo;re best placed to build, and you leave with something real to put in front of people.</p>
-          <p>If you&rsquo;ve got a chat full of potential, give it 72 hours. See what you&rsquo;re sitting on.</p>
-          <p className="font-semibold text-foreground">— The Flash Company team</p>
+        <div className="mt-16 max-w-xl space-y-3 border-t border-white/10 pt-8 text-sm leading-relaxed text-white/45">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">A note from Ty &amp; River</p>
+          {NOTE.map((p) => <p key={p}>{p}</p>)}
         </div>
-      </section>
-
-      <footer className="border-t border-slate-100">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row sm:px-10">
-          <Logo />
-          <p className="text-sm text-slate-400">A 72-hour sprint to turn a group into a venture.</p>
-        </div>
-      </footer>
-    </div>
+        <p className="mt-12 text-xs text-white/30">Flash Company · A 72-hour sprint to turn a group into a venture.</p>
+      </Section>
+    </main>
   );
 }

@@ -6,6 +6,7 @@
   --sage: #6f8f5f;
   --sage-dark: #5c784e;
   --sage-tint: #eef3ea;
+  --accent: #ff5500;
 }
 
 @theme inline {
@@ -14,6 +15,7 @@
   --color-sage: var(--sage);
   --color-sage-dark: var(--sage-dark);
   --color-sage-tint: var(--sage-tint);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -22,4 +24,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 54px 54px;
 }

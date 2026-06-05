@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Flash Company",
   description:
-    "Turn a promising group chat into a testable business. A 2-day AI-guided sprint that helps small groups find their strongest shared opportunity.",
+    "Ideas are cheap. Making one actionable is the whole game. A 72-hour, AI-guided sprint that turns what a small group knows into one venture you can act on and share.",
 };
 
 export default function RootLayout({
