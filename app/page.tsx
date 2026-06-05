@@ -96,7 +96,7 @@ function CyclingWord() {
   return (
     <span className="relative inline-block text-accent">
       <span aria-hidden="true" className="invisible">{LONGEST}</span>
-      <span ref={ref} className="absolute inset-x-0 top-0 text-center">{ROLES[i]}</span>
+      <span ref={ref} className="absolute inset-x-0 top-0 text-left">{ROLES[i]}</span>
     </span>
   );
 }
