@@ -1,5 +1,5 @@
 import { UserButton } from "@clerk/nextjs";
-import { getSql } from "@/lib/db";
+import { ensureSchema, getSql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +20,7 @@ export default async function Dashboard() {
   let signups30 = 0;
   let recent: { email: string; created_at: string }[] = [];
   try {
+    await ensureSchema();
     const sql = getSql();
     const [s, v, s30, r] = await Promise.all([
       sql`SELECT count(*)::int AS count FROM signups`,
