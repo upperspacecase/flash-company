@@ -17,6 +17,7 @@ import {
   OBSESSIONS,
   OPPORTUNITY_SPACES,
   PHASES,
+  PRICE,
   RESEARCH_LENSES,
   REVENUE_MODELS,
   SCORECARD,
@@ -165,6 +166,8 @@ function Upsell({ title, text }: { title: string; text: string }) {
 export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
   const isFree = plan === "free";
   const [phase, setPhase] = useState(0);
+  const [accepted, setAccepted] = useState(false);
+  const [reached, setReached] = useState(0);
   const [ventureId, setVentureId] = useState(CHOSEN_ID);
   const [name, setName] = useState(VENTURE_DETAILS.name);
   const [recorded, setRecorded] = useState<Record<string, boolean>>(
@@ -174,22 +177,35 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
   const [venture, setVenture] = useState<VentureDraft>(makeVentureDraft);
   const [published, setPublished] = useState(false);
 
-  // Free runs through to the venture outlines; validation is locked.
-  const go = (i: number) => setPhase(isFree && i >= 5 ? 4 : i);
+  // Gating. Invite (0) is always open. Everything after it opens only once the
+  // user has accepted (paid) AND finished the prior step — `reached` is the
+  // high-water mark each phase's forward button advances. Accepting unlocks
+  // Input; finishing Input unlocks Synthesis; and so on. Validation stays locked
+  // on the free plan. Locked phases are still clickable — they show a greyed
+  // preview so people sense the full process.
+  const unlocked = (i: number) => i === 0 || (accepted && i <= reached && !(isFree && i >= 5));
+  const advance = (i: number) => { setReached((r) => Math.max(r, i)); setPhase(i); };
+  const accept = () => { setAccepted(true); setReached((r) => Math.max(r, 1)); };
 
   return (
     <div className="relative flex min-h-screen flex-col bg-black">
       <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
       <div className="relative z-10 flex flex-1 flex-col">
       <Header phase={phase} plan={plan} />
-      <Timeline phase={phase} onJump={go} plan={plan} />
+      <Timeline phase={phase} onJump={setPhase} unlocked={unlocked} reached={reached} />
       <main className="mx-auto w-full max-w-[1500px] flex-1 px-5 py-6">
-        {phase === 0 && <InvitePhase onNext={() => setPhase(1)} />}
-        {phase === 1 && <InputPhase onNext={() => setPhase(2)} />}
-        {phase === 2 && <SynthesisPhase onNext={() => setPhase(3)} />}
-        {phase === 3 && <OpportunityPhase onNext={() => setPhase(4)} />}
-        {phase === 4 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => setPhase(5)} />}
-        {!isFree && phase === 5 && <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
+        {!unlocked(phase) ? (
+          <LockedPreview i={phase} accepted={accepted} isFree={isFree} onGoInvite={() => setPhase(0)} />
+        ) : (
+          <>
+            {phase === 0 && <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} />}
+            {phase === 1 && <InputPhase onNext={() => advance(2)} />}
+            {phase === 2 && <SynthesisPhase onNext={() => advance(3)} />}
+            {phase === 3 && <OpportunityPhase onNext={() => advance(4)} />}
+            {phase === 4 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />}
+            {!isFree && phase === 5 && <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
+          </>
+        )}
       </main>
       </div>
     </div>
@@ -219,23 +235,22 @@ function Header({ phase, plan }: { phase: number; plan: "free" | "full" }) {
   );
 }
 
-function Timeline({ phase, onJump, plan }: { phase: number; onJump: (n: number) => void; plan: "free" | "full" }) {
-  const isFree = plan === "free";
+function Timeline({ phase, onJump, unlocked, reached }: { phase: number; onJump: (n: number) => void; unlocked: (i: number) => boolean; reached: number }) {
   return (
     <nav className="border-b border-slate-200 bg-white/5">
       <ol className="mx-auto flex w-full max-w-[1500px] gap-2 overflow-x-auto px-5 py-3">
         {PHASES.map((p, i) => {
-          const locked = isFree && i >= 5;
-          const active = i === phase && !locked;
-          const done = i < phase;
+          const locked = !unlocked(i);
+          const active = i === phase;
+          const done = !locked && i < reached;
           return (
             <li key={p.id} className="flex flex-1 items-center gap-2">
-              <button disabled={locked} onClick={() => !locked && onJump(i)} className={`flex flex-1 items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${active ? "border-sage bg-sage-tint/40" : locked ? "cursor-not-allowed border-transparent opacity-50" : "border-transparent hover:bg-slate-50"}`}>
+              <button onClick={() => onJump(i)} className={`flex flex-1 items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${active ? "border-sage bg-sage-tint/40" : locked ? "border-transparent opacity-50 hover:opacity-80" : "border-transparent hover:bg-slate-50"}`}>
                 <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${active ? "bg-sage text-white" : done ? "bg-sage/20 text-sage-dark" : "bg-slate-100 text-slate-400"}`}>
                   {locked ? <Icon name="lock" className="h-3 w-3" /> : i + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className="block whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-slate-400">{locked ? "Seed" : p.day}</span>
+                  <span className="block whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-slate-400">{p.day}</span>
                   <span className={`block whitespace-nowrap text-sm font-semibold ${active ? "text-sage-dark" : "text-slate-600"}`}>{p.label}</span>
                 </span>
               </button>
@@ -249,53 +264,194 @@ function Timeline({ phase, onJump, plan }: { phase: number; onJump: (n: number) 
 }
 
 /* -------------------------------------------------------- 0. Invite */
+// The Invite page is the landing page — where you arrive when you sign up.
+// Top to bottom: hero, how it works, invite your team, accept (-> payment),
+// then who's accepted. Accepting routes through a held payment; once you've
+// accepted you can start your input and preview the later (locked) steps.
 
-function InvitePhase({ onNext }: { onNext: () => void }) {
+const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
+  { icon: "link", title: "Accept & invite", text: `${PRICE.currency}${PRICE.perPerson} each, up to three people. Just a link — no app, no account.` },
+  { icon: "message", title: "Add your input", text: "Answer privately, by text or voice — about an hour to ninety minutes total, across two or three short sprints." },
+  { icon: "sparkle", title: "Get your ventures", text: "Once everyone's input is in, the agent synthesises the three of you into ventures worth building — and the outline to test them." },
+];
+
+function InvitePhase({ plan, accepted, onAccept, onStart }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void; onStart: () => void }) {
+  const [payOpen, setPayOpen] = useState(false);
+  const isFree = plan === "free";
+  const handleAccept = () => (isFree ? onAccept() : setPayOpen(true));
+  const acceptedCount = COHORT.filter((m) => (m.id === YOU ? accepted : m.accepted)).length;
   return (
-    <Columns
-      left={
-        <div className="space-y-4">
-          <RailTitle>Why this works</RailTitle>
-          <Card><p className="flex items-center gap-2 font-bold text-foreground"><Icon name="sparkle" className="h-4 w-4 text-sage" /> Invitation-driven trust</p><p className="mt-1.5 text-sm text-slate-600">Someone you trust sends the link. Low bar on time and input.</p></Card>
-          <Card><p className="flex items-center gap-2 font-bold text-foreground"><Icon name="clock" className="h-4 w-4 text-sage" /> 48-hour window</p><p className="mt-1.5 text-sm text-slate-600">It opens once everyone accepts. The constraint forces action.</p></Card>
-        </div>
-      }
-      center={
-        <Card className="p-6">
-          <CenterHead title="Invite your team" sub="Up to 3 people. Share a link — no app, no account." />
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
-            <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-sage"><Icon name="link" className="h-4 w-4" /></span>
-              <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{INVITE.url}</code>
-              <button className="inline-flex items-center gap-1.5 rounded-md bg-sage px-3 py-1.5 text-xs font-bold text-white"><Icon name="copy" className="h-3.5 w-3.5" /> Copy</button>
+    <div className="mx-auto max-w-3xl space-y-12 py-4">
+      {/* 1 · Hero */}
+      <section>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Kick-off</p>
+        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">What could you and up to two others build together?</h1>
+        <p className="mt-5 text-lg leading-relaxed text-slate-600">
+          A {SPRINT.windowHours}-hour window. About an hour to ninety minutes of input from each of you, split across two or three short sprints. At the end, Flash hands you ventures the three of you are uniquely placed to build.
+        </p>
+      </section>
+
+      {/* 2 · How it works */}
+      <section>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">How it works</h2>
+        <div className="mt-4 grid gap-5 sm:grid-cols-3">
+          {HOW_STEPS.map((s) => (
+            <div key={s.title}>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sage-tint text-sage"><Icon name={s.icon} className="h-4 w-4" /></span>
+              <p className="mt-3 text-sm font-bold text-foreground">{s.title}</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-500">{s.text}</p>
             </div>
-            <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
-          </div>
-          <div className="mt-4 rounded-xl border border-slate-200 p-4">
-            <p className="mb-3 text-sm font-bold text-foreground">Who&rsquo;s accepted</p>
-            <ul className="space-y-2.5">
-              {COHORT.map((m) => (
-                <li key={m.id} className="flex items-center gap-3">
-                  <Avatar m={m} />
-                  <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{m.name} {m.id === YOU && <span className="text-xs font-normal text-slate-400">(you)</span>}</p><p className="truncate text-xs text-slate-500">{m.role} · {m.brings}</p></div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${m.accepted ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{m.accepted ? "Accepted" : "Pending"}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 text-xs text-slate-400">{INVITE.forms}</p>
-          </div>
-          <div className="mt-6 flex justify-end"><PrimaryBtn label="Start the sprint" onClick={onNext} icon="bolt" /></div>
-        </Card>
-      }
-      right={
-        <div className="space-y-4">
-          <RailTitle>The setup</RailTitle>
-          <Card className="bg-sage-tint/20"><p className="flex items-center gap-2 font-bold text-foreground"><Icon name="message" className="h-4 w-4 text-sage" /> Individual input</p><p className="mt-1.5 text-sm text-slate-600">Everyone feeds one shared agent separately — no group chat.</p></Card>
-          <Card><p className="flex items-center gap-2 font-bold text-foreground"><Icon name="coins" className="h-4 w-4 text-sage" /> Buy-in</p><p className="mt-1.5 text-sm text-slate-600">Seed is $50 per person. Part goes to the Flash Fund for fast seed funding.</p></Card>
+          ))}
         </div>
-      }
-    />
+      </section>
+
+      {/* 3 · Invite your team */}
+      <section>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Invite your team</h2>
+        <p className="mt-1 text-sm text-slate-500">Up to three people. Share a link — no app, no account.</p>
+        <div className="mt-4 rounded-xl border border-slate-200 p-4">
+          <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
+          <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-sage"><Icon name="link" className="h-4 w-4" /></span>
+            <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{INVITE.url}</code>
+            <button className="inline-flex items-center gap-1.5 rounded-md bg-sage px-3 py-1.5 text-xs font-bold text-white"><Icon name="copy" className="h-3.5 w-3.5" /> Copy</button>
+          </div>
+          <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
+        </div>
+      </section>
+
+      {/* 4 · Accept -> payment */}
+      <section>
+        {accepted ? (
+          <div className="rounded-2xl border border-sage/40 bg-sage-tint/20 p-6">
+            <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-sage" /> You&rsquo;re in.</p>
+            <p className="mt-1.5 text-sm text-slate-600">Your {PRICE.currency}{PRICE.perPerson} is held until the team&rsquo;s complete — fully refunded if everyone doesn&rsquo;t accept within {SPRINT.windowHours} hours. Start your input now; synthesis runs once all three of you are in.</p>
+            <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-200 bg-white/5 p-6">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground">Accept your invite</p>
+                <p className="mt-1 text-sm text-slate-500">{isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} per person, held until the whole team accepts. If everyone doesn't accept within ${SPRINT.windowHours} hours, it's refunded in full.`}</p>
+              </div>
+              {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
+            </div>
+            <div className="mt-5"><PrimaryBtn label="Accept invite to get started" onClick={handleAccept} icon={isFree ? "bolt" : "coins"} /></div>
+          </div>
+        )}
+      </section>
+
+      {/* 5 · Who's accepted */}
+      <section>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Who&rsquo;s accepted</h2>
+          <span className="text-xs text-slate-400">{acceptedCount} of {COHORT.length} in</span>
+        </div>
+        <ul className="mt-4 space-y-2.5">
+          {COHORT.map((m) => {
+            const isYou = m.id === YOU;
+            const has = isYou ? accepted : m.accepted;
+            return (
+              <li key={m.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                <Avatar m={m} />
+                <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{m.name} {isYou && <span className="text-xs font-normal text-slate-400">(you)</span>}</p><p className="truncate text-xs text-slate-500">{m.role} · {m.brings}</p></div>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${has ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{has ? "Accepted" : "Pending"}</span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-3 text-xs text-slate-400">{INVITE.forms}</p>
+      </section>
+
+      {payOpen && <PaymentModal onClose={() => setPayOpen(false)} onPaid={() => { setPayOpen(false); onAccept(); }} />}
+    </div>
+  );
+}
+
+// Accepting the invite routes through payment. The buy-in is charged now and
+// held until the whole team accepts (auto-refunded otherwise). Mock only.
+function PaymentModal({ onClose, onPaid }: { onClose: () => void; onPaid: () => void }) {
+  const amount = `${PRICE.currency}${PRICE.perPerson}`;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-xl">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Buy-in</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">Accept your invite</h2>
+          </div>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 transition-colors hover:text-slate-600">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="h-5 w-5"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+
+        <div className="mt-5 space-y-2 rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Your buy-in</span><span className="font-bold text-foreground">{amount}</span></div>
+          <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Charged now</span><span className="font-semibold text-foreground">{amount}</span></div>
+          <p className="flex items-start gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500"><Icon name="shield" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" /> Held until your whole team accepts. If everyone doesn&rsquo;t accept within {SPRINT.windowHours} hours, you&rsquo;re refunded in full.</p>
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 p-3">
+          <Icon name="coins" className="h-4 w-4 shrink-0 text-slate-400" />
+          <span className="text-sm text-slate-400">Card details</span>
+          <span className="ml-auto text-xs text-slate-300">•••• 4242</span>
+        </div>
+
+        <div className="mt-5 flex items-center gap-3">
+          <button onClick={onPaid} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-sage text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="check" className="h-4 w-4" /> Pay {amount} &amp; accept</button>
+          <button onClick={onClose} className="h-12 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
+        </div>
+        <p className="mt-3 text-center text-[11px] text-slate-400">Prototype — no real payment is taken.</p>
+      </div>
+    </div>
+  );
+}
+
+// A later step viewed before it's unlocked: a greyed teaser + why it's locked.
+function LockedPreview({ i, accepted, isFree, onGoInvite }: { i: number; accepted: boolean; isFree: boolean; onGoInvite: () => void }) {
+  const p = PHASES[i];
+  const seedLock = isFree && i >= 5;
+  const reason = !accepted
+    ? "Accept your invite to get started — then the sprint opens up, step by step."
+    : seedLock
+      ? "Validation is part of the Seed protocol."
+      : i === 2
+        ? "Synthesis runs once everyone's input is in."
+        : `Opens once you've finished ${PHASES[i - 1].label}.`;
+  return (
+    <div className="relative mx-auto max-w-5xl">
+      <div aria-hidden className="pointer-events-none select-none space-y-4 opacity-40 blur-[2px] grayscale">
+        <Card className="p-5">
+          <div className="h-6 w-44 rounded bg-slate-200" />
+          <div className="mt-2 h-3 w-72 rounded bg-slate-100" />
+        </Card>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[0, 1, 2, 3].map((n) => (
+            <Card key={n} className="p-4">
+              <div className="h-3 w-24 rounded bg-slate-200" />
+              <div className="mt-2 h-3 w-full rounded bg-slate-100" />
+              <div className="mt-1.5 h-3 w-5/6 rounded bg-slate-100" />
+            </Card>
+          ))}
+        </div>
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 p-4 backdrop-blur-[1px]">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-slate-100 p-6 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sage-tint text-sage"><Icon name="lock" className="h-5 w-5" /></span>
+          <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">{p.day} · Step {i + 1}</p>
+          <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">{p.label}</h2>
+          <p className="mt-2 text-sm text-slate-500">{p.blurb}</p>
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"><Icon name="lock" className="h-3 w-3" /> {reason}</p>
+          {!accepted ? (
+            <div className="mt-5 flex justify-center"><PrimaryBtn label="Accept your invite" onClick={onGoInvite} icon="bolt" /></div>
+          ) : seedLock ? (
+            <div className="mt-5"><a href="/demo" className="inline-flex h-11 items-center gap-2 rounded-xl bg-sage px-5 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="bolt" className="h-4 w-4" /> Unlock the Seed protocol</a></div>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 

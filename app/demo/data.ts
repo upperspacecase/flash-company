@@ -16,6 +16,10 @@ export const TAGLINE = "Build together. Start clearly.";
 
 export const SPRINT = { windowHours: 48, freeHours: 24 };
 
+// Buy-in per person for the full sprint (EUR — EU-only audience). Charged on
+// accept and held until the whole team accepts; see the Invite phase.
+export const PRICE = { perPerson: 10, currency: "€" };
+
 export type Member = {
   id: string;
   name: string;
