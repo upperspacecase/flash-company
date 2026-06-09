@@ -438,9 +438,9 @@ function Timeline({ phase, onJump, unlocked, reached }: { phase: number; onJump:
 // accepted you can start your input and preview the later (locked) steps.
 
 const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
-  { icon: "link", title: "Accept & invite", text: `${PRICE.currency}${PRICE.perPerson} each, up to three people. Just a link — no app, no account.` },
-  { icon: "message", title: "Add your input", text: "Answer privately, by text or voice — about an hour to ninety minutes total, across two or three short sprints." },
-  { icon: "sparkle", title: "Get your ventures", text: "Once everyone's input is in, the agent synthesises the three of you into ventures worth building — and the outline to test them." },
+  { icon: "group", title: "Bring your three worlds together", text: "Invite up to two others. Each of you adds what you bring — your skills, your networks, and the problems you can't stop noticing — privately, by text or voice." },
+  { icon: "sparkle", title: "Flash finds the overlap", text: "The agent reads all three of you at once and maps the connections no single person could see — the rare opportunities that only exist where your strengths, reach, and insight meet." },
+  { icon: "target", title: "The venture only you can build", text: "Narrow to the one idea the three of you are uniquely placed to build — with the team, the plan, and the assets to put it in front of real people." },
 ];
 
 function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, payment }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; payment?: LivePayment }) {
@@ -455,7 +455,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Kick-off</p>
         <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">What could you and up to two others build together?</h1>
         <p className="mt-5 text-lg leading-relaxed text-slate-600">
-          A {SPRINT.windowHours}-hour window. About an hour to ninety minutes of input from each of you, split across two or three short sprints. At the end, Flash hands you ventures the three of you are uniquely placed to build.
+          The venture you should build isn&rsquo;t in any one of your heads — it lives in the overlap. Flash maps where your skills, networks, and insights meet, and surfaces the opportunities only the three of you are placed to build.
         </p>
       </section>
 
