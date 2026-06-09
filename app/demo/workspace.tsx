@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import {
@@ -324,7 +324,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       ? (status?.find((s) => s.id === id)?.intakeComplete ? INTAKE_TOTAL : 0)
       : id === "alex" ? INTAKE_TOTAL : id === "priya" ? 19 : 0;
 
-  const inviteUrl = live ? `flashco.app/s/${live.token}` : INVITE.url;
+  const inviteUrl = live ? `https://flashcompany.org/s/${live.token}` : INVITE.url;
 
   const content = (i: number) => {
     switch (i) {
@@ -445,9 +445,17 @@ const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
 
 function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, payment }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; payment?: LivePayment }) {
   const [payOpen, setPayOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const isFree = plan === "free";
   const handleAccept = () => (isFree ? onAccept() : setPayOpen(true));
   const acceptedCount = members.filter((m) => m.accepted).length;
+  const copyLink = () => {
+    const full = inviteUrl.startsWith("http") ? inviteUrl : `https://${inviteUrl}`;
+    navigator.clipboard.writeText(full).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
   return (
     <div className="mx-auto max-w-3xl space-y-12 py-4">
       {/* 1 · Hero */}
@@ -482,7 +490,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
           <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-sage"><Icon name="link" className="h-4 w-4" /></span>
             <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{inviteUrl}</code>
-            <button className="inline-flex items-center gap-1.5 rounded-md bg-sage px-3 py-1.5 text-xs font-bold text-white"><Icon name="copy" className="h-3.5 w-3.5" /> Copy</button>
+            <button onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md bg-sage px-3 py-1.5 text-xs font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}</button>
           </div>
           <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
         </div>
@@ -688,9 +696,9 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   const cur = done ? null : INTAKE_FLOW[step];
   const isVoice = (id: string) => !!voiceMode[id];
   const update = (id: string, value: unknown) => setAnswers((a) => ({ ...a, [id]: value }));
-  const answeredIn = (s: IntakeSection) => s.questions.filter((q) => isAnswered(answers[q.id]) || isVoice(q.id)).length;
+  const answeredIn = (s: IntakeSection) => s.questions.filter((q) => isAnswered(answers[q.id])).length;
   const curSi = cur ? cur.si : INTAKE.length - 1;
-  const canSend = !!cur && (isAnswered(answers[cur.q.id]) || isVoice(cur.q.id) || cur.q.field.kind === "slider");
+  const canSend = !!cur && (isAnswered(answers[cur.q.id]) || cur.q.field.kind === "slider");
   return (
     <Columns
       left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />}
@@ -818,7 +826,7 @@ function UserAnswer({ field, value, voice }: { field: IntakeField; value: unknow
     <div className="flex justify-end">
       <div className="max-w-lg rounded-2xl rounded-tr-sm bg-sage px-4 py-2.5 text-sm text-white">
         {voice && <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-white/80"><Icon name="mic" className="h-3.5 w-3.5" /> voice memo</span>}
-        <span className="whitespace-pre-line">{text || (voice ? "Voice memo (demo)" : "—")}</span>
+        <span className="whitespace-pre-line">{text || "—"}</span>
       </div>
     </div>
   );
@@ -866,14 +874,119 @@ function Composer({ q, value, onChange, voice, onVoice, canSend, onSend }: { q: 
   );
 }
 
+// Minimal shape of the bits of the Web Speech API we use. Not in the TS DOM
+// lib across all versions, so we type only what we touch and read it off window.
+type SpeechSeg = ArrayLike<{ transcript: string }> & { isFinal: boolean };
+type SpeechResultEvent = { resultIndex: number; results: ArrayLike<SpeechSeg> };
+type SpeechRec = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((e: SpeechResultEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecCtor = new () => SpeechRec;
+
+function speechCtor(): SpeechRecCtor | null {
+  const w = window as unknown as { SpeechRecognition?: SpeechRecCtor; webkitSpeechRecognition?: SpeechRecCtor };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+// Live dictation via the browser Web Speech API. Interim + final transcript is
+// streamed into `onText`, so a voice answer becomes a normal text answer on the
+// same downstream path as typing. `supported` is resolved after mount to avoid a
+// hydration mismatch; unsupported browsers (e.g. Firefox) fall back to typing.
+function useDictation(onText: (text: string) => void) {
+  const [supported, setSupported] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const recRef = useRef<SpeechRec | null>(null);
+  const baseRef = useRef("");
+  const finalRef = useRef("");
+  const onTextRef = useRef(onText);
+  onTextRef.current = onText;
+
+  useEffect(() => { setSupported(!!speechCtor()); }, []);
+  useEffect(() => () => recRef.current?.stop(), []);
+
+  const start = useCallback((base: string) => {
+    const Ctor = speechCtor();
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+    baseRef.current = base.trim() ? base.trimEnd() + " " : "";
+    finalRef.current = "";
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const seg = e.results[i];
+        if (seg.isFinal) finalRef.current += seg[0].transcript;
+        else interim += seg[0].transcript;
+      }
+      onTextRef.current(baseRef.current + finalRef.current + interim);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = (e) => { setError(e.error ?? "error"); setListening(false); };
+    recRef.current = rec;
+    setError(null);
+    rec.start();
+    setListening(true);
+  }, []);
+
+  const stop = useCallback(() => { recRef.current?.stop(); setListening(false); }, []);
+
+  return { supported, listening, error, start, stop };
+}
+
 function TextControl({ value, onChange, max, placeholder, multiline, voiceable, voice, onVoice, onEnter }: { value: string; onChange: (v: string) => void; max?: number; placeholder?: string; multiline?: boolean; voiceable?: boolean; voice?: boolean; onVoice: () => void; onEnter?: () => void }) {
-  if (voiceable && voice) {
+  const { supported, listening, error, start, stop } = useDictation((t) => onChange(max != null ? t.slice(0, max) : t));
+  const canVoice = !!voiceable && supported;
+  const [elapsed, setElapsed] = useState(0);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // Enter/leave voice mode → start/stop dictation. The current text is captured
+  // as the base so dictation appends to anything already typed.
+  useEffect(() => {
+    if (voice && canVoice) start(value);
+    else { stop(); setElapsed(0); }
+    // value is captured intentionally only when voice flips on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voice, canVoice, start, stop]);
+
+  // Elapsed timer while recording, with a 2:00 cap.
+  useEffect(() => {
+    if (!(voice && canVoice && listening)) return;
+    if (elapsed >= 120) { stop(); return; }
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [voice, canVoice, listening, elapsed, stop]);
+
+  // Keep the live transcript scrolled to the latest words.
+  useEffect(() => { if (previewRef.current) previewRef.current.scrollTop = previewRef.current.scrollHeight; }, [value]);
+
+  if (canVoice && voice) {
+    const mm = Math.floor(elapsed / 60);
+    const ss = String(elapsed % 60).padStart(2, "0");
+    const blocked = error === "not-allowed" || error === "service-not-allowed";
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-sage bg-sage-tint/20 p-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage text-white"><Icon name="mic" className="h-4 w-4" /></span>
+      <div className="flex items-start gap-3 rounded-xl border border-sage bg-sage-tint/20 p-3">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage text-white ${listening ? "animate-pulse" : ""}`}><Icon name="mic" className="h-4 w-4" /></span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-end gap-0.5">{Array.from({ length: 28 }).map((_, i) => <span key={i} className="w-1 rounded-full bg-sage/50" style={{ height: `${5 + ((i * 11) % 16)}px` }} />)}</div>
-          <p className="mt-1 text-xs text-slate-500">Recording · 0:00 / 2:00 <span className="text-slate-400">(demo)</span></p>
+          <div ref={previewRef} className="max-h-20 overflow-y-auto whitespace-pre-line text-sm text-foreground">{value || (blocked ? "" : "Listening… start speaking.")}</div>
+          <p className="mt-1 text-xs text-slate-500">
+            {blocked
+              ? "Microphone blocked — tap “Type instead.”"
+              : listening
+                ? `Recording · ${mm}:${ss} / 2:00`
+                : value
+                  ? "Paused"
+                  : "Starting… allow microphone access."}
+          </p>
         </div>
         <button onClick={onVoice} className="shrink-0 text-xs font-semibold text-sage-dark hover:underline">Type instead</button>
       </div>
@@ -885,7 +998,7 @@ function TextControl({ value, onChange, max, placeholder, multiline, voiceable, 
         {multiline
           ? <textarea value={value} onChange={(e) => onChange(e.target.value)} maxLength={max} rows={3} placeholder={placeholder} className="w-full resize-y rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-sage focus:outline-none" />
           : <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onEnter?.(); } }} maxLength={max} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-sage focus:outline-none" />}
-        {voiceable && <button onClick={onVoice} aria-label="Record voice memo" className="absolute right-2 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-sage"><Icon name="mic" className="h-4 w-4" /></button>}
+        {canVoice && <button onClick={onVoice} aria-label="Dictate your answer" className="absolute right-2 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-sage"><Icon name="mic" className="h-4 w-4" /></button>}
       </div>
       {max && <p className="mt-1 text-right text-[11px] text-slate-400">{value.length}/{max}</p>}
     </div>
