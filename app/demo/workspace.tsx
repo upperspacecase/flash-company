@@ -25,7 +25,6 @@ import {
   SKILL_ENERGY,
   SPRINT,
   SYNTH_ROLES,
-  SYNTH_VOTES_EACH,
   TAGLINE,
   TARGET_MARKETS,
   VALIDATION,
@@ -42,6 +41,7 @@ import {
   type IntakeQuestion,
   type IntakeSection,
   type Member,
+  type NetworkNode,
   type ScorecardKey,
   type VentureDraft,
   type Votable,
@@ -191,7 +191,7 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
     <div className="relative flex min-h-screen flex-col bg-black">
       <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
       <div className="relative z-10 flex flex-1 flex-col">
-      <Header phase={phase} plan={plan} />
+      <Header plan={plan} />
       <Timeline phase={phase} onJump={setPhase} unlocked={unlocked} reached={reached} />
       <main className="mx-auto w-full max-w-[1500px] flex-1 px-5 py-6">
         {!unlocked(phase) ? (
@@ -212,8 +212,7 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
   );
 }
 
-function Header({ phase, plan }: { phase: number; plan: "free" | "full" }) {
-  const p = PHASES[phase];
+function Header({ plan }: { plan: "free" | "full" }) {
   const isFree = plan === "free";
   return (
     <header className="border-b border-slate-200 bg-white/5">
@@ -225,7 +224,7 @@ function Header({ phase, plan }: { phase: number; plan: "free" | "full" }) {
         </Link>
         <div className="flex shrink-0 items-center gap-3">
           <span className="hidden items-center gap-2 rounded-full bg-sage-tint px-3 py-1.5 text-xs font-semibold text-sage-dark sm:flex">
-            <Icon name="clock" className="h-3.5 w-3.5" /> {isFree ? `Free · ${SPRINT.freeHours}h` : `${SPRINT.windowHours}h sprint · ${p.day}`}
+            <Icon name="clock" className="h-3.5 w-3.5" /> {isFree ? `Free · ${SPRINT.freeHours}h` : `${SPRINT.windowHours}h sprint`}
           </span>
           <div className="hidden items-center -space-x-2 sm:flex">{COHORT.map((m) => <Avatar key={m.id} m={m} />)}</div>
           <button className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="link" className="h-4 w-4" /> Invite</button>
@@ -250,7 +249,6 @@ function Timeline({ phase, onJump, unlocked, reached }: { phase: number; onJump:
                   {locked ? <Icon name="lock" className="h-3 w-3" /> : i + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className="block whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-slate-400">{p.day}</span>
                   <span className={`block whitespace-nowrap text-sm font-semibold ${active ? "text-sage-dark" : "text-slate-600"}`}>{p.label}</span>
                 </span>
               </button>
@@ -440,7 +438,7 @@ function LockedPreview({ i, accepted, isFree, onGoInvite }: { i: number; accepte
       <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 p-4 backdrop-blur-[1px]">
         <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-slate-100 p-6 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sage-tint text-sage"><Icon name="lock" className="h-5 w-5" /></span>
-          <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">{p.day} · Step {i + 1}</p>
+          <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Step {i + 1}</p>
           <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">{p.label}</h2>
           <p className="mt-2 text-sm text-slate-500">{p.blurb}</p>
           <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"><Icon name="lock" className="h-3 w-3" /> {reason}</p>
@@ -756,36 +754,27 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
   const [shown, setShown] = useState<Record<string, boolean>>({ team: true, maya: false, alex: false, priya: false });
   const [editId, setEditId] = useState("maya");
   const [roles, setRoles] = useState(SYNTH_ROLES.map((r) => ({ ...r })));
+  const [industries, setIndustries] = useState<NetworkNode[]>(NETWORK.filter((n) => n.kind === "industry").map((n) => ({ ...n })));
+  const [locations, setLocations] = useState<NetworkNode[]>(NETWORK.filter((n) => n.kind === "location").map((n) => ({ ...n })));
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
+  const [open, setOpen] = useState<Record<string, boolean>>({ skills: true });
   const [problems, setProblems] = useState<Votable[]>(LIVED_PROBLEMS.map((p) => ({ ...p })));
   const [obsessions, setObsessions] = useState<Votable[]>(OBSESSIONS.map((p) => ({ ...p })));
   const [markets, setMarkets] = useState<Votable[]>(TARGET_MARKETS.map((p) => ({ ...p })));
-  const [picks, setPicks] = useState<{ problems: string[]; obsessions: string[]; markets: string[] }>({ problems: [], obsessions: [], markets: [] });
-  const [whys, setWhys] = useState<Record<string, string[]>>({});
 
-  const vote = (list: "problems" | "obsessions" | "markets", id: string) =>
-    setPicks((p) => {
-      const cur = p[list];
-      if (cur.includes(id)) return { ...p, [list]: cur.filter((x) => x !== id) };
-      if (cur.length >= SYNTH_VOTES_EACH) return p;
-      return { ...p, [list]: [...cur, id] };
-    });
+  const toggleConfirm = (k: string) => setConfirmed((c) => ({ ...c, [k]: !c[k] }));
+  const toggleOpen = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
+  const rolesConfirmed = roles.every((r) => confirmed[r.memberId]);
 
   return (
     <Columns
       left={
         <div className="space-y-4">
-          <RailTitle>Day 1 window</RailTitle>
-          <Card className="bg-amber-50/40">
-            <CountdownBadge />
-            <p className="mt-2 text-xs text-slate-500">Lists are derived from the last 24h of input and keep updating as people edit.</p>
-          </Card>
           <RailTitle>Steps</RailTitle>
           {[
             { t: "Review input", d: "All three intakes read.", done: true },
-            { t: "Team", d: "Energy, network, roles." },
-            { t: "Opportunity", d: "Problems, obsessions, markets." },
-            { t: "Outcome", d: "Top picks carry forward." },
+            { t: "Team", d: "Confirm energy, network, roles." },
+            { t: "Focus", d: "Add, edit, veto problems & markets." },
           ].map((s) => (
             <Card key={s.t}>
               <div className="flex items-center gap-3">
@@ -798,9 +787,14 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
       }
       center={
         <div className="space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <CountdownBadge />
+            <p className="hidden text-xs text-slate-400 sm:block">Lists keep updating as people edit. Run over and it just shows late — no hard block.</p>
+          </div>
+
           <Card className="p-5">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Synthesis</h1>
-            <p className="mt-1 text-slate-500">The agent read all three intakes. Edit, vote, and narrow to a focus.</p>
+            <p className="mt-1 text-slate-500">The agent read all three intakes. Confirm who you are, then narrow to a focus.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {CONVERGENCE_SIGNALS.map((s) => (
                 <span key={s.kind} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${s.tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-sage-tint/40 text-sage-dark"}`}><Icon name={s.icon} className="h-3.5 w-3.5" />{s.kind}</span>
@@ -808,31 +802,81 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
             </div>
           </Card>
 
-          <Part label="Team" hint="Who you are together.">
-            <Section title="Energy & skill map">
-              <SkillRadar energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} editId={editId} onEdit={(id) => { setEditId(id); setShown((s) => ({ ...s, [id]: true })); }} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
-            </Section>
-            <Section title="Network map"><NetworkMap /></Section>
-            <Section title="Roles & tasks"><RolesTasks roles={roles} onRoles={setRoles} confirmed={confirmed} onConfirm={(id) => setConfirmed((c) => ({ ...c, [id]: !c[id] }))} /></Section>
+          <Part label="Team" hint="Confirm your profile — add, edit, confirm. Nothing's removed here.">
+            <div className="space-y-3">
+              <ConfirmItem title="Skills & energy" hint="Tap a dot to adjust — outer energises, inner drains." open={open.skills} onToggle={() => toggleOpen("skills")} confirmed={confirmed.skills} onConfirm={() => toggleConfirm("skills")}>
+                <SkillRadar energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} editId={editId} onEdit={(id) => { setEditId(id); setShown((s) => ({ ...s, [id]: true })); }} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
+              </ConfirmItem>
+              <ConfirmItem title="Network" hint="Industries you can talk to." open={open.network} onToggle={() => toggleOpen("network")} confirmed={confirmed.network} onConfirm={() => toggleConfirm("network")}>
+                <NetworkList nodes={industries} onNodes={setIndustries} kind="industry" icon="building" addLabel="industry" />
+              </ConfirmItem>
+              <ConfirmItem title="Locations" hint="Where you can reach and meet." open={open.locations} onToggle={() => toggleOpen("locations")} confirmed={confirmed.locations} onConfirm={() => toggleConfirm("locations")}>
+                <NetworkList nodes={locations} onNodes={setLocations} kind="location" icon="target" addLabel="location" />
+              </ConfirmItem>
+              <ConfirmItem title="Roles & tasks" hint="Confirm each person's role." open={open.roles} onToggle={() => toggleOpen("roles")} confirmed={rolesConfirmed}>
+                <RolesTasks roles={roles} onRoles={setRoles} confirmed={confirmed} onConfirm={toggleConfirm} />
+              </ConfirmItem>
+            </div>
           </Part>
 
-          <Part label="Opportunity" hint="Each person edits, then 3 votes to narrow focus.">
+          <Part label="Focus" hint="Narrow the focus — add, edit, or veto. No voting yet; that happens at Opportunity Spaces.">
             <Section title="Lived problems">
-              <VotableList items={problems} onItems={setProblems} picks={picks.problems} onVote={(id) => vote("problems", id)} votesLeft={SYNTH_VOTES_EACH - picks.problems.length} addLabel="problem" whys={whys} onWhys={(id, arr) => setWhys((w) => ({ ...w, [id]: arr }))} />
+              <VotableList items={problems} onItems={setProblems} addLabel="problem" />
             </Section>
             <Section title="Obsessions & moonshots">
-              <VotableList items={obsessions} onItems={setObsessions} picks={picks.obsessions} onVote={(id) => vote("obsessions", id)} votesLeft={SYNTH_VOTES_EACH - picks.obsessions.length} addLabel="obsession" />
+              <VotableList items={obsessions} onItems={setObsessions} addLabel="obsession" />
             </Section>
             <Section title="Potential target markets">
-              <VotableList items={markets} onItems={setMarkets} picks={picks.markets} onVote={(id) => vote("markets", id)} votesLeft={SYNTH_VOTES_EACH - picks.markets.length} addLabel="market" />
+              <VotableList items={markets} onItems={setMarkets} addLabel="market" />
             </Section>
           </Part>
 
           <div className="flex justify-end"><PrimaryBtn label="Agree opportunity spaces" onClick={onNext} icon="sparkle" /></div>
         </div>
       }
-      right={<OutcomePanel problems={problems} obsessions={obsessions} markets={markets} picks={picks} />}
     />
+  );
+}
+
+// A confirmable, collapsible Team item: add / edit / confirm. No delete or veto.
+function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, children }: { title: string; hint?: string; open: boolean; onToggle: () => void; confirmed?: boolean; onConfirm?: () => void; children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white/5">
+      <div className="flex items-center gap-2 p-3">
+        <button onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${confirmed ? "bg-sage text-white" : "bg-slate-100 text-slate-400"}`}>{confirmed ? <Icon name="check" className="h-3 w-3" /> : <Icon name="user" className="h-3 w-3" />}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold text-foreground">{title}</span>
+            {hint && <span className="block truncate text-xs text-slate-400">{hint}</span>}
+          </span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 shrink-0 text-slate-300 transition-transform ${open ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+        {onConfirm && (
+          <button onClick={onConfirm} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${confirmed ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={confirmed ? "check" : "thumb"} className="h-3.5 w-3.5" />{confirmed ? "Confirmed" : "Confirm"}</button>
+        )}
+      </div>
+      {open && <div className="border-t border-slate-100 p-4">{children}</div>}
+    </div>
+  );
+}
+
+// Editable network nodes (industries or locations). Add / edit only — no delete.
+function NetworkList({ nodes, onNodes, kind, icon, addLabel }: { nodes: NetworkNode[]; onNodes: (n: NetworkNode[]) => void; kind: NetworkNode["kind"]; icon: IconName; addLabel: string }) {
+  const setNode = (idx: number, patch: Partial<NetworkNode>) => onNodes(nodes.map((n, i) => (i === idx ? { ...n, ...patch } : n)));
+  return (
+    <div className="space-y-2">
+      {nodes.map((node, idx) => (
+        <div key={idx} className="rounded-xl border border-slate-200 p-3">
+          <div className="flex items-center gap-2">
+            <Icon name={icon} className="h-4 w-4 shrink-0 text-sage" />
+            <input value={node.name} onChange={(e) => setNode(idx, { name: e.target.value })} placeholder={`Add ${addLabel}…`} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
+            {node.members.length > 0 && <div className="ml-auto flex -space-x-1.5">{node.members.map((id) => <Avatar key={id} m={memberById(id)} size="h-6 w-6 text-[9px]" />)}</div>}
+          </div>
+          <input value={node.opportunity} onChange={(e) => setNode(idx, { opportunity: e.target.value })} placeholder="What's the opportunity here?" className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
+        </div>
+      ))}
+      <button onClick={() => onNodes([...nodes, { name: "", kind, members: [], opportunity: "" }])} className="text-sm font-semibold text-sage-dark hover:underline">+ Add {addLabel}</button>
+    </div>
   );
 }
 
@@ -843,6 +887,13 @@ function CountdownBadge() {
     return () => clearInterval(id);
   }, []);
   const p = (n: number) => String(n).padStart(2, "0");
+  if (s <= 0) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-sm font-bold text-red-700">
+        <Icon name="clock" className="h-4 w-4" /> Window closed · late
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-bold tabular-nums text-amber-700">
       <Icon name="clock" className="h-4 w-4" /> {p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)} left
@@ -895,40 +946,25 @@ function SkillRadar({ energy, shown, onToggle, editId, onEdit, onEnergy }: { ene
         </div>
         <p className="mt-2 text-[11px] text-slate-400">Outer = energises (create), inner = drains. Team is the outer envelope — the best of everyone on each skill.</p>
 
-        <p className="mb-1.5 mt-4 text-[11px] font-bold uppercase tracking-wide text-slate-400">Adjust energy</p>
-        <div className="flex flex-wrap gap-1.5">
-          {COHORT.map((m) => {
-            const on = editId === m.id;
-            return <button key={m.id} onClick={() => onEdit(m.id)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${on ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEMBER_COLOR[m.id] }} />{m.name}</button>;
-          })}
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
-          {SKILLS.map((label, i) => <DotScore key={label} label={label} value={energy[editId][i]} onChange={(val) => onEnergy(editId, i, val)} />)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NetworkMap() {
-  const group = (title: string, kind: "industry" | "location", icon: IconName) => (
-    <div>
-      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">{title}</p>
-      <div className="space-y-2">
-        {NETWORK.filter((node) => node.kind === kind).map((node) => (
-          <div key={node.name} className="rounded-xl border border-slate-200 p-3">
-            <div className="flex items-center gap-2">
-              <Icon name={icon} className="h-4 w-4 shrink-0 text-sage" />
-              <p className="text-sm font-semibold text-foreground">{node.name}</p>
-              <div className="ml-auto flex -space-x-1.5">{node.members.map((id) => <Avatar key={id} m={memberById(id)} size="h-6 w-6 text-[9px]" />)}</div>
-            </div>
-            <p className="mt-1.5 text-sm text-slate-600">{node.opportunity}</p>
+        <div className="mt-4 rounded-xl border border-sage/30 bg-sage-tint/15 p-3">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-sage-dark">
+            <Icon name="bolt" className="h-3.5 w-3.5" /> Adjust energy
+            <span className="ml-auto rounded-full bg-sage-tint px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-sage-dark">Editable</span>
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500">Pick a person, then tap the dots to set each skill 0–5.</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {COHORT.map((m) => {
+              const on = editId === m.id;
+              return <button key={m.id} onClick={() => onEdit(m.id)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${on ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEMBER_COLOR[m.id] }} />{m.name}</button>;
+            })}
           </div>
-        ))}
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+            {SKILLS.map((label, i) => <DotScore key={label} label={label} value={energy[editId][i]} onChange={(val) => onEnergy(editId, i, val)} />)}
+          </div>
+        </div>
       </div>
     </div>
   );
-  return <div className="grid gap-4 sm:grid-cols-2">{group("Industries", "industry", "building")}{group("Locations", "location", "target")}</div>;
 }
 
 function RolesTasks({ roles, onRoles, confirmed, onConfirm }: { roles: typeof SYNTH_ROLES; onRoles: (r: typeof SYNTH_ROLES) => void; confirmed: Record<string, boolean>; onConfirm: (id: string) => void }) {
@@ -953,30 +989,19 @@ function RolesTasks({ roles, onRoles, confirmed, onConfirm }: { roles: typeof SY
   );
 }
 
-function VotableList({ items, onItems, picks, onVote, votesLeft, addLabel, whys, onWhys }: { items: Votable[]; onItems: (v: Votable[]) => void; picks: string[]; onVote: (id: string) => void; votesLeft: number; addLabel: string; whys?: Record<string, string[]>; onWhys?: (id: string, arr: string[]) => void }) {
-  const [open, setOpen] = useState<string | null>(null);
+function VotableList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v: Votable[]) => void; addLabel: string }) {
   const [seq, setSeq] = useState(0);
   const setText = (id: string, text: string) => onItems(items.map((i) => (i.id === id ? { ...i, text } : i)));
   return (
     <div>
-      <p className="-mt-1 mb-2 text-xs text-slate-400">Derived from your inputs — edit freely. You have <span className="font-semibold text-sage-dark">{votesLeft}</span> of {SYNTH_VOTES_EACH} votes left.</p>
+      <p className="-mt-1 mb-2 text-xs text-slate-400">Derived from your inputs — edit freely, or veto what doesn&rsquo;t fit. No voting yet; that&rsquo;s next.</p>
       <div className="space-y-2">
-        {items.map((item) => {
-          const mine = picks.includes(item.id);
-          const total = item.votes + (mine ? 1 : 0);
-          const isOpen = open === item.id;
-          return (
-            <div key={item.id} className="rounded-xl border border-slate-200 p-2.5">
-              <div className="flex items-center gap-2">
-                <button onClick={() => onVote(item.id)} disabled={!mine && votesLeft <= 0} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold tabular-nums transition-colors ${mine ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:border-sage/50 disabled:opacity-40"}`}><Icon name="thumb" className="h-3.5 w-3.5" />{total}</button>
-                <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`Add a ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
-                {whys && <button onClick={() => setOpen(isOpen ? null : item.id)} className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors ${isOpen ? "bg-sage-tint text-sage-dark" : "text-slate-400 hover:text-slate-600"}`}>5 Whys</button>}
-                <button onClick={() => onItems(items.filter((i) => i.id !== item.id))} aria-label="Remove" className="shrink-0 text-slate-300 hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
-              </div>
-              {whys && isOpen && <FiveWhys value={whys[item.id] ?? ["", "", "", "", ""]} onChange={(arr) => onWhys?.(item.id, arr)} />}
-            </div>
-          );
-        })}
+        {items.map((item) => (
+          <div key={item.id} className="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5">
+            <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`Add a ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
+            <button onClick={() => onItems(items.filter((i) => i.id !== item.id))} aria-label={`Veto ${addLabel}`} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-400 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600"><Icon name="minus" className="h-3.5 w-3.5" />Veto</button>
+          </div>
+        ))}
       </div>
       <button onClick={() => { onItems([...items, { id: `c${seq}`, text: "", votes: 0 }]); setSeq(seq + 1); }} className="mt-2 text-sm font-semibold text-sage-dark hover:underline">+ Add a {addLabel}</button>
     </div>
@@ -998,43 +1023,14 @@ function FiveWhys({ value, onChange }: { value: string[]; onChange: (v: string[]
   );
 }
 
-function topItems(items: Votable[], picks: string[], n: number) {
-  return items.map((i) => ({ ...i, total: i.votes + (picks.includes(i.id) ? 1 : 0) })).filter((i) => i.text.trim()).sort((a, b) => b.total - a.total).slice(0, n);
-}
-
-function OutcomePanel({ problems, obsessions, markets, picks }: { problems: Votable[]; obsessions: Votable[]; markets: Votable[]; picks: { problems: string[]; obsessions: string[]; markets: string[] } }) {
-  const block = (label: string, items: Votable[], picked: string[]) => (
-    <div>
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
-      <ol className="mt-1.5 space-y-1.5">
-        {topItems(items, picked, 3).map((i, idx) => (
-          <li key={i.id} className="flex items-start gap-2 text-sm">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sage/15 text-[11px] font-bold text-sage-dark">{idx + 1}</span>
-            <span className="flex-1 text-slate-700">{i.text || "—"}</span>
-            <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-400">{i.total}</span>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-  return (
-    <div className="space-y-4 lg:sticky lg:top-4">
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white/5 p-5">
-        <RailTitle>Outcome</RailTitle>
-        <p className="-mt-2 text-xs text-slate-400">Top picks as the votes land — these carry into venture formation.</p>
-        {block("Problems", problems, picks.problems)}
-        {block("Obsessions", obsessions, picks.obsessions)}
-        {block("Target markets", markets, picks.markets)}
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
 function OpportunityPhase({ onNext }: { onNext: () => void }) {
   const spaces = [...OPPORTUNITY_SPACES].sort((a, b) => b.votes - a.votes);
   const [spaceId, setSpaceId] = useState(spaces[0].id);
+  const [whys, setWhys] = useState<Record<string, string[]>>({});
+  const [whysOpen, setWhysOpen] = useState(false);
   const agreed = OPPORTUNITY_SPACES.find((s) => s.id === spaceId) ?? spaces[0];
   return (
     <Columns
@@ -1071,6 +1067,17 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
                   </button>
                 );
               })}
+            </div>
+            <div className="mt-3 rounded-xl border border-slate-200 p-3">
+              <button onClick={() => setWhysOpen((o) => !o)} className="flex w-full items-center gap-2.5 text-left">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sage-tint text-[11px] font-bold text-sage-dark">?</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold text-foreground">5 Whys</span>
+                  <span className="block truncate text-xs text-slate-400">Interrogate the root of {agreed.text}</span>
+                </span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 shrink-0 text-slate-300 transition-transform ${whysOpen ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
+              </button>
+              {whysOpen && <FiveWhys value={whys[spaceId] ?? ["", "", "", "", ""]} onChange={(arr) => setWhys((w) => ({ ...w, [spaceId]: arr }))} />}
             </div>
           </Part>
 

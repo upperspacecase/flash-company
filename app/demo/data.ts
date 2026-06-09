@@ -41,12 +41,12 @@ export const YOU = "maya";
 export const memberById = (id: string) => COHORT.find((m) => m.id === id)!;
 
 export const PHASES = [
-  { id: "invite", label: "Invite", day: "Kick-off", blurb: "Share a link. The team forms when everyone accepts." },
-  { id: "input", label: "Input", day: "Day 1", blurb: "Each person answers privately. Typed or voice." },
-  { id: "synthesis", label: "Synthesis", day: "Day 1", blurb: "The agent maps the team and surfaces problems, obsessions, and markets to vote on." },
-  { id: "opportunity", label: "Opportunity", day: "Day 2", blurb: "Agree broad opportunity spaces, research them, and birth candidate ventures." },
-  { id: "ventures", label: "Ventures", day: "Day 2", blurb: "Pick a birthed venture and flesh it out." },
-  { id: "validation", label: "Validation", day: "Day 2–30", blurb: "Assets to test, feedback synthesis, and the 7/14/21/30 check-ins." },
+  { id: "invite", label: "Invite", blurb: "Share a link. The team forms when everyone accepts." },
+  { id: "input", label: "Input", blurb: "Each person answers privately. Typed or voice." },
+  { id: "synthesis", label: "Synthesis", blurb: "The agent maps the team and surfaces problems, obsessions, and markets to confirm and narrow into a focus." },
+  { id: "opportunity", label: "Opportunity", blurb: "Agree broad opportunity spaces, research them, and birth candidate ventures." },
+  { id: "ventures", label: "Ventures", blurb: "Pick a birthed venture and flesh it out." },
+  { id: "validation", label: "Validation", blurb: "Assets to test, feedback synthesis, and the 7/14/21/30 check-ins." },
 ] as const;
 
 // ------------------------------------------------------------- Invite
@@ -185,10 +185,9 @@ export const SYNTH_ROLES = [
 
 // --- Opportunity ---
 
-// Votable lists. `votes` = what the OTHER two members have already cast; "you"
-// add up to SYNTH_VOTES_EACH per list in the demo.
+// Votable lists. `votes` is seeded for the later Opportunity-spaces and Ventures
+// pages, where voting happens; Synthesis itself only confirms, edits, and vetoes.
 export type Votable = { id: string; text: string; votes: number };
-export const SYNTH_VOTES_EACH = 3;
 
 export const LIVED_PROBLEMS: Votable[] = [
   { id: "reentry", text: "Parents can't find a supportive path back to work after a break.", votes: 2 },
