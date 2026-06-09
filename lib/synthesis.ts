@@ -170,11 +170,11 @@ export async function synthesizeTeam(intakes: IntakeRecord[]): Promise<Synthesis
   ].join("\n");
 
   const body = {
-    model: "claude-opus-4-8",
+    model: "claude-sonnet-4-6",
     max_tokens: 16000,
     thinking: { type: "adaptive" },
     output_config: {
-      effort: "high",
+      effort: "low",
       format: { type: "json_schema", schema: SYNTH_SCHEMA },
     },
     system: SYSTEM,
