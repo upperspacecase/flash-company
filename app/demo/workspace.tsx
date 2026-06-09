@@ -461,9 +461,9 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
       {/* 1 · Hero */}
       <section>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Kick-off</p>
-        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">What could you and up to two others build together?</h1>
+        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">Ever wonder what you and 2 <span className="text-sage">friends</span> could build?</h1>
         <p className="mt-5 text-lg leading-relaxed text-slate-600">
-          The venture you should build isn&rsquo;t in any one of your heads — it lives in the overlap. Flash maps where your skills, networks, and insights meet, and surfaces the opportunities only the three of you are placed to build.
+          Invite two people into a guided ideation process that maps your combined skills, networks, and insights into an idea <span className="text-sage">worth sharing</span>.
         </p>
       </section>
 
