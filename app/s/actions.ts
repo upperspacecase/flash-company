@@ -13,10 +13,15 @@ import {
   getTeamIntakes,
   getSynthesis,
   saveSynthesis,
+  getOpportunity,
+  saveOpportunity,
+  setMemberPayment,
   type MemberRow,
 } from "@/lib/db";
 import { synthesizeTeam } from "@/lib/synthesis";
-import type { SynthesisData } from "@/app/demo/data";
+import { generateOpportunity } from "@/lib/opportunity";
+import { getStripe } from "@/lib/stripe";
+import { PRICE, type OpportunityData, type SynthesisData } from "@/app/demo/data";
 
 const COOKIE = "fc_member";
 // Smallest real team (the product is "you and up to two others").
@@ -65,6 +70,45 @@ export async function acceptInvite(): Promise<void> {
   if (m) await setMemberAccepted(m.id);
 }
 
+// Real payment (only used when Stripe keys are set). Charge the buy-in now via
+// embedded Checkout; the client confirms with confirmAccept after completion.
+export async function createAcceptCheckout(): Promise<{ clientSecret: string; sessionId: string }> {
+  const m = await currentMember();
+  if (!m) throw new Error("Not in a team.");
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.create({
+    ui_mode: "embedded_page",
+    mode: "payment",
+    line_items: [
+      {
+        price_data: {
+          currency: PRICE.currency === "€" ? "eur" : "usd",
+          unit_amount: PRICE.perPerson * 100,
+          product_data: { name: "Flash Company buy-in" },
+        },
+        quantity: 1,
+      },
+    ],
+    redirect_on_completion: "never",
+    metadata: { memberId: m.id, teamId: m.team_id },
+  });
+  if (!session.client_secret) throw new Error("Stripe did not return a client secret.");
+  return { clientSecret: session.client_secret, sessionId: session.id };
+}
+
+// Server-verify the payment, then mark accepted. Don't trust the client.
+export async function confirmAccept(sessionId: string): Promise<boolean> {
+  const m = await currentMember();
+  if (!m) return false;
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  const paid = session.payment_status === "paid" || session.payment_status === "no_payment_required";
+  if (!paid) return false;
+  await setMemberPayment(m.id, sessionId, session.payment_status);
+  await setMemberAccepted(m.id);
+  return true;
+}
+
 export async function saveIntake(answers: Record<string, unknown>, complete: boolean): Promise<void> {
   const m = await currentMember();
   if (!m) return;
@@ -93,5 +137,30 @@ export async function runSynthesis(): Promise<SynthesisData> {
     intakes.map((r) => ({ memberId: r.member_id, answers: (r.answers ?? {}) as Record<string, unknown> })),
   );
   await saveSynthesis(m.team_id, data);
+  return data;
+}
+
+// The team confirmed/edited Synthesis — persist it as the source of truth that
+// the Opportunity step generates from.
+export async function confirmSynthesis(data: SynthesisData): Promise<void> {
+  const m = await currentMember();
+  if (!m) return;
+  await saveSynthesis(m.team_id, data);
+}
+
+// Generate (or return cached) the Opportunity page from the confirmed synthesis:
+// spaces + lenses (Claude) and PESTLE grounded by live web search.
+export async function runOpportunity(): Promise<OpportunityData> {
+  const m = await currentMember();
+  if (!m) throw new Error("Not in a team.");
+
+  const cached = await getOpportunity(m.team_id);
+  if (cached) return cached as OpportunityData;
+
+  const synthesis = await getSynthesis(m.team_id);
+  if (!synthesis) throw new Error("Confirm your synthesis first.");
+
+  const data = await generateOpportunity(synthesis as SynthesisData);
+  await saveOpportunity(m.team_id, data);
   return data;
 }

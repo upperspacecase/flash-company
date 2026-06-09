@@ -54,6 +54,14 @@ export function ensureSchema() {
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      await sql`CREATE TABLE IF NOT EXISTS opportunity (
+        team_id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+      // Stripe payment fields on members (charged on accept, when keys are set).
+      await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_session_id TEXT`;
+      await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT`;
     })().catch((e) => {
       schemaReady = null;
       throw e;
@@ -173,4 +181,27 @@ export async function saveSynthesis(teamId: string, data: unknown): Promise<void
     INSERT INTO synthesis (team_id, data, created_at)
     VALUES (${teamId}, ${json}::jsonb, now())
     ON CONFLICT (team_id) DO UPDATE SET data = EXCLUDED.data, created_at = now()`;
+}
+
+export async function getOpportunity(teamId: string): Promise<unknown | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT data FROM opportunity WHERE team_id = ${teamId}`;
+  return rows[0] ? (rows[0] as { data: unknown }).data : null;
+}
+
+export async function saveOpportunity(teamId: string, data: unknown): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  const json = JSON.stringify(data);
+  await sql`
+    INSERT INTO opportunity (team_id, data, created_at)
+    VALUES (${teamId}, ${json}::jsonb, now())
+    ON CONFLICT (team_id) DO UPDATE SET data = EXCLUDED.data, created_at = now()`;
+}
+
+export async function setMemberPayment(memberId: string, sessionId: string, status: string): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  await sql`UPDATE members SET payment_session_id = ${sessionId}, payment_status = ${status} WHERE id = ${memberId}`;
 }

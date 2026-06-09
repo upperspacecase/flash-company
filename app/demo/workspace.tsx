@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import {
   APPROACH_OPTIONS,
   CHOSEN_ID,
@@ -9,13 +11,10 @@ import {
   INTAKE,
   INTAKE_TOTAL,
   INVITE,
-  LENSES,
   MARKET_REPORT,
   NETWORK,
-  OPPORTUNITY_SPACES,
   PHASES,
   PRICE,
-  RESEARCH_LENSES,
   REVENUE_MODELS,
   SCORECARD,
   SKILLS,
@@ -27,6 +26,7 @@ import {
   YOU,
   makeVentureDraft,
   memberById,
+  mockOpportunityData,
   mockSynthesisData,
   revenueBuild,
   revenueDefaults,
@@ -37,6 +37,7 @@ import {
   type IntakeSection,
   type Member,
   type NetworkNode,
+  type OpportunityData,
   type ScorecardKey,
   type SynthesisData,
   type VentureDraft,
@@ -48,6 +49,18 @@ import {
 const PALETTE = ["#10b981", "#0ea5e9", "#f59e0b", "#a855f7"];
 const colorFor = (cohort: Member[], id: string) => PALETTE[Math.max(0, cohort.findIndex((m) => m.id === id)) % PALETTE.length];
 
+// Stripe.js loads only when a publishable key is configured (no key → demo and
+// the keyless live flow never fetch Stripe).
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+// Inline payment handlers, present only in live mode with Stripe keys set.
+export type LivePayment = {
+  onCreateCheckout: () => Promise<{ clientSecret: string; sessionId: string }>;
+  onConfirmPayment: (sessionId: string) => Promise<boolean>;
+};
+
 // Live wiring passed in by the real /s/[token] flow. Absent in the demo.
 export type LiveCtx = {
   token: string;
@@ -57,9 +70,14 @@ export type LiveCtx = {
   teamIntakeComplete: boolean;
   status: MemberStatus[];
   synthesis: SynthesisData | null;
+  opportunity: OpportunityData | null;
+  paymentEnabled: boolean;
+  payment: LivePayment;
   onAccept: () => Promise<void>;
   onSaveIntake: (answers: Record<string, unknown>, complete: boolean) => Promise<void>;
   onRunSynthesis: () => Promise<SynthesisData>;
+  onConfirmSynthesis: (data: SynthesisData) => Promise<void>;
+  onRunOpportunity: () => Promise<OpportunityData>;
 };
 
 // Real members carry no styling; assign avatar ring/dot by position so they line
@@ -216,6 +234,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   const [waiting, setWaiting] = useState(false); // "waiting for teammates" beat
   const [status, setStatus] = useState<MemberStatus[] | null>(live ? live.status : null);
   const [synthData, setSynthData] = useState<SynthesisData | null>(live ? live.synthesis : null);
+  const [oppData, setOppData] = useState<OpportunityData | null>(live ? live.opportunity : null);
 
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
 
@@ -256,6 +275,15 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
     return () => { active = false; };
   }, [live, teamReady, synthData]);
 
+  // Live: once Synthesis is confirmed (reached Opportunity), generate (or fetch
+  // cached) the Opportunity page — spaces + lenses + web-searched PESTLE.
+  useEffect(() => {
+    if (!live || reached < 3 || oppData) return;
+    let active = true;
+    live.onRunOpportunity().then((d) => { if (active) setOppData(d); }).catch(() => {});
+    return () => { active = false; };
+  }, [live, reached, oppData]);
+
   // Gating. Invite (0) is always open. Later steps open once you've accepted AND
   // reached them; Synthesis (2) additionally waits for the whole team's intake;
   // Validation (5) stays locked on the free plan. Locked steps are navigable —
@@ -282,6 +310,13 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   };
 
   const synthesisData = useMemo(() => synthData ?? mockSynthesisData(), [synthData]);
+  const opportunityData = useMemo(() => oppData ?? mockOpportunityData(), [oppData]);
+
+  // The team confirmed/edited Synthesis — persist it (live) then move to Opportunity.
+  const confirmSynthesis = async (confirmed: SynthesisData) => {
+    if (live) await live.onConfirmSynthesis(confirmed);
+    advance(3);
+  };
 
   const inviteMembers: Member[] = cohort.map((m) => (m.id === youId ? { ...m, accepted } : m));
   const othersProgress = (id: string): number =>
@@ -294,13 +329,13 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   const content = (i: number) => {
     switch (i) {
       case 0:
-        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} />;
+        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} payment={live && live.paymentEnabled ? live.payment : undefined} />;
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
       case 2:
-        return <SynthesisPhase onNext={() => advance(3)} cohort={cohort} data={synthesisData} />;
+        return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} data={synthesisData} />;
       case 3:
-        return <OpportunityPhase onNext={() => advance(4)} />;
+        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} />;
       case 4:
         return <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />;
       default:
@@ -408,7 +443,7 @@ const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "sparkle", title: "Get your ventures", text: "Once everyone's input is in, the agent synthesises the three of you into ventures worth building — and the outline to test them." },
 ];
 
-function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string }) {
+function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, payment }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; payment?: LivePayment }) {
   const [payOpen, setPayOpen] = useState(false);
   const isFree = plan === "free";
   const handleAccept = () => (isFree ? onAccept() : setPayOpen(true));
@@ -497,19 +532,19 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
         <p className="mt-3 text-xs text-slate-400">{INVITE.forms}</p>
       </section>
 
-      {payOpen && <PaymentModal onClose={() => setPayOpen(false)} onPaid={() => { setPayOpen(false); onAccept(); }} />}
+      {payOpen && <PaymentModal onClose={() => setPayOpen(false)} onPaid={() => { setPayOpen(false); onAccept(); }} payment={payment} />}
     </div>
   );
 }
 
 // Accepting the invite routes through payment. The buy-in is charged now and
 // held until the whole team accepts (auto-refunded otherwise). Mock only.
-function PaymentModal({ onClose, onPaid }: { onClose: () => void; onPaid: () => void }) {
+function PaymentModal({ onClose, onPaid, payment }: { onClose: () => void; onPaid: () => void; payment?: LivePayment }) {
   const amount = `${PRICE.currency}${PRICE.perPerson}`;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-xl">
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-xl">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Buy-in</p>
@@ -523,22 +558,59 @@ function PaymentModal({ onClose, onPaid }: { onClose: () => void; onPaid: () => 
         <div className="mt-5 space-y-2 rounded-xl border border-slate-200 p-4">
           <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Your buy-in</span><span className="font-bold text-foreground">{amount}</span></div>
           <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Charged now</span><span className="font-semibold text-foreground">{amount}</span></div>
-          <p className="flex items-start gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500"><Icon name="shield" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" /> Held until your whole team accepts. If everyone doesn&rsquo;t accept within {SPRINT.windowHours} hours, you&rsquo;re refunded in full.</p>
+          {!payment && <p className="flex items-start gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500"><Icon name="shield" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" /> Held until your whole team accepts. If everyone doesn&rsquo;t accept within {SPRINT.windowHours} hours, you&rsquo;re refunded in full.</p>}
         </div>
 
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 p-3">
-          <Icon name="coins" className="h-4 w-4 shrink-0 text-slate-400" />
-          <span className="text-sm text-slate-400">Card details</span>
-          <span className="ml-auto text-xs text-slate-300">•••• 4242</span>
-        </div>
-
-        <div className="mt-5 flex items-center gap-3">
-          <button onClick={onPaid} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-sage text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="check" className="h-4 w-4" /> Pay {amount} &amp; accept</button>
-          <button onClick={onClose} className="h-12 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
-        </div>
-        <p className="mt-3 text-center text-[11px] text-slate-400">Prototype — no real payment is taken.</p>
+        {payment ? (
+          <div className="mt-4">
+            <StripeCheckout payment={payment} onPaid={onPaid} />
+            <button onClick={onClose} className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
+          </div>
+        ) : (
+          <>
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 p-3">
+              <Icon name="coins" className="h-4 w-4 shrink-0 text-slate-400" />
+              <span className="text-sm text-slate-400">Card details</span>
+              <span className="ml-auto text-xs text-slate-300">•••• 4242</span>
+            </div>
+            <div className="mt-5 flex items-center gap-3">
+              <button onClick={onPaid} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-sage text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="check" className="h-4 w-4" /> Pay {amount} &amp; accept</button>
+              <button onClick={onClose} className="h-12 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
+            </div>
+            <p className="mt-3 text-center text-[11px] text-slate-400">Prototype — no real payment is taken.</p>
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+// Inline real payment: Stripe embedded Checkout (charges the buy-in now). On
+// completion we server-verify via onConfirmPayment before accepting.
+function StripeCheckout({ payment, onPaid }: { payment: LivePayment; onPaid: () => void }) {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const ran = useRef(false);
+  useEffect(() => {
+    if (ran.current) return;
+    ran.current = true;
+    payment.onCreateCheckout()
+      .then((r) => { setClientSecret(r.clientSecret); setSessionId(r.sessionId); })
+      .catch(() => setError("Couldn't start the payment — please try again."));
+  }, [payment]);
+  const complete = async () => {
+    if (!sessionId) return;
+    const ok = await payment.onConfirmPayment(sessionId);
+    if (ok) onPaid();
+    else setError("Payment wasn't completed.");
+  };
+  if (error) return <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</p>;
+  if (!stripePromise || !clientSecret) return <p className="rounded-xl border border-slate-200 p-3 text-sm text-slate-500">Loading secure payment…</p>;
+  return (
+    <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret, onComplete: complete }}>
+      <EmbeddedCheckout />
+    </EmbeddedCheckoutProvider>
   );
 }
 
@@ -871,7 +943,7 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
 
 /* ----------------------------------------------------- 2. Synthesis */
 
-function SynthesisPhase({ onNext, cohort = COHORT, data }: { onNext: () => void; cohort?: Member[]; data?: SynthesisData }) {
+function SynthesisPhase({ onConfirm, cohort = COHORT, data }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; data?: SynthesisData }) {
   const d = data ?? mockSynthesisData();
   const [energy, setEnergy] = useState<Record<string, number[]>>(() => Object.fromEntries(cohort.map((m) => [m.id, [...(d.skillEnergy[m.id] ?? SKILLS.map(() => 3))]])));
   const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, ...Object.fromEntries(cohort.map((m) => [m.id, false])) }));
@@ -888,6 +960,16 @@ function SynthesisPhase({ onNext, cohort = COHORT, data }: { onNext: () => void;
   const toggleConfirm = (k: string) => setConfirmed((c) => ({ ...c, [k]: !c[k] }));
   const toggleOpen = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
   const rolesConfirmed = roles.every((r) => confirmed[r.memberId]);
+
+  const handleConfirm = () => onConfirm({
+    convergence: d.convergence,
+    skillEnergy: energy,
+    network: [...industries, ...locations],
+    roles,
+    problems,
+    obsessions,
+    markets,
+  });
 
   return (
     <Columns
@@ -954,7 +1036,7 @@ function SynthesisPhase({ onNext, cohort = COHORT, data }: { onNext: () => void;
             </Section>
           </Part>
 
-          <div className="flex justify-end"><PrimaryBtn label="Agree opportunity spaces" onClick={onNext} icon="sparkle" /></div>
+          <div className="flex justify-end"><PrimaryBtn label="Agree opportunity spaces" onClick={handleConfirm} icon="sparkle" /></div>
         </div>
       }
     />
@@ -1150,12 +1232,13 @@ function FiveWhys({ value, onChange }: { value: string[]; onChange: (v: string[]
 
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
-function OpportunityPhase({ onNext }: { onNext: () => void }) {
-  const spaces = [...OPPORTUNITY_SPACES].sort((a, b) => b.votes - a.votes);
-  const [spaceId, setSpaceId] = useState(spaces[0].id);
+function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: OpportunityData }) {
+  const od = data ?? mockOpportunityData();
+  const spaces = [...od.spaces].sort((a, b) => b.votes - a.votes);
+  const [spaceId, setSpaceId] = useState(spaces[0]?.id ?? "");
   const [whys, setWhys] = useState<Record<string, string[]>>({});
   const [whysOpen, setWhysOpen] = useState(false);
-  const agreed = OPPORTUNITY_SPACES.find((s) => s.id === spaceId) ?? spaces[0];
+  const agreed = od.spaces.find((s) => s.id === spaceId) ?? spaces[0] ?? { id: "", text: "—", votes: 0 };
   return (
     <Columns
       left={
@@ -1208,7 +1291,7 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
           <Part label="Market research" hint="PESTLE's six dimensions, run against the agreed space.">
             <p className="-mt-1 mb-2 text-xs text-slate-400">Researching: <span className="font-semibold text-sage-dark">{agreed.text}</span></p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {RESEARCH_LENSES.map((l) => (
+              {od.research.map((l) => (
                 <div key={l.key} className="rounded-xl border border-slate-200 p-3">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-sage-dark">{l.label}</p>
                   <p className="mt-1 text-sm text-slate-700">{l.finding}</p>
@@ -1220,7 +1303,7 @@ function OpportunityPhase({ onNext }: { onNext: () => void }) {
           <Part label="Angles" hint="Look at the opportunity through different lenses — each gives a different version of it.">
             <p className="-mt-1 mb-2 text-xs text-slate-400">e.g. what's the X-Prize version of this? where's the Blue Ocean angle?</p>
             <div className="grid gap-2 sm:grid-cols-2">
-              {LENSES.map((l) => (
+              {od.lenses.map((l) => (
                 <div key={l.id} className="rounded-xl border border-slate-200 p-3">
                   <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-sage-dark"><Icon name={l.icon} className="h-3.5 w-3.5" />{l.name}</p>
                   <p className="text-[11px] italic text-slate-400">{l.question}</p>

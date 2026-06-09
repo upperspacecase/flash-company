@@ -1,8 +1,8 @@
 "use client";
 
 import { DemoWorkspace, type LiveCtx } from "@/app/demo/workspace";
-import type { SynthesisData } from "@/app/demo/data";
-import { acceptInvite, runSynthesis, saveIntake } from "../actions";
+import type { OpportunityData, SynthesisData } from "@/app/demo/data";
+import { acceptInvite, confirmSynthesis, createAcceptCheckout, confirmAccept, runOpportunity, runSynthesis, saveIntake } from "../actions";
 
 export type LiveProps = {
   token: string;
@@ -13,6 +13,8 @@ export type LiveProps = {
   teamIntakeComplete: boolean;
   status: { id: string; name: string | null; accepted: boolean; intakeComplete: boolean }[];
   synthesis: SynthesisData | null;
+  opportunity: OpportunityData | null;
+  paymentEnabled: boolean;
 };
 
 export function LiveWorkspace(props: LiveProps) {
@@ -24,9 +26,17 @@ export function LiveWorkspace(props: LiveProps) {
     teamIntakeComplete: props.teamIntakeComplete,
     status: props.status,
     synthesis: props.synthesis,
+    opportunity: props.opportunity,
+    paymentEnabled: props.paymentEnabled,
+    payment: {
+      onCreateCheckout: async () => createAcceptCheckout(),
+      onConfirmPayment: async (sessionId) => confirmAccept(sessionId),
+    },
     onAccept: async () => { await acceptInvite(); },
     onSaveIntake: async (answers, complete) => { await saveIntake(answers, complete); },
     onRunSynthesis: async () => runSynthesis(),
+    onConfirmSynthesis: async (data) => { await confirmSynthesis(data); },
+    onRunOpportunity: async () => runOpportunity(),
   };
   return <DemoWorkspace plan={props.plan} live={live} />;
 }

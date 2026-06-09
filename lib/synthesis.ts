@@ -6,11 +6,12 @@ import {
   type SynthesisData,
 } from "@/app/demo/data";
 
-// Lazy so a missing ANTHROPIC_API_KEY only fails when synthesis actually runs,
-// not at build/import. The SDK reads ANTHROPIC_API_KEY from the environment.
-function getClient() {
+// Lazy so a missing ANTHROPIC_API_KEY only fails when a generation actually
+// runs, not at build/import. The SDK reads ANTHROPIC_API_KEY from the env.
+// Shared with lib/opportunity.ts.
+export function getAnthropic() {
   if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY is not set — cannot run synthesis.");
+    throw new Error("ANTHROPIC_API_KEY is not set — cannot run generation.");
   }
   return new Anthropic();
 }
@@ -142,7 +143,7 @@ const clampScore = (n: number) => Math.max(0, Math.min(5, Math.round(Number.isFi
  * Returns the same shape the Synthesis UI renders, keyed by real member ids.
  */
 export async function synthesizeTeam(intakes: IntakeRecord[]): Promise<SynthesisData> {
-  const client = getClient();
+  const client = getAnthropic();
 
   // Short keys for the model; map back to real ids afterwards.
   const labelled = intakes.map((rec, i) => {
