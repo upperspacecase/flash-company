@@ -1,20 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   APPROACH_OPTIONS,
   CHOSEN_ID,
   COHORT,
-  CONVERGENCE_SIGNALS,
   INTAKE,
   INTAKE_TOTAL,
   INVITE,
   LENSES,
-  LIVED_PROBLEMS,
   MARKET_REPORT,
   NETWORK,
-  OBSESSIONS,
   OPPORTUNITY_SPACES,
   PHASES,
   PRICE,
@@ -22,17 +19,15 @@ import {
   REVENUE_MODELS,
   SCORECARD,
   SKILLS,
-  SKILL_ENERGY,
   SPRINT,
-  SYNTH_ROLES,
   TAGLINE,
-  TARGET_MARKETS,
   VALIDATION,
   VENTURES,
   VENTURE_DETAILS,
   YOU,
   makeVentureDraft,
   memberById,
+  mockSynthesisData,
   revenueBuild,
   revenueDefaults,
   type DeckSlide,
@@ -43,9 +38,53 @@ import {
   type Member,
   type NetworkNode,
   type ScorecardKey,
+  type SynthesisData,
   type VentureDraft,
   type Votable,
 } from "./data";
+
+// Per-member colour for the radar/network, by position in the cohort. The demo
+// cohort (maya, alex, priya) maps to the original emerald/sky/amber.
+const PALETTE = ["#10b981", "#0ea5e9", "#f59e0b", "#a855f7"];
+const colorFor = (cohort: Member[], id: string) => PALETTE[Math.max(0, cohort.findIndex((m) => m.id === id)) % PALETTE.length];
+
+// Live wiring passed in by the real /s/[token] flow. Absent in the demo.
+export type LiveCtx = {
+  token: string;
+  meId: string;
+  accepted: boolean;
+  initialAnswers: Record<string, unknown>;
+  teamIntakeComplete: boolean;
+  status: MemberStatus[];
+  synthesis: SynthesisData | null;
+  onAccept: () => Promise<void>;
+  onSaveIntake: (answers: Record<string, unknown>, complete: boolean) => Promise<void>;
+  onRunSynthesis: () => Promise<SynthesisData>;
+};
+
+// Real members carry no styling; assign avatar ring/dot by position so they line
+// up with PALETTE (used by the radar/network).
+const RING_CLASSES = [
+  { ring: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  { ring: "bg-sky-100 text-sky-700", dot: "bg-sky-500" },
+  { ring: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
+  { ring: "bg-violet-100 text-violet-700", dot: "bg-violet-500" },
+];
+function liveCohort(status: { id: string; name: string | null; accepted: boolean }[], youId: string): Member[] {
+  return status.map((s, i) => {
+    const isYou = s.id === youId;
+    const name = s.name || (isYou ? "You" : `Teammate ${i + 1}`);
+    return {
+      id: s.id,
+      name,
+      initials: name.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase() || (isYou ? "ME" : "T"),
+      role: isYou ? "You" : "Teammate",
+      brings: "",
+      accepted: s.accepted,
+      ...RING_CLASSES[i % RING_CLASSES.length],
+    };
+  });
+}
 
 /* ---------------------------------------------------------------- icons */
 
@@ -163,11 +202,23 @@ function Upsell({ title, text }: { title: string; text: string }) {
 
 /* ------------------------------------------------------------ the page */
 
-export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
+type MemberStatus = { id: string; name: string | null; accepted: boolean; intakeComplete: boolean };
+
+export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: LiveCtx }) {
   const isFree = plan === "free";
+  const youId = live ? live.meId : YOU;
+
   const [phase, setPhase] = useState(0);
-  const [accepted, setAccepted] = useState(false);
-  const [reached, setReached] = useState(0);
+  const [accepted, setAccepted] = useState(live ? live.accepted : false);
+  const [reached, setReached] = useState(live && live.accepted ? 1 : 0);
+  // Synthesis stays locked until every team member completes Intake.
+  const [teamReady, setTeamReady] = useState(live ? live.teamIntakeComplete : false);
+  const [waiting, setWaiting] = useState(false); // "waiting for teammates" beat
+  const [status, setStatus] = useState<MemberStatus[] | null>(live ? live.status : null);
+  const [synthData, setSynthData] = useState<SynthesisData | null>(live ? live.synthesis : null);
+
+  const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
+
   const [ventureId, setVentureId] = useState(CHOSEN_ID);
   const [name, setName] = useState(VENTURE_DETAILS.name);
   const [recorded, setRecorded] = useState<Record<string, boolean>>(
@@ -177,34 +228,118 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
   const [venture, setVenture] = useState<VentureDraft>(makeVentureDraft);
   const [published, setPublished] = useState(false);
 
-  // Gating. Invite (0) is always open. Everything after it opens only once the
-  // user has accepted (paid) AND finished the prior step — `reached` is the
-  // high-water mark each phase's forward button advances. Accepting unlocks
-  // Input; finishing Input unlocks Synthesis; and so on. Validation stays locked
-  // on the free plan. Locked phases are still clickable — they show a greyed
-  // preview so people sense the full process.
-  const unlocked = (i: number) => i === 0 || (accepted && i <= reached && !(isFree && i >= 5));
+  // Live: poll team status so teammates accepting / finishing on their own
+  // devices flow in, and Synthesis unlocks once everyone's intake is in.
+  useEffect(() => {
+    if (!live) return;
+    let active = true;
+    const tick = async () => {
+      try {
+        const r = await fetch(`/s/${live.token}/status`, { cache: "no-store" });
+        if (!r.ok) return;
+        const j = (await r.json()) as { members: MemberStatus[]; allComplete: boolean };
+        if (!active) return;
+        setStatus(j.members);
+        if (j.allComplete) setTeamReady(true);
+      } catch { /* transient */ }
+    };
+    tick();
+    const id = setInterval(tick, 4000);
+    return () => { active = false; clearInterval(id); };
+  }, [live]);
+
+  // Live: once everyone's in, run (or fetch cached) synthesis.
+  useEffect(() => {
+    if (!live || !teamReady || synthData) return;
+    let active = true;
+    live.onRunSynthesis().then((d) => { if (active) setSynthData(d); }).catch(() => {});
+    return () => { active = false; };
+  }, [live, teamReady, synthData]);
+
+  // Gating. Invite (0) is always open. Later steps open once you've accepted AND
+  // reached them; Synthesis (2) additionally waits for the whole team's intake;
+  // Validation (5) stays locked on the free plan. Locked steps are navigable —
+  // they show the real content greyed out and non-interactive (LockedShell).
+  const unlocked = (i: number) =>
+    i === 0 || (accepted && i <= reached && !(isFree && i >= 5) && (i !== 2 || teamReady));
   const advance = (i: number) => { setReached((r) => Math.max(r, i)); setPhase(i); };
-  const accept = () => { setAccepted(true); setReached((r) => Math.max(r, 1)); };
+
+  const accept = async () => {
+    if (live) await live.onAccept();
+    setAccepted(true);
+    setReached((r) => Math.max(r, 1));
+  };
+
+  // Called when the user finishes their own intake.
+  const submitIntake = async (answers: Record<string, unknown>) => {
+    if (live) {
+      await live.onSaveIntake(answers, true);
+      // the status poll will flip teamReady once everyone is in
+    } else {
+      setWaiting(true);
+      setTimeout(() => { setWaiting(false); setTeamReady(true); }, 2600);
+    }
+  };
+
+  const synthesisData = useMemo(() => synthData ?? mockSynthesisData(), [synthData]);
+
+  const inviteMembers: Member[] = cohort.map((m) => (m.id === youId ? { ...m, accepted } : m));
+  const othersProgress = (id: string): number =>
+    live
+      ? (status?.find((s) => s.id === id)?.intakeComplete ? INTAKE_TOTAL : 0)
+      : id === "alex" ? INTAKE_TOTAL : id === "priya" ? 19 : 0;
+
+  const inviteUrl = live ? `flashco.app/s/${live.token}` : INVITE.url;
+
+  const content = (i: number) => {
+    switch (i) {
+      case 0:
+        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} />;
+      case 1:
+        return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
+      case 2:
+        return <SynthesisPhase onNext={() => advance(3)} cohort={cohort} data={synthesisData} />;
+      case 3:
+        return <OpportunityPhase onNext={() => advance(4)} />;
+      case 4:
+        return <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />;
+      default:
+        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />;
+    }
+  };
+
+  const lockReason = (i: number): { reason: string; cta: "invite" | "seed" | null } => {
+    const seedLock = isFree && i >= 5;
+    if (!accepted) return { reason: "Accept your invite to get started — then the sprint opens up, step by step.", cta: "invite" };
+    if (seedLock) return { reason: "Validation is part of the Seed protocol.", cta: "seed" };
+    if (i === 2) {
+      const inCount = (status ?? []).filter((s) => s.intakeComplete).length;
+      const total = cohort.length;
+      return {
+        reason: live
+          ? `Synthesis runs once everyone's input is in — ${inCount} of ${total} in. We'll unlock this automatically.`
+          : waiting
+            ? "Submitted. Waiting for your teammates to finish their input…"
+            : "Synthesis runs once everyone's input is in.",
+        cta: null,
+      };
+    }
+    return { reason: `Opens once you've finished ${PHASES[i - 1].label}.`, cta: null };
+  };
 
   return (
     <div className="relative flex min-h-screen flex-col bg-black">
       <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
       <div className="relative z-10 flex flex-1 flex-col">
-      <Header plan={plan} />
+      <Header plan={plan} cohort={cohort} />
       <Timeline phase={phase} onJump={setPhase} unlocked={unlocked} reached={reached} />
       <main className="mx-auto w-full max-w-[1500px] flex-1 px-5 py-6">
-        {!unlocked(phase) ? (
-          <LockedPreview i={phase} accepted={accepted} isFree={isFree} onGoInvite={() => setPhase(0)} />
+        {unlocked(phase) ? (
+          content(phase)
         ) : (
-          <>
-            {phase === 0 && <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} />}
-            {phase === 1 && <InputPhase onNext={() => advance(2)} />}
-            {phase === 2 && <SynthesisPhase onNext={() => advance(3)} />}
-            {phase === 3 && <OpportunityPhase onNext={() => advance(4)} />}
-            {phase === 4 && <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />}
-            {!isFree && phase === 5 && <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />}
-          </>
+          <LockedShell i={phase} {...lockReason(phase)} onGoInvite={() => setPhase(0)}>
+            {content(phase)}
+          </LockedShell>
         )}
       </main>
       </div>
@@ -212,7 +347,7 @@ export function DemoWorkspace({ plan }: { plan: "free" | "full" }) {
   );
 }
 
-function Header({ plan }: { plan: "free" | "full" }) {
+function Header({ plan, cohort = COHORT }: { plan: "free" | "full"; cohort?: Member[] }) {
   const isFree = plan === "free";
   return (
     <header className="border-b border-slate-200 bg-white/5">
@@ -226,7 +361,7 @@ function Header({ plan }: { plan: "free" | "full" }) {
           <span className="hidden items-center gap-2 rounded-full bg-sage-tint px-3 py-1.5 text-xs font-semibold text-sage-dark sm:flex">
             <Icon name="clock" className="h-3.5 w-3.5" /> {isFree ? `Free · ${SPRINT.freeHours}h` : `${SPRINT.windowHours}h sprint`}
           </span>
-          <div className="hidden items-center -space-x-2 sm:flex">{COHORT.map((m) => <Avatar key={m.id} m={m} />)}</div>
+          <div className="hidden items-center -space-x-2 sm:flex">{cohort.map((m) => <Avatar key={m.id} m={m} />)}</div>
           <button className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="link" className="h-4 w-4" /> Invite</button>
         </div>
       </div>
@@ -273,11 +408,11 @@ const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "sparkle", title: "Get your ventures", text: "Once everyone's input is in, the agent synthesises the three of you into ventures worth building — and the outline to test them." },
 ];
 
-function InvitePhase({ plan, accepted, onAccept, onStart }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void; onStart: () => void }) {
+function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string }) {
   const [payOpen, setPayOpen] = useState(false);
   const isFree = plan === "free";
   const handleAccept = () => (isFree ? onAccept() : setPayOpen(true));
-  const acceptedCount = COHORT.filter((m) => (m.id === YOU ? accepted : m.accepted)).length;
+  const acceptedCount = members.filter((m) => m.accepted).length;
   return (
     <div className="mx-auto max-w-3xl space-y-12 py-4">
       {/* 1 · Hero */}
@@ -311,7 +446,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart }: { plan: "free" | "fu
           <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
           <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-sage"><Icon name="link" className="h-4 w-4" /></span>
-            <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{INVITE.url}</code>
+            <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{inviteUrl}</code>
             <button className="inline-flex items-center gap-1.5 rounded-md bg-sage px-3 py-1.5 text-xs font-bold text-white"><Icon name="copy" className="h-3.5 w-3.5" /> Copy</button>
           </div>
           <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
@@ -344,16 +479,16 @@ function InvitePhase({ plan, accepted, onAccept, onStart }: { plan: "free" | "fu
       <section>
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Who&rsquo;s accepted</h2>
-          <span className="text-xs text-slate-400">{acceptedCount} of {COHORT.length} in</span>
+          <span className="text-xs text-slate-400">{acceptedCount} of {members.length} in</span>
         </div>
         <ul className="mt-4 space-y-2.5">
-          {COHORT.map((m) => {
-            const isYou = m.id === YOU;
-            const has = isYou ? accepted : m.accepted;
+          {members.map((m) => {
+            const isYou = m.id === youId;
+            const has = m.accepted;
             return (
               <li key={m.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
                 <Avatar m={m} />
-                <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{m.name} {isYou && <span className="text-xs font-normal text-slate-400">(you)</span>}</p><p className="truncate text-xs text-slate-500">{m.role} · {m.brings}</p></div>
+                <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{m.name} {isYou && <span className="text-xs font-normal text-slate-400">(you)</span>}</p><p className="truncate text-xs text-slate-500">{m.role}{m.brings ? ` · ${m.brings}` : ""}</p></div>
                 <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${has ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{has ? "Accepted" : "Pending"}</span>
               </li>
             );
@@ -407,47 +542,31 @@ function PaymentModal({ onClose, onPaid }: { onClose: () => void; onPaid: () => 
   );
 }
 
-// A later step viewed before it's unlocked: a greyed teaser + why it's locked.
-function LockedPreview({ i, accepted, isFree, onGoInvite }: { i: number; accepted: boolean; isFree: boolean; onGoInvite: () => void }) {
+// A locked step. Per the product call: show the REAL content, greyed out and
+// non-interactive (via `inert`), behind a small non-obscuring banner that says
+// why it's locked and how to unlock — so people can click through and see what's
+// there without being able to touch it. Used for the pre-accept lock, the
+// synthesis "waiting for the team" gate, and the free-plan Seed lock.
+function LockedShell({ i, reason, cta, onGoInvite, children }: { i: number; reason: string; cta: "invite" | "seed" | null; onGoInvite: () => void; children: React.ReactNode }) {
   const p = PHASES[i];
-  const seedLock = isFree && i >= 5;
-  const reason = !accepted
-    ? "Accept your invite to get started — then the sprint opens up, step by step."
-    : seedLock
-      ? "Validation is part of the Seed protocol."
-      : i === 2
-        ? "Synthesis runs once everyone's input is in."
-        : `Opens once you've finished ${PHASES[i - 1].label}.`;
   return (
-    <div className="relative mx-auto max-w-5xl">
-      <div aria-hidden className="pointer-events-none select-none space-y-4 opacity-40 blur-[2px] grayscale">
-        <Card className="p-5">
-          <div className="h-6 w-44 rounded bg-slate-200" />
-          <div className="mt-2 h-3 w-72 rounded bg-slate-100" />
-        </Card>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {[0, 1, 2, 3].map((n) => (
-            <Card key={n} className="p-4">
-              <div className="h-3 w-24 rounded bg-slate-200" />
-              <div className="mt-2 h-3 w-full rounded bg-slate-100" />
-              <div className="mt-1.5 h-3 w-5/6 rounded bg-slate-100" />
-            </Card>
-          ))}
+    <div className="mx-auto w-full max-w-[1500px]">
+      <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-sage/30 bg-sage-tint/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sage-tint text-sage"><Icon name="lock" className="h-4 w-4" /></span>
+          <div>
+            <p className="text-sm font-bold text-foreground">{p.label} is locked <span className="font-normal text-slate-400">· preview</span></p>
+            <p className="mt-0.5 text-sm text-slate-600">{reason}</p>
+          </div>
         </div>
+        {cta === "invite" ? (
+          <button onClick={onGoInvite} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="bolt" className="h-4 w-4" /> Accept your invite</button>
+        ) : cta === "seed" ? (
+          <a href="/demo" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="bolt" className="h-4 w-4" /> Unlock the Seed protocol</a>
+        ) : null}
       </div>
-      <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 p-4 backdrop-blur-[1px]">
-        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-slate-100 p-6 text-center">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sage-tint text-sage"><Icon name="lock" className="h-5 w-5" /></span>
-          <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Step {i + 1}</p>
-          <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">{p.label}</h2>
-          <p className="mt-2 text-sm text-slate-500">{p.blurb}</p>
-          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"><Icon name="lock" className="h-3 w-3" /> {reason}</p>
-          {!accepted ? (
-            <div className="mt-5 flex justify-center"><PrimaryBtn label="Accept your invite" onClick={onGoInvite} icon="bolt" /></div>
-          ) : seedLock ? (
-            <div className="mt-5"><a href="/demo" className="inline-flex h-11 items-center gap-2 rounded-xl bg-sage px-5 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="bolt" className="h-4 w-4" /> Unlock the Seed protocol</a></div>
-          ) : null}
-        </div>
+      <div inert className="select-none opacity-60 grayscale">
+        {children}
       </div>
     </div>
   );
@@ -482,11 +601,18 @@ function isAnswered(v: unknown): boolean {
 // Flattened question flow with section markers, for the conversational intake.
 const INTAKE_FLOW = INTAKE.flatMap((s, si) => s.questions.map((q, qi) => ({ q, si, title: s.title, blurb: s.blurb, first: qi === 0 })));
 
-function InputPhase({ onNext }: { onNext: () => void }) {
+function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId = YOU, othersProgress }: { onNext: () => void; onSubmit?: (answers: Record<string, unknown>) => void; initialAnswers?: Record<string, unknown>; cohort?: Member[]; youId?: string; othersProgress?: (id: string) => number }) {
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  const [answers, setAnswers] = useState<Record<string, unknown>>(initialAnswers ?? {});
   const [voiceMode, setVoiceMode] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
   const done = step >= INTAKE_FLOW.length;
+  // Persist this member's intake (complete) the moment they finish — synthesis
+  // unlocks once everyone's is in.
+  useEffect(() => {
+    if (done && !submitted) { setSubmitted(true); onSubmit?.(answers); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
   const cur = done ? null : INTAKE_FLOW[step];
   const isVoice = (id: string) => !!voiceMode[id];
   const update = (id: string, value: unknown) => setAnswers((a) => ({ ...a, [id]: value }));
@@ -495,7 +621,7 @@ function InputPhase({ onNext }: { onNext: () => void }) {
   const canSend = !!cur && (isAnswered(answers[cur.q.id]) || isVoice(cur.q.id) || cur.q.field.kind === "slider");
   return (
     <Columns
-      left={<IntakeNav curSi={curSi} answeredIn={answeredIn} />}
+      left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />}
       center={
         <Card className="flex h-full flex-col p-6">
           <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
@@ -542,13 +668,9 @@ function InputPhase({ onNext }: { onNext: () => void }) {
   );
 }
 
-function IntakeNav({ curSi, answeredIn }: { curSi: number; answeredIn: (s: IntakeSection) => number }) {
+function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProgress }: { curSi: number; answeredIn: (s: IntakeSection) => number; cohort?: Member[]; youId?: string; othersProgress?: (id: string) => number }) {
   const youDone = INTAKE.reduce((n, s) => n + answeredIn(s), 0);
-  const team = [
-    { id: "maya", done: youDone, you: true },
-    { id: "alex", done: INTAKE_TOTAL, you: false },
-    { id: "priya", done: 19, you: false },
-  ];
+  const team = cohort.map((m) => ({ m, done: m.id === youId ? youDone : (othersProgress?.(m.id) ?? 0), you: m.id === youId }));
   return (
     <div className="space-y-4 lg:sticky lg:top-4">
       <RailTitle>Your intake</RailTitle>
@@ -572,10 +694,10 @@ function IntakeNav({ curSi, answeredIn }: { curSi: number; answeredIn: (s: Intak
       <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
         <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
         {team.map((t) => {
-          const m = memberById(t.id);
+          const m = t.m;
           const pct = Math.round((t.done / INTAKE_TOTAL) * 100);
           return (
-            <div key={t.id} className="flex items-center gap-2.5">
+            <div key={m.id} className="flex items-center gap-2.5">
               <Avatar m={m} size="h-7 w-7 text-[10px]" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between text-xs">
@@ -749,18 +871,19 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
 
 /* ----------------------------------------------------- 2. Synthesis */
 
-function SynthesisPhase({ onNext }: { onNext: () => void }) {
-  const [energy, setEnergy] = useState<Record<string, number[]>>(() => ({ maya: [...SKILL_ENERGY.maya], alex: [...SKILL_ENERGY.alex], priya: [...SKILL_ENERGY.priya] }));
-  const [shown, setShown] = useState<Record<string, boolean>>({ team: true, maya: false, alex: false, priya: false });
-  const [editId, setEditId] = useState("maya");
-  const [roles, setRoles] = useState(SYNTH_ROLES.map((r) => ({ ...r })));
-  const [industries, setIndustries] = useState<NetworkNode[]>(NETWORK.filter((n) => n.kind === "industry").map((n) => ({ ...n })));
-  const [locations, setLocations] = useState<NetworkNode[]>(NETWORK.filter((n) => n.kind === "location").map((n) => ({ ...n })));
+function SynthesisPhase({ onNext, cohort = COHORT, data }: { onNext: () => void; cohort?: Member[]; data?: SynthesisData }) {
+  const d = data ?? mockSynthesisData();
+  const [energy, setEnergy] = useState<Record<string, number[]>>(() => Object.fromEntries(cohort.map((m) => [m.id, [...(d.skillEnergy[m.id] ?? SKILLS.map(() => 3))]])));
+  const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, ...Object.fromEntries(cohort.map((m) => [m.id, false])) }));
+  const [editId, setEditId] = useState(cohort[0]?.id ?? YOU);
+  const [roles, setRoles] = useState(d.roles.map((r) => ({ ...r })));
+  const [industries, setIndustries] = useState<NetworkNode[]>(d.network.filter((n) => n.kind === "industry").map((n) => ({ ...n })));
+  const [locations, setLocations] = useState<NetworkNode[]>(d.network.filter((n) => n.kind === "location").map((n) => ({ ...n })));
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
   const [open, setOpen] = useState<Record<string, boolean>>({ skills: true });
-  const [problems, setProblems] = useState<Votable[]>(LIVED_PROBLEMS.map((p) => ({ ...p })));
-  const [obsessions, setObsessions] = useState<Votable[]>(OBSESSIONS.map((p) => ({ ...p })));
-  const [markets, setMarkets] = useState<Votable[]>(TARGET_MARKETS.map((p) => ({ ...p })));
+  const [problems, setProblems] = useState<Votable[]>(d.problems.map((p) => ({ ...p })));
+  const [obsessions, setObsessions] = useState<Votable[]>(d.obsessions.map((p) => ({ ...p })));
+  const [markets, setMarkets] = useState<Votable[]>(d.markets.map((p) => ({ ...p })));
 
   const toggleConfirm = (k: string) => setConfirmed((c) => ({ ...c, [k]: !c[k] }));
   const toggleOpen = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
@@ -796,8 +919,8 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Synthesis</h1>
             <p className="mt-1 text-slate-500">The agent read all three intakes. Confirm who you are, then narrow to a focus.</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {CONVERGENCE_SIGNALS.map((s) => (
-                <span key={s.kind} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${s.tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-sage-tint/40 text-sage-dark"}`}><Icon name={s.icon} className="h-3.5 w-3.5" />{s.kind}</span>
+              {d.convergence.map((s, i) => (
+                <span key={s.kind + i} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${s.tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-sage-tint/40 text-sage-dark"}`}><Icon name={s.icon} className="h-3.5 w-3.5" />{s.kind}</span>
               ))}
             </div>
           </Card>
@@ -805,16 +928,16 @@ function SynthesisPhase({ onNext }: { onNext: () => void }) {
           <Part label="Team" hint="Confirm your profile — add, edit, confirm. Nothing's removed here.">
             <div className="space-y-3">
               <ConfirmItem title="Skills & energy" hint="Tap a dot to adjust — outer energises, inner drains." open={open.skills} onToggle={() => toggleOpen("skills")} confirmed={confirmed.skills} onConfirm={() => toggleConfirm("skills")}>
-                <SkillRadar energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} editId={editId} onEdit={(id) => { setEditId(id); setShown((s) => ({ ...s, [id]: true })); }} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
+                <SkillRadar cohort={cohort} energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} editId={editId} onEdit={(id) => { setEditId(id); setShown((s) => ({ ...s, [id]: true })); }} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
               </ConfirmItem>
               <ConfirmItem title="Network" hint="Industries you can talk to." open={open.network} onToggle={() => toggleOpen("network")} confirmed={confirmed.network} onConfirm={() => toggleConfirm("network")}>
-                <NetworkList nodes={industries} onNodes={setIndustries} kind="industry" icon="building" addLabel="industry" />
+                <NetworkList cohort={cohort} nodes={industries} onNodes={setIndustries} kind="industry" icon="building" addLabel="industry" />
               </ConfirmItem>
               <ConfirmItem title="Locations" hint="Where you can reach and meet." open={open.locations} onToggle={() => toggleOpen("locations")} confirmed={confirmed.locations} onConfirm={() => toggleConfirm("locations")}>
-                <NetworkList nodes={locations} onNodes={setLocations} kind="location" icon="target" addLabel="location" />
+                <NetworkList cohort={cohort} nodes={locations} onNodes={setLocations} kind="location" icon="target" addLabel="location" />
               </ConfirmItem>
               <ConfirmItem title="Roles & tasks" hint="Confirm each person's role." open={open.roles} onToggle={() => toggleOpen("roles")} confirmed={rolesConfirmed}>
-                <RolesTasks roles={roles} onRoles={setRoles} confirmed={confirmed} onConfirm={toggleConfirm} />
+                <RolesTasks cohort={cohort} roles={roles} onRoles={setRoles} confirmed={confirmed} onConfirm={toggleConfirm} />
               </ConfirmItem>
             </div>
           </Part>
@@ -861,7 +984,7 @@ function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, childr
 }
 
 // Editable network nodes (industries or locations). Add / edit only — no delete.
-function NetworkList({ nodes, onNodes, kind, icon, addLabel }: { nodes: NetworkNode[]; onNodes: (n: NetworkNode[]) => void; kind: NetworkNode["kind"]; icon: IconName; addLabel: string }) {
+function NetworkList({ cohort = COHORT, nodes, onNodes, kind, icon, addLabel }: { cohort?: Member[]; nodes: NetworkNode[]; onNodes: (n: NetworkNode[]) => void; kind: NetworkNode["kind"]; icon: IconName; addLabel: string }) {
   const setNode = (idx: number, patch: Partial<NetworkNode>) => onNodes(nodes.map((n, i) => (i === idx ? { ...n, ...patch } : n)));
   return (
     <div className="space-y-2">
@@ -870,7 +993,7 @@ function NetworkList({ nodes, onNodes, kind, icon, addLabel }: { nodes: NetworkN
           <div className="flex items-center gap-2">
             <Icon name={icon} className="h-4 w-4 shrink-0 text-sage" />
             <input value={node.name} onChange={(e) => setNode(idx, { name: e.target.value })} placeholder={`Add ${addLabel}…`} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
-            {node.members.length > 0 && <div className="ml-auto flex -space-x-1.5">{node.members.map((id) => <Avatar key={id} m={memberById(id)} size="h-6 w-6 text-[9px]" />)}</div>}
+            {node.members.length > 0 && <div className="ml-auto flex -space-x-1.5">{node.members.map((id) => { const m = cohort.find((x) => x.id === id); return m ? <Avatar key={id} m={m} size="h-6 w-6 text-[9px]" /> : null; })}</div>}
           </div>
           <input value={node.opportunity} onChange={(e) => setNode(idx, { opportunity: e.target.value })} placeholder="What's the opportunity here?" className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
         </div>
@@ -901,10 +1024,9 @@ function CountdownBadge() {
   );
 }
 
-const MEMBER_COLOR: Record<string, string> = { maya: "#10b981", alex: "#0ea5e9", priya: "#f59e0b" };
 const TEAM_COLOR = "#6f8f5f";
 
-function SkillRadar({ energy, shown, onToggle, editId, onEdit, onEnergy }: { energy: Record<string, number[]>; shown: Record<string, boolean>; onToggle: (k: string) => void; editId: string; onEdit: (id: string) => void; onEnergy: (id: string, i: number, val: number) => void }) {
+function SkillRadar({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, onEnergy }: { cohort?: Member[]; energy: Record<string, number[]>; shown: Record<string, boolean>; onToggle: (k: string) => void; editId: string; onEdit: (id: string) => void; onEnergy: (id: string, i: number, val: number) => void }) {
   const n = SKILLS.length, cx = 130, cy = 128, R = 88, max = 5;
   const pt = (i: number, val: number): [number, number] => {
     const a = (Math.PI * 2 * i) / n - Math.PI / 2;
@@ -912,9 +1034,10 @@ function SkillRadar({ energy, shown, onToggle, editId, onEdit, onEnergy }: { ene
     return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
   };
   // Team = the outer envelope: the best of everyone on each skill.
-  const team = SKILLS.map((_, i) => Math.max(...COHORT.map((m) => energy[m.id][i])));
+  const team = SKILLS.map((_, i) => Math.max(0, ...cohort.map((m) => energy[m.id]?.[i] ?? 0)));
   const polyStr = (vals: number[]) => vals.map((v, i) => { const [x, y] = pt(i, v); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(" ");
-  const toggles = [{ id: "team", name: "Team", color: TEAM_COLOR }, ...COHORT.map((m) => ({ id: m.id, name: m.name, color: MEMBER_COLOR[m.id] }))];
+  const toggles = [{ id: "team", name: "Team", color: TEAM_COLOR }, ...cohort.map((m) => ({ id: m.id, name: m.name, color: colorFor(cohort, m.id) }))];
+  const editEnergy = energy[editId] ?? SKILLS.map(() => 3);
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
       <svg viewBox="0 0 260 260" className="mx-auto w-full max-w-[300px]">
@@ -930,7 +1053,7 @@ function SkillRadar({ energy, shown, onToggle, editId, onEdit, onEnergy }: { ene
           );
         })}
         {shown.team && <polygon points={polyStr(team)} fill="rgba(111,143,95,0.15)" stroke={TEAM_COLOR} strokeWidth="2" />}
-        {COHORT.map((m) => shown[m.id] && <polygon key={m.id} points={polyStr(energy[m.id])} fill="none" stroke={MEMBER_COLOR[m.id]} strokeWidth="2" />)}
+        {cohort.map((m) => shown[m.id] && <polygon key={m.id} points={polyStr(energy[m.id] ?? [])} fill="none" stroke={colorFor(cohort, m.id)} strokeWidth="2" />)}
       </svg>
       <div>
         <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">Show</p>
@@ -953,13 +1076,13 @@ function SkillRadar({ energy, shown, onToggle, editId, onEdit, onEnergy }: { ene
           </p>
           <p className="mt-1 text-[11px] text-slate-500">Pick a person, then tap the dots to set each skill 0–5.</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {COHORT.map((m) => {
+            {cohort.map((m) => {
               const on = editId === m.id;
-              return <button key={m.id} onClick={() => onEdit(m.id)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${on ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEMBER_COLOR[m.id] }} />{m.name}</button>;
+              return <button key={m.id} onClick={() => onEdit(m.id)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${on ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colorFor(cohort, m.id) }} />{m.name}</button>;
             })}
           </div>
           <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
-            {SKILLS.map((label, i) => <DotScore key={label} label={label} value={energy[editId][i]} onChange={(val) => onEnergy(editId, i, val)} />)}
+            {SKILLS.map((label, i) => <DotScore key={label} label={label} value={editEnergy[i] ?? 0} onChange={(val) => onEnergy(editId, i, val)} />)}
           </div>
         </div>
       </div>
@@ -967,12 +1090,13 @@ function SkillRadar({ energy, shown, onToggle, editId, onEdit, onEnergy }: { ene
   );
 }
 
-function RolesTasks({ roles, onRoles, confirmed, onConfirm }: { roles: typeof SYNTH_ROLES; onRoles: (r: typeof SYNTH_ROLES) => void; confirmed: Record<string, boolean>; onConfirm: (id: string) => void }) {
-  const setRole = (id: string, patch: Partial<(typeof SYNTH_ROLES)[number]>) => onRoles(roles.map((r) => (r.memberId === id ? { ...r, ...patch } : r)));
+function RolesTasks({ cohort = COHORT, roles, onRoles, confirmed, onConfirm }: { cohort?: Member[]; roles: SynthesisData["roles"]; onRoles: (r: SynthesisData["roles"]) => void; confirmed: Record<string, boolean>; onConfirm: (id: string) => void }) {
+  const setRole = (id: string, patch: Partial<SynthesisData["roles"][number]>) => onRoles(roles.map((r) => (r.memberId === id ? { ...r, ...patch } : r)));
   return (
     <div className="space-y-2">
       {roles.map((r) => {
-        const m = memberById(r.memberId);
+        const m = cohort.find((x) => x.id === r.memberId);
+        if (!m) return null;
         const ok = confirmed[r.memberId];
         return (
           <div key={r.memberId} className="rounded-xl border border-slate-200 p-3">

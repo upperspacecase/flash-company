@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { randomUUID } from "crypto";
 
 // Lazy so a missing POSTGRES_URL only fails at request time, not at build/import.
 // POSTGRES_URL is the pooled connection string injected by the Vercel + Neon integration.
@@ -23,10 +24,153 @@ export function ensureSchema() {
         id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      // --- Live sprint tables (real sign-up flow at /s/[token]) ---
+      await sql`CREATE TABLE IF NOT EXISTS teams (
+        id TEXT PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        plan TEXT NOT NULL DEFAULT 'full',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS members (
+        id TEXT PRIMARY KEY,
+        team_id TEXT NOT NULL,
+        name TEXT,
+        role TEXT,
+        brings TEXT,
+        accepted BOOLEAN NOT NULL DEFAULT false,
+        intake_complete BOOLEAN NOT NULL DEFAULT false,
+        is_host BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS intakes (
+        member_id TEXT PRIMARY KEY,
+        team_id TEXT NOT NULL,
+        answers JSONB NOT NULL,
+        complete BOOLEAN NOT NULL DEFAULT false,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS synthesis (
+        team_id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
     })().catch((e) => {
       schemaReady = null;
       throw e;
     });
   }
   return schemaReady;
+}
+
+/* ---------------------------------------------------------------- live data layer
+   All DB access for the real sign-up flow goes through these helpers (kept in the
+   data layer, not in components/actions). ensureSchema() is awaited up front. */
+
+export type TeamRow = { id: string; token: string; plan: string };
+export type MemberRow = {
+  id: string;
+  team_id: string;
+  name: string | null;
+  role: string | null;
+  brings: string | null;
+  accepted: boolean;
+  intake_complete: boolean;
+  is_host: boolean;
+};
+
+export async function createTeamRow(plan: string): Promise<TeamRow> {
+  await ensureSchema();
+  const sql = getSql();
+  const id = randomUUID();
+  const token = randomUUID();
+  await sql`INSERT INTO teams (id, token, plan) VALUES (${id}, ${token}, ${plan})`;
+  return { id, token, plan };
+}
+
+export async function getTeamByToken(token: string): Promise<TeamRow | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT id, token, plan FROM teams WHERE token = ${token}`;
+  return (rows[0] as TeamRow) ?? null;
+}
+
+export async function createMemberRow(teamId: string, isHost: boolean): Promise<MemberRow> {
+  await ensureSchema();
+  const sql = getSql();
+  const id = randomUUID();
+  await sql`INSERT INTO members (id, team_id, is_host) VALUES (${id}, ${teamId}, ${isHost})`;
+  return { id, team_id: teamId, name: null, role: null, brings: null, accepted: false, intake_complete: false, is_host: isHost };
+}
+
+export async function getMemberRow(id: string): Promise<MemberRow | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT id, team_id, name, role, brings, accepted, intake_complete, is_host FROM members WHERE id = ${id}`;
+  return (rows[0] as MemberRow) ?? null;
+}
+
+export async function getTeamMembers(teamId: string): Promise<MemberRow[]> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT id, team_id, name, role, brings, accepted, intake_complete, is_host FROM members WHERE team_id = ${teamId} ORDER BY created_at ASC`;
+  return rows as MemberRow[];
+}
+
+export async function setMemberAccepted(memberId: string): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  await sql`UPDATE members SET accepted = true WHERE id = ${memberId}`;
+}
+
+export async function upsertIntake(
+  memberId: string,
+  teamId: string,
+  answers: unknown,
+  complete: boolean,
+  identity: { name?: string; role?: string; brings?: string },
+): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  const json = JSON.stringify(answers ?? {});
+  await sql`
+    INSERT INTO intakes (member_id, team_id, answers, complete, updated_at)
+    VALUES (${memberId}, ${teamId}, ${json}::jsonb, ${complete}, now())
+    ON CONFLICT (member_id) DO UPDATE SET answers = EXCLUDED.answers, complete = EXCLUDED.complete, updated_at = now()`;
+  await sql`UPDATE members
+    SET intake_complete = ${complete},
+        name = COALESCE(${identity.name ?? null}, name),
+        role = COALESCE(${identity.role ?? null}, role),
+        brings = COALESCE(${identity.brings ?? null}, brings)
+    WHERE id = ${memberId}`;
+}
+
+export async function getIntake(memberId: string): Promise<{ answers: unknown; complete: boolean } | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT answers, complete FROM intakes WHERE member_id = ${memberId}`;
+  return (rows[0] as { answers: unknown; complete: boolean }) ?? null;
+}
+
+export async function getTeamIntakes(teamId: string): Promise<{ member_id: string; answers: unknown }[]> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT member_id, answers FROM intakes WHERE team_id = ${teamId} AND complete = true`;
+  return rows as { member_id: string; answers: unknown }[];
+}
+
+export async function getSynthesis(teamId: string): Promise<unknown | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT data FROM synthesis WHERE team_id = ${teamId}`;
+  return rows[0] ? (rows[0] as { data: unknown }).data : null;
+}
+
+export async function saveSynthesis(teamId: string, data: unknown): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  const json = JSON.stringify(data);
+  await sql`
+    INSERT INTO synthesis (team_id, data, created_at)
+    VALUES (${teamId}, ${json}::jsonb, now())
+    ON CONFLICT (team_id) DO UPDATE SET data = EXCLUDED.data, created_at = now()`;
 }
