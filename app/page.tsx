@@ -76,6 +76,32 @@ function EmailCapture({ note }: { note?: string }) {
   );
 }
 
+function StartButton() {
+  return (
+    <a href="/start" className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-accent px-7 text-sm font-semibold text-black transition-colors hover:bg-accent/90">
+      Start a Flash
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
+    </a>
+  );
+}
+
+// Primary CTA (self-serve "Start a Flash") with the email capture kept as a
+// secondary, lower-commitment option beneath it.
+function StartOrSubscribe({ note }: { note?: string }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <StartButton />
+        <p className="mt-2 text-xs text-white/40">€10 per person · invite up to two · no account, just a link.</p>
+      </div>
+      <div className="max-w-md border-t border-white/10 pt-5">
+        <p className="mb-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-white/40">Or get early-access updates</p>
+        <EmailCapture note={note} />
+      </div>
+    </div>
+  );
+}
+
 function Section({ id, children }: { id: string; children: React.ReactNode }) {
   return (
     <section id={id} className="relative z-10 flex min-h-screen w-full snap-start items-center py-24">
@@ -195,7 +221,7 @@ export default function Home() {
           Invite two people into a guided ideation process that maps your combined skills, networks, and insights into an idea <span className="text-accent">worth sharing</span>.
         </p>
         <div className="mt-9">
-          <EmailCapture note="Early access — no spam, just a note when the next window opens." />
+          <StartOrSubscribe note="No spam — just a note when the next cohort opens." />
         </div>
       </Section>
 
@@ -266,7 +292,7 @@ export default function Home() {
         <p className="max-w-3xl text-[1.575rem] font-extrabold leading-[1.05] tracking-tight text-white sm:text-[2.1rem]">We believe the future doesn&rsquo;t need more experts. It needs more people starting things together.</p>
         <h2 className="mt-12 text-6xl font-extrabold leading-[0.9] tracking-tight text-white sm:text-7xl lg:text-8xl">Get started.</h2>
         <div className="mt-9">
-          <EmailCapture />
+          <StartOrSubscribe />
         </div>
         <div className="mt-16 max-w-xl space-y-3 border-t border-white/10 pt-8 text-sm leading-relaxed text-white/45">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">A note from Ty &amp; River</p>

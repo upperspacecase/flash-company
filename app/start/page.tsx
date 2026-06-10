@@ -29,7 +29,7 @@ export default function StartPage() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
           </button>
         </form>
-        <p className="mt-4 text-xs text-white/40">Prototype — no payment is taken. Want a guided walkthrough first? <Link href="/demo" className="font-semibold text-sage hover:underline">See the demo</Link>.</p>
+        <p className="mt-4 text-xs text-white/40">€10 buy-in per person, charged when each of you accepts. Want a walkthrough first? <Link href="/demo" className="font-semibold text-sage hover:underline">See the demo</Link>.</p>
       </div>
     </main>
   );
