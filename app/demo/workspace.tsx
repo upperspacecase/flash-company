@@ -74,11 +74,12 @@ export type LiveCtx = {
   opportunity: OpportunityData | null;
   ventures: Venture[] | null;
   windowEndsAt: string;
+  isHost: boolean;
   paymentEnabled: boolean;
   payment: LivePayment;
   onAccept: () => Promise<void>;
   onSaveIntake: (answers: Record<string, unknown>, complete: boolean) => Promise<void>;
-  onRunSynthesis: () => Promise<SynthesisData>;
+  onRunSynthesis: (force?: boolean) => Promise<SynthesisData>;
   onConfirmSynthesis: (data: SynthesisData) => Promise<void>;
   onRunOpportunity: () => Promise<OpportunityData>;
   onRunVentures: () => Promise<Venture[]>;
@@ -240,6 +241,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   const [synthData, setSynthData] = useState<SynthesisData | null>(live ? live.synthesis : null);
   const [oppData, setOppData] = useState<OpportunityData | null>(live ? live.opportunity : null);
   const [ventData, setVentData] = useState<Venture[] | null>(live ? live.ventures : null);
+  const [ventError, setVentError] = useState(false);
 
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
 
@@ -294,9 +296,15 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   useEffect(() => {
     if (!live || reached < 4 || ventData) return;
     let active = true;
-    live.onRunVentures().then((d) => { if (active) setVentData(d); }).catch(() => {});
+    live.onRunVentures().then((d) => { if (active) setVentData(d); }).catch(() => { if (active) setVentError(true); });
     return () => { active = false; };
   }, [live, reached, ventData]);
+
+  const retryVentures = () => {
+    if (!live) return;
+    setVentError(false);
+    live.onRunVentures().then(setVentData).catch(() => setVentError(true));
+  };
 
   // Gating. Invite (0) is always open. Later steps open once you've accepted AND
   // reached them; Synthesis (2) additionally waits for the whole team's intake;
@@ -327,6 +335,21 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   const opportunityData = useMemo(() => oppData ?? mockOpportunityData(), [oppData]);
   const windowExpired = useExpired(live?.windowEndsAt);
 
+  // Host control: once the minimum team has finished but a teammate is lagging,
+  // the host can run synthesis without them.
+  const acceptedCount = (status ?? []).filter((s) => s.accepted).length;
+  const completedCount = (status ?? []).filter((s) => s.intakeComplete).length;
+  const canForceSynthesis = !!live?.isHost && !teamReady && completedCount >= 2 && completedCount < acceptedCount;
+  const forceSynthesis = async () => {
+    if (!live) return;
+    try {
+      const d = await live.onRunSynthesis(true);
+      setSynthData(d);
+      setTeamReady(true);
+      advance(2);
+    } catch { /* the synthesis step surfaces failure */ }
+  };
+
   // The team confirmed/edited Synthesis — persist it (live) then move to Opportunity.
   const confirmSynthesis = async (confirmed: SynthesisData) => {
     if (live) await live.onConfirmSynthesis(confirmed);
@@ -353,7 +376,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       case 3:
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} />;
       case 4:
-        return <VenturesPhase plan={plan} live={!!live} ventures={live ? (ventData ?? undefined) : undefined} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />;
+        return <VenturesPhase plan={plan} live={!!live} ventures={live ? (ventData ?? undefined) : undefined} error={live ? ventError : false} onRetry={retryVentures} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />;
       default:
         return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />;
     }
@@ -387,6 +410,12 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       {windowExpired && (
         <div className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-center text-xs font-semibold text-amber-700">
           Your {SPRINT.windowHours}-hour window has closed. New teammates can no longer join, but you can still review what your team has so far.
+        </div>
+      )}
+      {canForceSynthesis && (
+        <div className="flex flex-wrap items-center justify-center gap-3 border-b border-sage/30 bg-sage-tint/30 px-5 py-2.5 text-center text-xs">
+          <span className="font-semibold text-sage-dark">{completedCount} of {acceptedCount} have finished their input.</span>
+          <button onClick={forceSynthesis} className="inline-flex items-center gap-1.5 rounded-full bg-sage px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-sage-dark">Start synthesis without the rest <Icon name="sparkle" className="h-3.5 w-3.5" /></button>
         </div>
       )}
       <main className="mx-auto w-full max-w-[1500px] flex-1 px-5 py-6">
@@ -1533,11 +1562,25 @@ function GeneratingState({ title, sub }: { title: string; sub: string }) {
   );
 }
 
-function VenturesPhase({ plan, live = false, ventures, ventureId, onSelect, name, onName, venture, onVenture, recorded, onRecord, onNext }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+// A failed live LLM step, with a retry.
+function ErrorState({ title, sub, onRetry }: { title: string; sub: string; onRetry?: () => void }) {
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center justify-center py-20 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600"><Icon name="alert" className="h-6 w-6" /></span>
+      <h2 className="mt-5 text-xl font-bold tracking-tight text-foreground">{title}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-500">{sub}</p>
+      {onRetry && <div className="mt-5"><PrimaryBtn label="Try again" onClick={onRetry} icon="refresh" /></div>}
+    </div>
+  );
+}
+
+function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, ventureId, onSelect, name, onName, venture, onVenture, recorded, onRecord, onNext }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
   const isFree = plan === "free";
-  // Live: Flash is still birthing the candidate ventures.
+  // Live: birthing the candidate ventures (or a failure with a retry).
   if (live && (!ventures || ventures.length === 0)) {
-    return <GeneratingState title="Birthing your ventures" sub="Flash is turning your agreed opportunity into the candidate ventures only your team could build." />;
+    return error
+      ? <ErrorState title="Couldn't birth your ventures" sub="The agent hit a snag turning your opportunity into ventures. Give it another go." onRetry={onRetry} />
+      : <GeneratingState title="Birthing your ventures" sub="Flash is turning your agreed opportunity into the candidate ventures only your team could build." />;
   }
   const list = ventures && ventures.length ? ventures : VENTURES;
   const recommendedId = list.find((x) => x.recommended)?.id ?? list[0]?.id ?? "";

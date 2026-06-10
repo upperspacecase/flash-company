@@ -119,9 +119,10 @@ export async function saveIntake(answers: Record<string, unknown>, complete: boo
   await upsertIntake(m.id, m.team_id, answers, complete, { name });
 }
 
-// Run (or return cached) synthesis. Gated on the whole team's intake being in —
-// re-checked server-side so it can't be forced early from the client.
-export async function runSynthesis(): Promise<SynthesisData> {
+// Run (or return cached) synthesis. Normally gated on the whole team's intake
+// being in; the host may force it through with at least the minimum team,
+// leaving a non-responsive member behind. Re-checked server-side.
+export async function runSynthesis(force = false): Promise<SynthesisData> {
   const m = await currentMember();
   if (!m) throw new Error("Not in a team.");
 
@@ -131,7 +132,9 @@ export async function runSynthesis(): Promise<SynthesisData> {
   const members = await getTeamMembers(m.team_id);
   const accepted = members.filter((x) => x.accepted);
   const complete = accepted.filter((x) => x.intake_complete);
-  if (accepted.length < MIN_TEAM || complete.length < accepted.length) {
+  const hostForce = force && m.is_host;
+  const ready = complete.length >= MIN_TEAM && (hostForce || complete.length >= accepted.length);
+  if (!ready) {
     throw new Error("Synthesis runs once everyone's input is in.");
   }
 

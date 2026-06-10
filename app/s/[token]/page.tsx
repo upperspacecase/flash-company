@@ -55,6 +55,7 @@ export default async function Page({ params }: { params: Promise<{ token: string
       opportunity={(opp as OpportunityData | null) ?? null}
       ventures={(vents as Venture[] | null) ?? null}
       windowEndsAt={windowEndsAt}
+      isHost={me.is_host}
       paymentEnabled={paymentConfigured()}
     />
   );

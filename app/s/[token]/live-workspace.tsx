@@ -16,6 +16,7 @@ export type LiveProps = {
   opportunity: OpportunityData | null;
   ventures: Venture[] | null;
   windowEndsAt: string;
+  isHost: boolean;
   paymentEnabled: boolean;
 };
 
@@ -31,6 +32,7 @@ export function LiveWorkspace(props: LiveProps) {
     opportunity: props.opportunity,
     ventures: props.ventures,
     windowEndsAt: props.windowEndsAt,
+    isHost: props.isHost,
     paymentEnabled: props.paymentEnabled,
     payment: {
       onCreateCheckout: async () => createAcceptCheckout(),
@@ -38,7 +40,7 @@ export function LiveWorkspace(props: LiveProps) {
     },
     onAccept: async () => { await acceptInvite(); },
     onSaveIntake: async (answers, complete) => { await saveIntake(answers, complete); },
-    onRunSynthesis: async () => runSynthesis(),
+    onRunSynthesis: async (force) => runSynthesis(force),
     onConfirmSynthesis: async (data) => { await confirmSynthesis(data); },
     onRunOpportunity: async () => runOpportunity(),
     onRunVentures: async () => runVentures(),
