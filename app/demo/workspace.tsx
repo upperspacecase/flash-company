@@ -501,7 +501,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
         {accepted ? (
           <div className="rounded-2xl border border-sage/40 bg-sage-tint/20 p-6">
             <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-sage" /> You&rsquo;re in.</p>
-            <p className="mt-1.5 text-sm text-slate-600">Your {PRICE.currency}{PRICE.perPerson} is held until the team&rsquo;s complete — fully refunded if everyone doesn&rsquo;t accept within {SPRINT.windowHours} hours. Start your input now; synthesis runs once all three of you are in.</p>
+            <p className="mt-1.5 text-sm text-slate-600">You&rsquo;re in. Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
             <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
           </div>
         ) : (
@@ -509,7 +509,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-foreground">Accept your invite</p>
-                <p className="mt-1 text-sm text-slate-500">{isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} per person, held until the whole team accepts. If everyone doesn't accept within ${SPRINT.windowHours} hours, it's refunded in full.`}</p>
+                <p className="mt-1 text-sm text-slate-500">{isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`}</p>
               </div>
               {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
             </div>
@@ -545,8 +545,8 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
   );
 }
 
-// Accepting the invite routes through payment. The buy-in is charged now and
-// held until the whole team accepts (auto-refunded otherwise). Mock only.
+// Accepting routes through payment. The buy-in is charged now — Stripe embedded
+// Checkout when keys are set, a no-charge fallback otherwise.
 function PaymentModal({ onClose, onPaid, payment }: { onClose: () => void; onPaid: () => void; payment?: LivePayment }) {
   const amount = `${PRICE.currency}${PRICE.perPerson}`;
   return (
@@ -564,9 +564,8 @@ function PaymentModal({ onClose, onPaid, payment }: { onClose: () => void; onPai
         </div>
 
         <div className="mt-5 space-y-2 rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Your buy-in</span><span className="font-bold text-foreground">{amount}</span></div>
-          <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Charged now</span><span className="font-semibold text-foreground">{amount}</span></div>
-          {!payment && <p className="flex items-start gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500"><Icon name="shield" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" /> Held until your whole team accepts. If everyone doesn&rsquo;t accept within {SPRINT.windowHours} hours, you&rsquo;re refunded in full.</p>}
+          <div className="flex items-center justify-between text-sm"><span className="text-slate-500">The buy-in</span><span className="font-bold text-foreground">{amount}</span></div>
+          <p className="flex items-start gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500"><Icon name="shield" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" /> Charged now to lock in your spot on the team.</p>
         </div>
 
         {payment ? (
