@@ -7,8 +7,9 @@ import {
   getIntake,
   getSynthesis,
   getOpportunity,
+  getVentures,
 } from "@/lib/db";
-import type { OpportunityData, SynthesisData } from "@/app/demo/data";
+import type { OpportunityData, SynthesisData, Venture } from "@/app/demo/data";
 import { paymentConfigured } from "@/lib/stripe";
 import { JoinGate } from "./join-gate";
 import { LiveWorkspace } from "./live-workspace";
@@ -29,11 +30,12 @@ export default async function Page({ params }: { params: Promise<{ token: string
     return <JoinGate token={token} />;
   }
 
-  const [members, myIntake, synth, opp] = await Promise.all([
+  const [members, myIntake, synth, opp, vents] = await Promise.all([
     getTeamMembers(team.id),
     getIntake(me.id),
     getSynthesis(team.id),
     getOpportunity(team.id),
+    getVentures(team.id),
   ]);
   const accepted = members.filter((m) => m.accepted);
   const allComplete = accepted.length >= 2 && accepted.every((m) => m.intake_complete);
@@ -49,6 +51,7 @@ export default async function Page({ params }: { params: Promise<{ token: string
       status={members.map((m) => ({ id: m.id, name: m.name, accepted: m.accepted, intakeComplete: m.intake_complete }))}
       synthesis={(synth as SynthesisData | null) ?? null}
       opportunity={(opp as OpportunityData | null) ?? null}
+      ventures={(vents as Venture[] | null) ?? null}
       paymentEnabled={paymentConfigured()}
     />
   );

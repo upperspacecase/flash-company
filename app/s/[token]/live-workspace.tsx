@@ -1,8 +1,8 @@
 "use client";
 
 import { DemoWorkspace, type LiveCtx } from "@/app/demo/workspace";
-import type { OpportunityData, SynthesisData } from "@/app/demo/data";
-import { acceptInvite, confirmSynthesis, createAcceptCheckout, confirmAccept, runOpportunity, runSynthesis, saveIntake } from "../actions";
+import type { OpportunityData, SynthesisData, Venture } from "@/app/demo/data";
+import { acceptInvite, confirmSynthesis, createAcceptCheckout, confirmAccept, runOpportunity, runSynthesis, runVentures, saveIntake } from "../actions";
 
 export type LiveProps = {
   token: string;
@@ -14,6 +14,7 @@ export type LiveProps = {
   status: { id: string; name: string | null; accepted: boolean; intakeComplete: boolean }[];
   synthesis: SynthesisData | null;
   opportunity: OpportunityData | null;
+  ventures: Venture[] | null;
   paymentEnabled: boolean;
 };
 
@@ -27,6 +28,7 @@ export function LiveWorkspace(props: LiveProps) {
     status: props.status,
     synthesis: props.synthesis,
     opportunity: props.opportunity,
+    ventures: props.ventures,
     paymentEnabled: props.paymentEnabled,
     payment: {
       onCreateCheckout: async () => createAcceptCheckout(),
@@ -37,6 +39,7 @@ export function LiveWorkspace(props: LiveProps) {
     onRunSynthesis: async () => runSynthesis(),
     onConfirmSynthesis: async (data) => { await confirmSynthesis(data); },
     onRunOpportunity: async () => runOpportunity(),
+    onRunVentures: async () => runVentures(),
   };
   return <DemoWorkspace plan={props.plan} live={live} />;
 }

@@ -15,13 +15,16 @@ import {
   saveSynthesis,
   getOpportunity,
   saveOpportunity,
+  getVentures,
+  saveVentures,
   setMemberPayment,
   type MemberRow,
 } from "@/lib/db";
 import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
+import { generateVentures } from "@/lib/ventures";
 import { getStripe } from "@/lib/stripe";
-import { PRICE, type OpportunityData, type SynthesisData } from "@/app/demo/data";
+import { PRICE, type OpportunityData, type SynthesisData, type Venture } from "@/app/demo/data";
 
 const COOKIE = "fc_member";
 // Smallest real team (the product is "you and up to two others").
@@ -162,5 +165,22 @@ export async function runOpportunity(): Promise<OpportunityData> {
 
   const data = await generateOpportunity(synthesis as SynthesisData);
   await saveOpportunity(m.team_id, data);
+  return data;
+}
+
+// Generate (or return cached) the candidate ventures, born from the confirmed
+// synthesis + agreed opportunity.
+export async function runVentures(): Promise<Venture[]> {
+  const m = await currentMember();
+  if (!m) throw new Error("Not in a team.");
+
+  const cached = await getVentures(m.team_id);
+  if (cached) return cached as Venture[];
+
+  const [synthesis, opportunity] = await Promise.all([getSynthesis(m.team_id), getOpportunity(m.team_id)]);
+  if (!synthesis || !opportunity) throw new Error("Agree your opportunity first.");
+
+  const data = await generateVentures(synthesis as SynthesisData, opportunity as OpportunityData);
+  await saveVentures(m.team_id, data);
   return data;
 }

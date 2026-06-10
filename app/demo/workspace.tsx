@@ -40,6 +40,7 @@ import {
   type OpportunityData,
   type ScorecardKey,
   type SynthesisData,
+  type Venture,
   type VentureDraft,
   type Votable,
 } from "./data";
@@ -71,6 +72,7 @@ export type LiveCtx = {
   status: MemberStatus[];
   synthesis: SynthesisData | null;
   opportunity: OpportunityData | null;
+  ventures: Venture[] | null;
   paymentEnabled: boolean;
   payment: LivePayment;
   onAccept: () => Promise<void>;
@@ -78,6 +80,7 @@ export type LiveCtx = {
   onRunSynthesis: () => Promise<SynthesisData>;
   onConfirmSynthesis: (data: SynthesisData) => Promise<void>;
   onRunOpportunity: () => Promise<OpportunityData>;
+  onRunVentures: () => Promise<Venture[]>;
 };
 
 // Real members carry no styling; assign avatar ring/dot by position so they line
@@ -235,6 +238,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   const [status, setStatus] = useState<MemberStatus[] | null>(live ? live.status : null);
   const [synthData, setSynthData] = useState<SynthesisData | null>(live ? live.synthesis : null);
   const [oppData, setOppData] = useState<OpportunityData | null>(live ? live.opportunity : null);
+  const [ventData, setVentData] = useState<Venture[] | null>(live ? live.ventures : null);
 
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
 
@@ -283,6 +287,15 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
     live.onRunOpportunity().then((d) => { if (active) setOppData(d); }).catch(() => {});
     return () => { active = false; };
   }, [live, reached, oppData]);
+
+  // Live: once the opportunity is agreed (reached Ventures), birth (or fetch
+  // cached) the candidate ventures from the confirmed synthesis + opportunity.
+  useEffect(() => {
+    if (!live || reached < 4 || ventData) return;
+    let active = true;
+    live.onRunVentures().then((d) => { if (active) setVentData(d); }).catch(() => {});
+    return () => { active = false; };
+  }, [live, reached, ventData]);
 
   // Gating. Invite (0) is always open. Later steps open once you've accepted AND
   // reached them; Synthesis (2) additionally waits for the whole team's intake;
@@ -337,7 +350,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       case 3:
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} />;
       case 4:
-        return <VenturesPhase plan={plan} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />;
+        return <VenturesPhase plan={plan} live={!!live} ventures={live ? (ventData ?? undefined) : undefined} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />;
       default:
         return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />;
     }
@@ -1449,11 +1462,33 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
 
 /* ------------------------------------------------------ 3. Ventures */
 
-function VenturesPhase({ plan, ventureId, onSelect, name, onName, venture, onVenture, recorded, onRecord, onNext }: { plan: "free" | "full"; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+// Shown while a live LLM step (synthesis / opportunity / ventures) is generating.
+function GeneratingState({ title, sub }: { title: string; sub: string }) {
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center justify-center py-20 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-tint text-sage"><Icon name="sparkle" className="h-6 w-6 animate-pulse" /></span>
+      <h2 className="mt-5 text-xl font-bold tracking-tight text-foreground">{title}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-500">{sub}</p>
+      <span className="mt-5 h-1 w-32 overflow-hidden rounded-full bg-slate-100"><span className="block h-full w-1/2 animate-pulse rounded-full bg-sage" /></span>
+    </div>
+  );
+}
+
+function VenturesPhase({ plan, live = false, ventures, ventureId, onSelect, name, onName, venture, onVenture, recorded, onRecord, onNext }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
   const isFree = plan === "free";
-  const v = VENTURES.find((x) => x.id === ventureId)!;
-  const isChosen = v.id === CHOSEN_ID;
-  const editable = isChosen && !isFree;
+  // Live: Flash is still birthing the candidate ventures.
+  if (live && (!ventures || ventures.length === 0)) {
+    return <GeneratingState title="Birthing your ventures" sub="Flash is turning your agreed opportunity into the candidate ventures only your team could build." />;
+  }
+  const list = ventures && ventures.length ? ventures : VENTURES;
+  const recommendedId = list.find((x) => x.recommended)?.id ?? list[0]?.id ?? "";
+  const selId = list.some((x) => x.id === ventureId) ? ventureId : recommendedId;
+  const v = list.find((x) => x.id === selId)!;
+  const isChosen = live ? !!v.recommended : v.id === CHOSEN_ID;
+  // The deep editable draft + cap table is the Seed/Validation upsell; in the
+  // live MVP we surface the generated outlines and gate the rest.
+  const editable = isChosen && !isFree && !live;
+  const chosenName = live ? (list.find((x) => x.recommended)?.name ?? "the top venture") : VENTURE_DETAILS.name;
   return (
     <div className="space-y-5">
       <div>
@@ -1462,8 +1497,8 @@ function VenturesPhase({ plan, ventureId, onSelect, name, onName, venture, onVen
           <p className="text-xs text-slate-400">Born from the opportunity space. Anonymous voting until reveal; the agent mediates revisions.</p>
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1">
-          {VENTURES.map((x) => {
-            const active = x.id === ventureId;
+          {list.map((x) => {
+            const active = x.id === selId;
             return (
               <button key={x.id} onClick={() => onSelect(x.id)} className={`flex w-56 shrink-0 flex-col rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
                 <div className="flex items-center gap-2">
@@ -1481,7 +1516,7 @@ function VenturesPhase({ plan, ventureId, onSelect, name, onName, venture, onVen
       <div className="flex flex-col gap-6 lg:flex-row">
         <section className="min-w-0 flex-1">
           <Card className="p-6">
-            <CenterHead title={isChosen ? name : v.name} sub="One-sentence thesis, scored — what, for whom, why now." right={isChosen && !isFree ? (
+            <CenterHead title={editable ? name : v.name} sub="One-sentence thesis, scored — what, for whom, why now." right={editable ? (
               <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500"><Icon name="bolt" className="h-3.5 w-3.5 text-sage" /> rename<input value={name} onChange={(e) => onName(e.target.value)} className="ml-1 w-24 border-b border-slate-300 bg-transparent text-foreground focus:border-sage focus:outline-none" /></span>
             ) : undefined} />
 
@@ -1510,7 +1545,7 @@ function VenturesPhase({ plan, ventureId, onSelect, name, onName, venture, onVen
                 {isChosen ? (
                   <div className="mt-6"><Upsell title="Full venture details are part of Seed" text="Origin story, team & equity, financials, the 7-day sprint, risk register, and the commitment ritual — plus the validation engine." /></div>
                 ) : (
-                  <div className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Select <span className="font-semibold text-foreground">{VENTURE_DETAILS.name}</span> (the top-voted venture) to see full details.</div>
+                  <div className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Select <span className="font-semibold text-foreground">{chosenName}</span> (the recommended venture) to see full details.</div>
                 )}
               </>
             )}
