@@ -67,6 +67,8 @@ export function ensureSchema() {
       // Stripe payment fields on members (charged on accept, when keys are set).
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_session_id TEXT`;
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT`;
+      // Email for notifications (captured in intake; optional).
+      await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS email TEXT`;
     })().catch((e) => {
       schemaReady = null;
       throw e;
@@ -89,6 +91,7 @@ export type MemberRow = {
   accepted: boolean;
   intake_complete: boolean;
   is_host: boolean;
+  email: string | null;
 };
 
 export async function createTeamRow(plan: string): Promise<TeamRow> {
@@ -114,20 +117,29 @@ export async function createMemberRow(teamId: string, isHost: boolean): Promise<
   const sql = getSql();
   const id = randomUUID();
   await sql`INSERT INTO members (id, team_id, is_host) VALUES (${id}, ${teamId}, ${isHost})`;
-  return { id, team_id: teamId, name: null, role: null, brings: null, accepted: false, intake_complete: false, is_host: isHost };
+  return { id, team_id: teamId, name: null, role: null, brings: null, accepted: false, intake_complete: false, is_host: isHost, email: null };
+}
+
+export async function getTeamById(teamId: string): Promise<TeamRow | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT id, token, plan, created_at FROM teams WHERE id = ${teamId}`;
+  if (!rows[0]) return null;
+  const r = rows[0] as TeamRow;
+  return { id: r.id, token: r.token, plan: r.plan, created_at: String(r.created_at) };
 }
 
 export async function getMemberRow(id: string): Promise<MemberRow | null> {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql`SELECT id, team_id, name, role, brings, accepted, intake_complete, is_host FROM members WHERE id = ${id}`;
+  const rows = await sql`SELECT id, team_id, name, role, brings, accepted, intake_complete, is_host, email FROM members WHERE id = ${id}`;
   return (rows[0] as MemberRow) ?? null;
 }
 
 export async function getTeamMembers(teamId: string): Promise<MemberRow[]> {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql`SELECT id, team_id, name, role, brings, accepted, intake_complete, is_host FROM members WHERE team_id = ${teamId} ORDER BY created_at ASC`;
+  const rows = await sql`SELECT id, team_id, name, role, brings, accepted, intake_complete, is_host, email FROM members WHERE team_id = ${teamId} ORDER BY created_at ASC`;
   return rows as MemberRow[];
 }
 
@@ -142,7 +154,7 @@ export async function upsertIntake(
   teamId: string,
   answers: unknown,
   complete: boolean,
-  identity: { name?: string; role?: string; brings?: string },
+  identity: { name?: string; role?: string; brings?: string; email?: string },
 ): Promise<void> {
   await ensureSchema();
   const sql = getSql();
@@ -155,7 +167,8 @@ export async function upsertIntake(
     SET intake_complete = ${complete},
         name = COALESCE(${identity.name ?? null}, name),
         role = COALESCE(${identity.role ?? null}, role),
-        brings = COALESCE(${identity.brings ?? null}, brings)
+        brings = COALESCE(${identity.brings ?? null}, brings),
+        email = COALESCE(${identity.email ?? null}, email)
     WHERE id = ${memberId}`;
 }
 

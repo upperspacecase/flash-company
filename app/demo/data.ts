@@ -85,6 +85,7 @@ export const INTAKE: IntakeSection[] = [
     id: "identity", title: "Identity & anchor", blurb: "The basics — who you are and where you're based.",
     questions: [
       { id: "name", q: "What's your name?", field: { kind: "short", placeholder: "Your name" } },
+      { id: "email", q: "What's your email?", help: "So we can ping you when your synthesis is ready and your teammates finish. No spam.", field: { kind: "short", placeholder: "you@email.com" } },
       { id: "location", q: "What's your primary location?", help: "As specific as you like — city, region, or exact spot. We'll infer your timezone.", field: { kind: "location", placeholder: "Where are you based?" } },
       { id: "otherLocations", q: "Any other locations that shaped who you are?", help: "Comma-separated. As specific as you like.", optional: true, field: { kind: "short", placeholder: "e.g. Lisbon, rural Otago, Berlin" } },
       { id: "languages", q: "What languages do you speak fluently?", field: { kind: "multiSelect", options: LANGUAGES, allowOther: true } },

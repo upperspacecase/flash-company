@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import {
   createTeamRow,
   getTeamByToken,
+  getTeamById,
   createMemberRow,
   getMemberRow,
   getTeamMembers,
@@ -23,6 +24,7 @@ import {
 import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
 import { generateVentures } from "@/lib/ventures";
+import { emailConfigured, sendEmail, synthesisReadyEmail, teammateFinishedEmail } from "@/lib/email";
 import { getStripe } from "@/lib/stripe";
 import { PRICE, type OpportunityData, type SynthesisData, type Venture } from "@/app/demo/data";
 
@@ -116,7 +118,34 @@ export async function saveIntake(answers: Record<string, unknown>, complete: boo
   const m = await currentMember();
   if (!m) return;
   const name = typeof answers?.name === "string" ? (answers.name as string) : undefined;
-  await upsertIntake(m.id, m.team_id, answers, complete, { name });
+  const email = typeof answers?.email === "string" ? (answers.email as string) : undefined;
+  await upsertIntake(m.id, m.team_id, answers, complete, { name, email });
+  if (complete) await notifyTeammateFinished(m.team_id, m.id, name);
+}
+
+// Nudge the teammates still working when someone finishes their input.
+async function notifyTeammateFinished(teamId: string, finishedId: string, name?: string): Promise<void> {
+  if (!emailConfigured()) return;
+  const [team, members] = await Promise.all([getTeamById(teamId), getTeamMembers(teamId)]);
+  if (!team) return;
+  const accepted = members.filter((x) => x.accepted);
+  const done = accepted.filter((x) => x.intake_complete).length;
+  const waiting = accepted.filter((x) => x.id !== finishedId && x.email && !x.intake_complete);
+  await Promise.all(waiting.map((x) => {
+    const { subject, html } = teammateFinishedEmail(team.token, x.id, name || "A teammate", done, accepted.length);
+    return sendEmail(x.email, subject, html);
+  }));
+}
+
+// Let the whole team know synthesis has been generated.
+async function notifySynthesisReady(teamId: string): Promise<void> {
+  if (!emailConfigured()) return;
+  const [team, members] = await Promise.all([getTeamById(teamId), getTeamMembers(teamId)]);
+  if (!team) return;
+  await Promise.all(members.filter((x) => x.email).map((x) => {
+    const { subject, html } = synthesisReadyEmail(team.token, x.id);
+    return sendEmail(x.email, subject, html);
+  }));
 }
 
 // Run (or return cached) synthesis. Normally gated on the whole team's intake
@@ -143,6 +172,7 @@ export async function runSynthesis(force = false): Promise<SynthesisData> {
     intakes.map((r) => ({ memberId: r.member_id, answers: (r.answers ?? {}) as Record<string, unknown> })),
   );
   await saveSynthesis(m.team_id, data);
+  await notifySynthesisReady(m.team_id);
   return data;
 }
 
