@@ -340,11 +340,12 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       : id === "alex" ? INTAKE_TOTAL : id === "priya" ? 19 : 0;
 
   const inviteUrl = live ? `https://flashcompany.org/s/${live.token}` : INVITE.url;
+  const resumeUrl = live ? `https://flashcompany.org/s/${live.token}/r/${live.meId}` : undefined;
 
   const content = (i: number) => {
     switch (i) {
       case 0:
-        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} />;
+        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} resumeUrl={resumeUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} />;
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
       case 2:
@@ -503,7 +504,7 @@ const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "target", title: "The venture only you can build", text: "Narrow to the one idea the three of you are uniquely placed to build — with the team, the plan, and the assets to put it in front of real people." },
 ];
 
-function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, payment, expired = false }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; payment?: LivePayment; expired?: boolean }) {
+function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean }) {
   const [payOpen, setPayOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const isFree = plan === "free";
@@ -561,8 +562,15 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
         {accepted ? (
           <div className="rounded-2xl border border-sage/40 bg-sage-tint/20 p-6">
             <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-sage" /> You&rsquo;re in.</p>
-            <p className="mt-1.5 text-sm text-slate-600">You&rsquo;re in. Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
+            <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
             <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
+            {resumeUrl && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white/5 p-3">
+                <p className="text-xs font-bold text-foreground">Your resume link</p>
+                <p className="mt-0.5 text-xs text-slate-500">Bookmark this to pick up where you left off — on any device.</p>
+                <code className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{resumeUrl}</code>
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-slate-200 bg-white/5 p-6">
