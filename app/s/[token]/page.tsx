@@ -9,7 +9,7 @@ import {
   getOpportunity,
   getVentures,
 } from "@/lib/db";
-import type { OpportunityData, SynthesisData, Venture } from "@/app/demo/data";
+import { SPRINT, type OpportunityData, type SynthesisData, type Venture } from "@/app/demo/data";
 import { paymentConfigured } from "@/lib/stripe";
 import { JoinGate } from "./join-gate";
 import { LiveWorkspace } from "./live-workspace";
@@ -39,6 +39,8 @@ export default async function Page({ params }: { params: Promise<{ token: string
   ]);
   const accepted = members.filter((m) => m.accepted);
   const allComplete = accepted.length >= 2 && accepted.every((m) => m.intake_complete);
+  // The 48-hour window runs from when the host starts the Flash.
+  const windowEndsAt = new Date(new Date(team.created_at).getTime() + SPRINT.windowHours * 3_600_000).toISOString();
 
   return (
     <LiveWorkspace
@@ -52,6 +54,7 @@ export default async function Page({ params }: { params: Promise<{ token: string
       synthesis={(synth as SynthesisData | null) ?? null}
       opportunity={(opp as OpportunityData | null) ?? null}
       ventures={(vents as Venture[] | null) ?? null}
+      windowEndsAt={windowEndsAt}
       paymentEnabled={paymentConfigured()}
     />
   );

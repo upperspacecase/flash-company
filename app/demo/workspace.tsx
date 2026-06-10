@@ -73,6 +73,7 @@ export type LiveCtx = {
   synthesis: SynthesisData | null;
   opportunity: OpportunityData | null;
   ventures: Venture[] | null;
+  windowEndsAt: string;
   paymentEnabled: boolean;
   payment: LivePayment;
   onAccept: () => Promise<void>;
@@ -324,6 +325,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
 
   const synthesisData = useMemo(() => synthData ?? mockSynthesisData(), [synthData]);
   const opportunityData = useMemo(() => oppData ?? mockOpportunityData(), [oppData]);
+  const windowExpired = useExpired(live?.windowEndsAt);
 
   // The team confirmed/edited Synthesis — persist it (live) then move to Opportunity.
   const confirmSynthesis = async (confirmed: SynthesisData) => {
@@ -342,7 +344,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   const content = (i: number) => {
     switch (i) {
       case 0:
-        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} payment={live && live.paymentEnabled ? live.payment : undefined} />;
+        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} />;
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
       case 2:
@@ -379,8 +381,13 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
     <div className="relative flex min-h-screen flex-col bg-black">
       <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
       <div className="relative z-10 flex flex-1 flex-col">
-      <Header plan={plan} cohort={cohort} />
+      <Header plan={plan} cohort={cohort} windowEndsAt={live?.windowEndsAt} />
       <Timeline phase={phase} onJump={setPhase} unlocked={unlocked} reached={reached} />
+      {windowExpired && (
+        <div className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-center text-xs font-semibold text-amber-700">
+          Your {SPRINT.windowHours}-hour window has closed. New teammates can no longer join, but you can still review what your team has so far.
+        </div>
+      )}
       <main className="mx-auto w-full max-w-[1500px] flex-1 px-5 py-6">
         {unlocked(phase) ? (
           content(phase)
@@ -395,7 +402,45 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   );
 }
 
-function Header({ plan, cohort = COHORT }: { plan: "free" | "full"; cohort?: Member[] }) {
+// Live 48-hour window: true once the deadline has passed. Mounts client-side so
+// there's no SSR/now mismatch.
+function useExpired(endsAt?: string): boolean {
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    if (!endsAt) return;
+    const check = () => setExpired(new Date(endsAt).getTime() <= Date.now());
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
+  }, [endsAt]);
+  return expired;
+}
+
+function Countdown({ endsAt }: { endsAt: string }) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const ms = now === null ? null : new Date(endsAt).getTime() - now;
+  const expired = ms !== null && ms <= 0;
+  let label = `${SPRINT.windowHours}h window`;
+  if (ms !== null && ms > 0) {
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.floor((ms % 3_600_000) / 60_000);
+    label = h >= 24 ? `${Math.floor(h / 24)}d ${h % 24}h left` : h >= 1 ? `${h}h ${m}m left` : `${Math.max(1, m)}m left`;
+  } else if (expired) {
+    label = "Window closed";
+  }
+  return (
+    <span className={`hidden items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold sm:flex ${expired ? "bg-amber-100 text-amber-700" : "bg-sage-tint text-sage-dark"}`}>
+      <Icon name="clock" className="h-3.5 w-3.5" /> {label}
+    </span>
+  );
+}
+
+function Header({ plan, cohort = COHORT, windowEndsAt }: { plan: "free" | "full"; cohort?: Member[]; windowEndsAt?: string }) {
   const isFree = plan === "free";
   return (
     <header className="border-b border-slate-200 bg-white/5">
@@ -406,9 +451,11 @@ function Header({ plan, cohort = COHORT }: { plan: "free" | "full"; cohort?: Mem
           <span className="hidden text-sm font-medium italic text-sage md:inline">{TAGLINE}</span>
         </Link>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="hidden items-center gap-2 rounded-full bg-sage-tint px-3 py-1.5 text-xs font-semibold text-sage-dark sm:flex">
-            <Icon name="clock" className="h-3.5 w-3.5" /> {isFree ? `Free · ${SPRINT.freeHours}h` : `${SPRINT.windowHours}h sprint`}
-          </span>
+          {windowEndsAt ? <Countdown endsAt={windowEndsAt} /> : (
+            <span className="hidden items-center gap-2 rounded-full bg-sage-tint px-3 py-1.5 text-xs font-semibold text-sage-dark sm:flex">
+              <Icon name="clock" className="h-3.5 w-3.5" /> {isFree ? `Free · ${SPRINT.freeHours}h` : `${SPRINT.windowHours}h sprint`}
+            </span>
+          )}
           <div className="hidden items-center -space-x-2 sm:flex">{cohort.map((m) => <Avatar key={m.id} m={m} />)}</div>
           <button className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="link" className="h-4 w-4" /> Invite</button>
         </div>
@@ -456,7 +503,7 @@ const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "target", title: "The venture only you can build", text: "Narrow to the one idea the three of you are uniquely placed to build — with the team, the plan, and the assets to put it in front of real people." },
 ];
 
-function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, payment }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; payment?: LivePayment }) {
+function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, payment, expired = false }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; payment?: LivePayment; expired?: boolean }) {
   const [payOpen, setPayOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const isFree = plan === "free";
@@ -526,7 +573,11 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
               </div>
               {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
             </div>
-            <div className="mt-5"><PrimaryBtn label="Accept invite to get started" onClick={handleAccept} icon={isFree ? "bolt" : "coins"} /></div>
+            <div className="mt-5">
+              {expired
+                ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
+                : <PrimaryBtn label="Accept invite to get started" onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
+            </div>
           </div>
         )}
       </section>

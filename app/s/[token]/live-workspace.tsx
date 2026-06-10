@@ -15,6 +15,7 @@ export type LiveProps = {
   synthesis: SynthesisData | null;
   opportunity: OpportunityData | null;
   ventures: Venture[] | null;
+  windowEndsAt: string;
   paymentEnabled: boolean;
 };
 
@@ -29,6 +30,7 @@ export function LiveWorkspace(props: LiveProps) {
     synthesis: props.synthesis,
     opportunity: props.opportunity,
     ventures: props.ventures,
+    windowEndsAt: props.windowEndsAt,
     paymentEnabled: props.paymentEnabled,
     payment: {
       onCreateCheckout: async () => createAcceptCheckout(),

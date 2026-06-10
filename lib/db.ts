@@ -79,7 +79,7 @@ export function ensureSchema() {
    All DB access for the real sign-up flow goes through these helpers (kept in the
    data layer, not in components/actions). ensureSchema() is awaited up front. */
 
-export type TeamRow = { id: string; token: string; plan: string };
+export type TeamRow = { id: string; token: string; plan: string; created_at: string };
 export type MemberRow = {
   id: string;
   team_id: string;
@@ -96,15 +96,17 @@ export async function createTeamRow(plan: string): Promise<TeamRow> {
   const sql = getSql();
   const id = randomUUID();
   const token = randomUUID();
-  await sql`INSERT INTO teams (id, token, plan) VALUES (${id}, ${token}, ${plan})`;
-  return { id, token, plan };
+  const rows = await sql`INSERT INTO teams (id, token, plan) VALUES (${id}, ${token}, ${plan}) RETURNING created_at`;
+  return { id, token, plan, created_at: String((rows[0] as { created_at: string }).created_at) };
 }
 
 export async function getTeamByToken(token: string): Promise<TeamRow | null> {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql`SELECT id, token, plan FROM teams WHERE token = ${token}`;
-  return (rows[0] as TeamRow) ?? null;
+  const rows = await sql`SELECT id, token, plan, created_at FROM teams WHERE token = ${token}`;
+  if (!rows[0]) return null;
+  const r = rows[0] as TeamRow;
+  return { id: r.id, token: r.token, plan: r.plan, created_at: String(r.created_at) };
 }
 
 export async function createMemberRow(teamId: string, isHost: boolean): Promise<MemberRow> {
