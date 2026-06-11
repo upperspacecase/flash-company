@@ -74,9 +74,9 @@ async function research(client: ReturnType<typeof getAnthropic>, space?: Space):
   for (let i = 0; i < 2; i++) {
     const body = {
       model: "claude-sonnet-4-6",
-      max_tokens: 8000,
+      max_tokens: 3000,
       thinking: { type: "disabled" },
-      output_config: { effort: "medium" },
+      output_config: { effort: "low" },
       tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
       system: RESEARCH_SYSTEM,
       messages,

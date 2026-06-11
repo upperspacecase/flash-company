@@ -12,15 +12,17 @@ import {
 export const dynamic = "force-dynamic";
 export const maxDuration = 800;
 
-// GET: what's seeded so far (cheap — no generation).
+// GET: what's seeded so far, incl. staged venture-build progress (cheap — no generation).
 export async function GET() {
-  const [s, o, v, d] = await Promise.all([
+  const [s, o, v, d, b] = await Promise.all([
     getSynthesis(DEMO_TEAM_ID).catch(() => null),
     getOpportunity(DEMO_TEAM_ID).catch(() => null),
     getVentures(DEMO_TEAM_ID).catch(() => null),
     getVentureDraft(DEMO_TEAM_ID).catch(() => null),
+    getVentureBuild(DEMO_TEAM_ID).catch(() => null),
   ]);
-  return Response.json({ synthesis: !!s, opportunity: !!o, ventures: !!v, draft: !!d });
+  const bs = (b as VentureBuildState | null) ?? {};
+  return Response.json({ synthesis: !!s, opportunity: !!o, ventures: !!v, draft: !!d, build: { brief: !!bs.brief, core: !!bs.core, plan: !!bs.plan } });
 }
 
 // POST: run the real sprint pipeline over the demo team's intakes and persist it
