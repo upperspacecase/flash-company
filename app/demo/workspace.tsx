@@ -256,7 +256,6 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
 
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
 
-  const [ventureId, setVentureId] = useState(CHOSEN_ID);
   const [spaceId, setSpaceId] = useState(""); // the opportunity space the team agreed on
   const [name, setName] = useState(VENTURE_DETAILS.name);
   const [recorded, setRecorded] = useState<Record<string, boolean>>(
@@ -404,7 +403,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 3:
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} spaceId={spaceId} onSpace={setSpaceId} />;
       case 4:
-        return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} onRetry={retryVentures} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
+        return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
         return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} gated={isFree} />;
     }
@@ -1705,7 +1704,7 @@ function ErrorState({ title, sub, onRetry }: { title: string; sub: string; onRet
   );
 }
 
-function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, ventureId, onSelect, name, onName, venture, onVenture, recorded, onRecord, onNext, cohort = [] }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; cohort?: Member[] }) {
+function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, name, onName, venture, onVenture, recorded, onRecord, onNext, cohort = [] }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; cohort?: Member[] }) {
   // Live: building the venture (or a failure with a retry).
   if (live && (!ventures || ventures.length === 0)) {
     return error
@@ -1713,9 +1712,9 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
       : <GeneratingState title="Building your venture" sub="Flash is handing off to research agents — deep market & competitor research, financial modelling, a red-team pass, and the lens gates. This is the full build, so it can take several minutes. You can leave and come back — it'll be here." />;
   }
   const list = ventures && ventures.length ? ventures : VENTURES;
-  const recommendedId = list.find((x) => x.recommended)?.id ?? list[0]?.id ?? "";
-  const selId = list.some((x) => x.id === ventureId) ? ventureId : recommendedId;
-  const v = list.find((x) => x.id === selId)!;
+  // One venture is birthed from the chosen opportunity — show it (no slate).
+  const v = list.find((x) => x.recommended) ?? list.find((x) => x.id === CHOSEN_ID) ?? list[0];
+  if (!v) return null;
   const isChosen = !!v.recommended || v.id === CHOSEN_ID;
   // The venture page is open to see and edit for everyone — only Validation is gated.
   const editable = isChosen;
@@ -1723,25 +1722,8 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
   return (
     <div className="space-y-5">
       <div>
-        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <RailTitle>Venture outlines</RailTitle>
-          <p className="text-xs text-slate-400">Born from the opportunity space. Anonymous voting until reveal; the agent mediates revisions.</p>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {list.map((x) => {
-            const active = x.id === selId;
-            return (
-              <button key={x.id} onClick={() => onSelect(x.id)} className={`flex w-56 shrink-0 flex-col rounded-xl border p-3 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-foreground">{x.name}</span>
-                  {x.recommended && <span className="rounded-full bg-orange px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">Top</span>}
-                  <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-slate-500"><Icon name="thumb" className="h-3.5 w-3.5" />{x.votes}</span>
-                </div>
-                <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{x.thesis}</p>
-              </button>
-            );
-          })}
-        </div>
+        <RailTitle>Your venture</RailTitle>
+        <p className="mt-1 text-xs text-slate-400">Born from the opportunity your team chose — see it, edit it, carry it into validation.</p>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">
