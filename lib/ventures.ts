@@ -69,22 +69,28 @@ async function research(client: ReturnType<typeof getAnthropic>, space?: Space):
     { role: "user", content: `Opportunity:\nTitle: ${space.title}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nMarket: ${space.market}\n\nResearch it thoroughly.` },
   ];
   let text = "";
-  // Tightly bounded so this step lands under the ~300s function cap (matches the
-  // PESTLE budget that completes reliably). A handful of searches is plenty.
-  for (let i = 0; i < 2; i++) {
-    const body = {
-      model: "claude-sonnet-4-6",
-      max_tokens: 3000,
-      thinking: { type: "disabled" },
-      output_config: { effort: "low" },
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
-      system: RESEARCH_SYSTEM,
-      messages,
-    };
-    const message = (await client.messages.create(body as never)) as { content: { type: string; text?: string }[]; stop_reason?: string };
-    text = extractText(message.content);
-    if (message.stop_reason !== "pause_turn") break;
-    messages.push({ role: "assistant", content: message.content });
+  // Bounded and non-blocking: a hard per-request timeout with no retries so a slow
+  // or broken web_search can never hang the function — on failure we log and fall
+  // back to an empty brief (the venture still builds, just without live findings).
+  try {
+    for (let i = 0; i < 2; i++) {
+      const body = {
+        model: "claude-sonnet-4-6",
+        max_tokens: 3000,
+        thinking: { type: "disabled" },
+        output_config: { effort: "low" },
+        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
+        system: RESEARCH_SYSTEM,
+        messages,
+      };
+      const message = (await client.messages.create(body as never, { timeout: 90_000, maxRetries: 0 })) as { content: { type: string; text?: string }[]; stop_reason?: string };
+      text = extractText(message.content);
+      if (message.stop_reason !== "pause_turn") break;
+      messages.push({ role: "assistant", content: message.content });
+    }
+  } catch (e) {
+    console.error("[venture] research/web_search failed:", e instanceof Error ? e.message : e);
+    return "";
   }
   return text;
 }
