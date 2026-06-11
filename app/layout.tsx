@@ -19,13 +19,13 @@ const description =
   "Ever wonder what you and 2 friends could build? A guided 48-hour ideation sprint that turns your combined skills, networks, and insights into an idea worth sharing.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://flashcompany.org"),
+  metadataBase: new URL("https://flashco.org"),
   title: "Flash Company",
   description,
   openGraph: {
     title: "Flash Company",
     description,
-    url: "https://flashcompany.org",
+    url: "https://flashco.org",
     siteName: "Flash Company",
     type: "website",
     images: [{ url: "/og.png", width: 1588, height: 806 }],

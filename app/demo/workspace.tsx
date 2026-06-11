@@ -363,8 +363,8 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       ? (status?.find((s) => s.id === id)?.intakeComplete ? INTAKE_TOTAL : 0)
       : id === "alex" ? INTAKE_TOTAL : id === "priya" ? 19 : 0;
 
-  const inviteUrl = live ? `https://flashcompany.org/s/${live.token}` : INVITE.url;
-  const resumeUrl = live ? `https://flashcompany.org/s/${live.token}/r/${live.meId}` : undefined;
+  const inviteUrl = live ? `https://flashco.org/s/${live.token}` : INVITE.url;
+  const resumeUrl = live ? `https://flashco.org/s/${live.token}/r/${live.meId}` : undefined;
 
   const content = (i: number) => {
     switch (i) {

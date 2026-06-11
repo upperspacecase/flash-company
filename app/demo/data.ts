@@ -52,7 +52,7 @@ export const PHASES = [
 // ------------------------------------------------------------- Invite
 
 export const INVITE = {
-  url: "flashcompany.org/s/k7m2qp",
+  url: "flashco.org/s/k7m2qp",
   note: "No app download. No account creation. Just a link.",
   forms: "The team forms when everyone accepts — then the 48-hour window starts (or the invite auto-expires).",
   members: COHORT,

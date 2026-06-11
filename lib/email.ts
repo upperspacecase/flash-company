@@ -6,8 +6,8 @@ export function emailConfigured(): boolean {
   return !!process.env.RESEND_API_KEY;
 }
 
-const FROM = process.env.RESEND_FROM_EMAIL || "Flash Company <hello@flashcompany.org>";
-const BASE = "https://flashcompany.org";
+const FROM = process.env.RESEND_FROM_EMAIL || "Flash Company <hello@flashco.org>";
+const BASE = "https://flashco.org";
 
 // Best-effort: a missing key, bad address, or send failure never blocks the
 // flow it's notifying about.
