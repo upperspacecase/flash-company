@@ -26,6 +26,7 @@ import {
   VENTURE_DETAILS,
   YOU,
   makeVentureDraft,
+  draftFromVenture,
   memberById,
   mockOpportunityData,
   mockSynthesisData,
@@ -42,6 +43,7 @@ import {
   type ScorecardKey,
   type SynthesisData,
   type Venture,
+  type VentureDetail,
   type VentureDraft,
   type Votable,
 } from "./data";
@@ -74,6 +76,7 @@ export type LiveCtx = {
   synthesis: SynthesisData | null;
   opportunity: OpportunityData | null;
   ventures: Venture[] | null;
+  initialDraft: VentureDraft | null;
   windowEndsAt: string;
   isHost: boolean;
   paymentEnabled: boolean;
@@ -84,6 +87,7 @@ export type LiveCtx = {
   onConfirmSynthesis: (data: SynthesisData) => Promise<void>;
   onRunOpportunity: () => Promise<OpportunityData>;
   onRunVentures: (chosenSpaceId?: string) => Promise<Venture[]>;
+  onSaveDraft: (draft: VentureDraft) => void | Promise<void>;
 };
 
 // Real members carry no styling; assign avatar ring/dot by position so they line
@@ -307,6 +311,22 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
     setVentError(false);
     live.onRunVentures(spaceId || undefined).then(setVentData).catch(() => setVentError(true));
   };
+
+  // Live: seed the editable venture draft from the persisted draft, else from the
+  // birthed venture; then persist the team's edits (debounced).
+  const seededRef = useRef(false);
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  useEffect(() => {
+    if (!live || seededRef.current) return;
+    if (live.initialDraft) { setVenture(live.initialDraft); seededRef.current = true; }
+    else if (ventData && ventData[0]) { setVenture(draftFromVenture(ventData[0], cohort)); seededRef.current = true; }
+  }, [live, ventData, cohort]);
+  useEffect(() => {
+    if (!liveRef.current || !seededRef.current) return;
+    const t = setTimeout(() => { void liveRef.current?.onSaveDraft(venture); }, 1200);
+    return () => clearTimeout(t);
+  }, [venture]);
 
   // Gating. Invite (0) is always open. Later steps open once you've accepted AND
   // reached them; Synthesis (2) additionally waits for the whole team's intake;
@@ -1658,21 +1678,19 @@ function ErrorState({ title, sub, onRetry }: { title: string; sub: string; onRet
 }
 
 function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, ventureId, onSelect, name, onName, venture, onVenture, recorded, onRecord, onNext }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
-  const isFree = plan === "free";
-  // Live: birthing the candidate ventures (or a failure with a retry).
+  // Live: building the venture (or a failure with a retry).
   if (live && (!ventures || ventures.length === 0)) {
     return error
       ? <ErrorState title="Couldn't birth your ventures" sub="The agent hit a snag turning your opportunity into ventures. Give it another go." onRetry={onRetry} />
-      : <GeneratingState title="Birthing your ventures" sub="Flash is turning your agreed opportunity into the candidate ventures only your team could build." />;
+      : <GeneratingState title="Building your venture" sub="Flash is handing off to research agents — deep market & competitor research, financial modelling, a red-team pass, and the lens gates. This is the full build, so it can take several minutes. You can leave and come back — it'll be here." />;
   }
   const list = ventures && ventures.length ? ventures : VENTURES;
   const recommendedId = list.find((x) => x.recommended)?.id ?? list[0]?.id ?? "";
   const selId = list.some((x) => x.id === ventureId) ? ventureId : recommendedId;
   const v = list.find((x) => x.id === selId)!;
   const isChosen = live ? !!v.recommended : v.id === CHOSEN_ID;
-  // The deep editable draft + cap table is the Seed/Validation upsell; in the
-  // live MVP we surface the generated outlines and gate the rest.
-  const editable = isChosen && !isFree && !live;
+  // The venture page is open to see and edit for everyone — only Validation is gated.
+  const editable = isChosen;
   const chosenName = live ? (list.find((x) => x.recommended)?.name ?? "the top venture") : VENTURE_DETAILS.name;
   return (
     <div className="space-y-5">
@@ -1712,7 +1730,7 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
             </div>
 
             {editable ? (
-              <RichVentureDetail venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} />
+              <RichVentureDetail venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} detail={v.detail} />
             ) : (
               <>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1779,30 +1797,35 @@ function LensCards({ lenses }: { lenses: NonNullable<Venture["lenses"]> }) {
   );
 }
 
-function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext, detail }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; detail?: VentureDetail }) {
   const d = VENTURE_DETAILS;
+  // Prefer the live, research-grounded content when the venture was generated.
+  const origin = detail && detail.origin.length ? detail.origin : d.origin;
+  const financials = detail && detail.financials.rows.length ? detail.financials : d.financials;
+  const sprint = detail && detail.sprint.length ? detail.sprint : d.sprint;
+  const risks = detail && detail.risks.length ? detail.risks : d.risks;
   const setRow = (i: number, patch: Partial<VentureDraft["capTable"]["rows"][number]>) =>
     onVenture((p) => ({ ...p, capTable: { ...p.capTable, rows: p.capTable.rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) } }));
   const setPool = (pool: number) => onVenture((p) => ({ ...p, capTable: { ...p.capTable, pool } }));
   return (
     <div className="space-y-6 border-t border-slate-100 pt-6">
       <Section title="The origin story">
-        <div className="space-y-2 text-sm text-slate-700">{d.origin.map((p, i) => <p key={i}>{p}</p>)}</div>
+        <div className="space-y-2 text-sm text-slate-700">{origin.map((p, i) => <p key={i}>{p}</p>)}</div>
       </Section>
 
       <CapTable capTable={venture.capTable} setRow={setRow} setPool={setPool} />
 
       <Section title="Financials">
-        <p className="mb-2 text-xs text-slate-400">{d.financials.note}</p>
-        <dl className="space-y-2">{d.financials.rows.map((r) => <div key={r.label} className="flex gap-3 rounded-lg border border-slate-200 p-3 text-sm"><dt className="w-28 shrink-0 font-semibold text-slate-400">{r.label}</dt><dd className="text-foreground">{r.value}</dd></div>)}</dl>
+        <p className="mb-2 text-xs text-slate-400">{financials.note}</p>
+        <dl className="space-y-2">{financials.rows.map((r) => <div key={r.label} className="flex gap-3 rounded-lg border border-slate-200 p-3 text-sm"><dt className="w-28 shrink-0 font-semibold text-slate-400">{r.label}</dt><dd className="text-foreground">{r.value}</dd></div>)}</dl>
       </Section>
 
       <Section title="7-day sprint plan">
-        <div className="space-y-2">{d.sprint.map((s) => <div key={s.days} className="flex gap-3 rounded-lg border border-slate-200 p-3"><span className="shrink-0 rounded-md bg-orange-tint px-2 py-1 text-xs font-bold text-orange-dark">{s.days}</span><p className="text-sm text-slate-700">{s.text}</p></div>)}</div>
+        <div className="space-y-2">{sprint.map((s) => <div key={s.days} className="flex gap-3 rounded-lg border border-slate-200 p-3"><span className="shrink-0 rounded-md bg-orange-tint px-2 py-1 text-xs font-bold text-orange-dark">{s.days}</span><p className="text-sm text-slate-700">{s.text}</p></div>)}</div>
       </Section>
 
       <Section title="Risk register">
-        <div className="space-y-2">{d.risks.map((r) => (
+        <div className="space-y-2">{risks.map((r) => (
           <div key={r.risk} className="rounded-lg border border-slate-200 p-3">
             <p className="flex items-start gap-2 text-sm font-semibold text-foreground"><Icon name="alert" className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />{r.risk}</p>
             <p className="mt-1 pl-6 text-sm text-slate-600"><span className="font-semibold text-orange-dark">Mitigation:</span> {r.mitigation}</p>
@@ -2098,7 +2121,7 @@ function DotScore({ value, onChange, label }: { value: number; onChange?: (v: nu
   );
 }
 
-function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, detail }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; detail?: VentureDetail }) {
   const set = <K extends keyof VentureDraft,>(key: K, val: VentureDraft[K]) => onVenture((p) => ({ ...p, [key]: val }));
   const setBasics = (patch: Partial<VentureDraft["basics"]>) => onVenture((p) => ({ ...p, basics: { ...p.basics, ...patch } }));
   const setAdvantage = (patch: Partial<VentureDraft["advantage"]>) => onVenture((p) => ({ ...p, advantage: { ...p.advantage, ...patch } }));
@@ -2136,7 +2159,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: {
             <div className="sm:col-span-2"><LabeledBox label="Top alternatives" value={venture.competition.alternatives} onChange={(v) => setCompetition({ alternatives: v })} placeholder="Substitutes, workarounds, non-consumption" /></div>
           </div>
         </Section>
-        <Section title="Market"><MarketReport /></Section>
+        <Section title="Market">{detail && detail.market.length ? <MarketFindings findings={detail.market} /> : <MarketReport />}</Section>
       </Part>
 
       <Part label="Differentiation" hint="Differentiation makes products click.">
@@ -2151,7 +2174,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: {
 
       <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} />
 
-      <FullVentureDetails venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} />
+      <FullVentureDetails venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} detail={detail} />
     </div>
   );
 }
@@ -2167,6 +2190,21 @@ function Part({ label, hint, children }: { label: string; hint: string; children
       </div>
       <div className="space-y-5">{children}</div>
     </section>
+  );
+}
+
+// Live, research-grounded market read (replaces the demo's static MarketReport
+// when the venture was generated).
+function MarketFindings({ findings }: { findings: VentureDetail["market"] }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {findings.map((f) => (
+        <div key={f.label} className="rounded-xl border border-slate-200 p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-orange-dark">{f.label}</p>
+          <p className="mt-1 text-sm text-slate-700">{f.finding}</p>
+        </div>
+      ))}
+    </div>
   );
 }
 

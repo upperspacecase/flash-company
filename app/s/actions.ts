@@ -18,6 +18,7 @@ import {
   saveOpportunity,
   getVentures,
   saveVentures,
+  saveVentureDraft,
   setMemberPayment,
   type MemberRow,
 } from "@/lib/db";
@@ -26,7 +27,7 @@ import { generateOpportunity } from "@/lib/opportunity";
 import { generateVentures } from "@/lib/ventures";
 import { emailConfigured, sendEmail, synthesisReadyEmail, teammateFinishedEmail } from "@/lib/email";
 import { getStripe } from "@/lib/stripe";
-import { PRICE, type OpportunityData, type SynthesisData, type Venture } from "@/app/demo/data";
+import { PRICE, type OpportunityData, type SynthesisData, type Venture, type VentureDraft } from "@/app/demo/data";
 
 const COOKIE = "fc_member";
 // Smallest real team (the product is "you and up to two others").
@@ -216,4 +217,11 @@ export async function runVentures(chosenSpaceId?: string): Promise<Venture[]> {
   const data = await generateVentures(synthesis as SynthesisData, opportunity as OpportunityData, chosenSpaceId);
   await saveVentures(m.team_id, data);
   return data;
+}
+
+// Persist the team's edits to the working venture draft (the editable venture page).
+export async function saveDraft(draft: VentureDraft): Promise<void> {
+  const m = await currentMember();
+  if (!m) return;
+  await saveVentureDraft(m.team_id, draft);
 }

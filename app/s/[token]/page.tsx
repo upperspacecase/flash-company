@@ -8,8 +8,9 @@ import {
   getSynthesis,
   getOpportunity,
   getVentures,
+  getVentureDraft,
 } from "@/lib/db";
-import { SPRINT, type OpportunityData, type SynthesisData, type Venture } from "@/app/demo/data";
+import { SPRINT, type OpportunityData, type SynthesisData, type Venture, type VentureDraft } from "@/app/demo/data";
 import { paymentConfigured } from "@/lib/stripe";
 import { JoinGate } from "./join-gate";
 import { LiveWorkspace } from "./live-workspace";
@@ -30,12 +31,13 @@ export default async function Page({ params }: { params: Promise<{ token: string
     return <JoinGate token={token} />;
   }
 
-  const [members, myIntake, synth, opp, vents] = await Promise.all([
+  const [members, myIntake, synth, opp, vents, draft] = await Promise.all([
     getTeamMembers(team.id),
     getIntake(me.id),
     getSynthesis(team.id),
     getOpportunity(team.id),
     getVentures(team.id),
+    getVentureDraft(team.id),
   ]);
   const accepted = members.filter((m) => m.accepted);
   const allComplete = accepted.length >= 2 && accepted.every((m) => m.intake_complete);
@@ -54,6 +56,7 @@ export default async function Page({ params }: { params: Promise<{ token: string
       synthesis={(synth as SynthesisData | null) ?? null}
       opportunity={(opp as OpportunityData | null) ?? null}
       ventures={(vents as Venture[] | null) ?? null}
+      initialDraft={(draft as VentureDraft | null) ?? null}
       windowEndsAt={windowEndsAt}
       isHost={me.is_host}
       paymentEnabled={paymentConfigured()}

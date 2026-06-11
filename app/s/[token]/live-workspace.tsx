@@ -1,8 +1,8 @@
 "use client";
 
 import { DemoWorkspace, type LiveCtx } from "@/app/demo/workspace";
-import type { OpportunityData, SynthesisData, Venture } from "@/app/demo/data";
-import { acceptInvite, confirmSynthesis, createAcceptCheckout, confirmAccept, runOpportunity, runSynthesis, runVentures, saveIntake } from "../actions";
+import type { OpportunityData, SynthesisData, Venture, VentureDraft } from "@/app/demo/data";
+import { acceptInvite, confirmSynthesis, createAcceptCheckout, confirmAccept, runOpportunity, runSynthesis, runVentures, saveIntake, saveDraft } from "../actions";
 
 export type LiveProps = {
   token: string;
@@ -15,6 +15,7 @@ export type LiveProps = {
   synthesis: SynthesisData | null;
   opportunity: OpportunityData | null;
   ventures: Venture[] | null;
+  initialDraft: VentureDraft | null;
   windowEndsAt: string;
   isHost: boolean;
   paymentEnabled: boolean;
@@ -31,6 +32,7 @@ export function LiveWorkspace(props: LiveProps) {
     synthesis: props.synthesis,
     opportunity: props.opportunity,
     ventures: props.ventures,
+    initialDraft: props.initialDraft,
     windowEndsAt: props.windowEndsAt,
     isHost: props.isHost,
     paymentEnabled: props.paymentEnabled,
@@ -44,6 +46,7 @@ export function LiveWorkspace(props: LiveProps) {
     onConfirmSynthesis: async (data) => { await confirmSynthesis(data); },
     onRunOpportunity: async () => runOpportunity(),
     onRunVentures: async (chosenSpaceId) => runVentures(chosenSpaceId),
+    onSaveDraft: async (draft) => { await saveDraft(draft); },
   };
   return <DemoWorkspace plan={props.plan} live={live} />;
 }

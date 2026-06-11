@@ -64,6 +64,12 @@ export function ensureSchema() {
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      // The team's editable working draft of the chosen venture (persisted edits).
+      await sql`CREATE TABLE IF NOT EXISTS venture_drafts (
+        team_id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
       // Stripe payment fields on members (charged on accept, when keys are set).
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_session_id TEXT`;
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT`;
@@ -252,6 +258,23 @@ export async function saveVentures(teamId: string, data: unknown): Promise<void>
     INSERT INTO ventures (team_id, data, created_at)
     VALUES (${teamId}, ${json}::jsonb, now())
     ON CONFLICT (team_id) DO UPDATE SET data = EXCLUDED.data, created_at = now()`;
+}
+
+export async function getVentureDraft(teamId: string): Promise<unknown | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT data FROM venture_drafts WHERE team_id = ${teamId}`;
+  return rows[0] ? (rows[0] as { data: unknown }).data : null;
+}
+
+export async function saveVentureDraft(teamId: string, data: unknown): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  const json = JSON.stringify(data);
+  await sql`
+    INSERT INTO venture_drafts (team_id, data, updated_at)
+    VALUES (${teamId}, ${json}::jsonb, now())
+    ON CONFLICT (team_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
 }
 
 export async function setMemberPayment(memberId: string, sessionId: string, status: string): Promise<void> {

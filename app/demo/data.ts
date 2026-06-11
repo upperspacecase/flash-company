@@ -278,6 +278,23 @@ export const RESEARCH_LENSES: ResearchLens[] = [
 
 // ------------------------------------------------------------ Ventures
 
+// The comprehensive, research-grounded venture the birth step fills in. Seeds the
+// editable venture page; rendered/edited live (not just the read-only summary).
+export type VentureDetail = {
+  customer: string;
+  problem: string;
+  advantage: { capability: string; insight: string; motivation: string };
+  competition: { gorilla: string; alternatives: string };
+  problemBreakdown: { painful: number; frequent: number; whyNow: number; payNow: string };
+  differentiation: { statement: string; clarity: number };
+  principles: string[];
+  origin: string[];
+  sprint: { days: string; text: string }[];
+  risks: { risk: string; mitigation: string }[];
+  financials: { note: string; rows: { label: string; value: string }[] };
+  market: { label: string; finding: string }[]; // research-grounded market read
+};
+
 export type Venture = {
   id: string;
   name: string;
@@ -294,6 +311,7 @@ export type Venture = {
   conviction: number;
   recommended?: boolean;
   lenses?: Lens[]; // Magic Lenses — generated for this venture's Approach
+  detail?: VentureDetail; // comprehensive research-grounded fill (live)
 };
 
 export const VENTURES: Venture[] = [
@@ -705,6 +723,35 @@ export function makeVentureDraft(): VentureDraft {
       rows: VENTURE_DETAILS.team.map((r) => ({ memberId: r.memberId, role: r.role, responsibility: r.responsibility, equity: "", vesting: CAP_TABLE.vestingDefault })),
     },
     lenses: LENSES.map((l) => ({ ...l })),
+  };
+}
+
+// Seed the editable draft from a live, LLM-generated venture: free-text Click
+// fields come from the venture's detail; structural widgets (approach, revenue,
+// scorecard) keep sensible defaults; the cap table is the real team.
+export function draftFromVenture(v: Venture, cohort: Member[]): VentureDraft {
+  const base = makeVentureDraft();
+  const d = v.detail;
+  return {
+    ...base,
+    thesis: v.thesis,
+    purpose: v.purpose,
+    unique: v.unique,
+    lenses: v.lenses && v.lenses.length ? v.lenses.map((l) => ({ ...l })) : base.lenses,
+    basics: d ? { customer: d.customer, problem: d.problem } : base.basics,
+    advantage: d ? { ...d.advantage } : base.advantage,
+    competition: d ? { ...d.competition } : base.competition,
+    problem: d
+      ? { painful: d.problemBreakdown.painful, frequent: d.problemBreakdown.frequent, whyNow: d.problemBreakdown.whyNow, payNow: d.problemBreakdown.payNow }
+      : base.problem,
+    differentiation: d ? { statement: d.differentiation.statement, clarity: d.differentiation.clarity } : base.differentiation,
+    principles: d && d.principles.length ? [...d.principles] : base.principles,
+    capTable: {
+      pool: base.capTable.pool,
+      rows: cohort.length
+        ? cohort.map((m) => ({ memberId: m.id, role: m.role ?? "", responsibility: m.brings ?? "", equity: "", vesting: CAP_TABLE.vestingDefault }))
+        : base.capTable.rows,
+    },
   };
 }
 
