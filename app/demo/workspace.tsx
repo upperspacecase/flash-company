@@ -801,7 +801,7 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   const canSend = !!cur && (isAnswered(answers[cur.q.id]) || cur.q.field.kind === "slider");
   // The 1-6 question-section stepper (mobile only — desktop uses the side nav).
   const stepper = (
-    <div className="flex items-center">
+    <div className="mb-4 flex items-center lg:hidden">
       {INTAKE.map((s, i) => {
         const complete = answeredIn(s) === s.questions.length && i < curSi;
         const active = i === curSi;
@@ -829,7 +829,7 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
 
       <Conversation step={step} done={done} answers={answers} isVoice={isVoice} />
 
-      <div className="mt-5 border-t border-slate-100 pt-4">
+      <div className="border-t border-orange pt-4 lg:mt-5 lg:border-slate-100">
         {done ? (
           <div className="flex items-center justify-between gap-4 rounded-xl bg-orange-tint/40 p-3">
             <p className="text-sm font-semibold text-orange-dark">Submitted — private until the team synthesis runs.</p>
@@ -852,26 +852,20 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
     </>
   );
 
+  // One render for both breakpoints (so there's a single chat + dictation engine).
+  // Mobile: the center column becomes a viewport-tall orange box with the stepper
+  // on top and tips below; desktop: the usual three-column workspace.
   return (
-    <>
-      {/* Mobile: stepper -> Flash + questions -> input, all inside one orange border. "How it works" sits below it. */}
-      <div className="lg:hidden">
-        <div className="space-y-4 rounded-2xl border border-orange bg-white/5 p-4">
+    <Columns
+      left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />}
+      center={
+        <div className="flex h-[calc(100svh-11rem)] flex-col rounded-2xl border border-orange bg-white/5 p-4 lg:h-auto lg:border-slate-200 lg:p-6">
           {stepper}
-          <div>{chat}</div>
+          {chat}
         </div>
-        <div className="mt-6 space-y-4">{tips}</div>
-      </div>
-
-      {/* Desktop: three-column workspace. */}
-      <div className="hidden lg:block">
-        <Columns
-          left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />}
-          center={<Card className="flex flex-col p-6">{chat}</Card>}
-          right={<div className="space-y-4">{tips}</div>}
-        />
-      </div>
-    </>
+      }
+      right={<div className="space-y-4">{tips}</div>}
+    />
   );
 }
 
@@ -879,7 +873,7 @@ function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProg
   const youDone = INTAKE.reduce((n, s) => n + answeredIn(s), 0);
   const team = cohort.map((m) => ({ m, done: m.id === youId ? youDone : (othersProgress?.(m.id) ?? 0), you: m.id === youId }));
   return (
-    <div className="space-y-4 lg:sticky lg:top-4">
+    <div className="hidden space-y-4 lg:block lg:sticky lg:top-4">
       <RailTitle>Your intake</RailTitle>
       <p className="px-1 text-xs text-slate-400">Six sections, conversational. Anonymous until synthesis.</p>
       <div className="space-y-1.5">
@@ -941,7 +935,7 @@ function Conversation({ step, done, answers, isVoice }: { step: number; done: bo
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [step, done]);
   return (
-    <div ref={ref} className="h-[28rem] space-y-4 overflow-y-auto">
+    <div ref={ref} className="min-h-0 flex-1 space-y-4 overflow-y-auto lg:h-[28rem] lg:flex-none">
       {INTAKE_FLOW.slice(0, step + 1).map((item, i) => (
         <Fragment key={item.q.id}>
           {item.first && <SectionIntro index={item.si} title={item.title} blurb={item.blurb} />}
@@ -1066,12 +1060,17 @@ function useDictation(onText: (text: string) => void) {
   const recRef = useRef<SpeechRec | null>(null);
   const baseRef = useRef("");
   const finalRef = useRef("");
+  const wantRef = useRef(false);
   const onTextRef = useRef(onText);
   onTextRef.current = onText;
+  const beginRef = useRef<(base: string) => void>(() => {});
 
-  useEffect(() => () => recRef.current?.stop(), []);
+  useEffect(() => () => { wantRef.current = false; recRef.current?.stop(); }, []);
 
-  const start = useCallback((base: string) => {
+  // One recognition session. The Web Speech API ends on silence; while the user
+  // still wants to dictate we restart it transparently — folding this session's
+  // final text into the base — so it listens continuously through short pauses.
+  beginRef.current = (base: string) => {
     const Ctor = speechCtor();
     if (!Ctor) return;
     const rec = new Ctor();
@@ -1089,15 +1088,29 @@ function useDictation(onText: (text: string) => void) {
       }
       onTextRef.current(baseRef.current + finalRef.current + interim);
     };
-    rec.onend = () => setListening(false);
-    rec.onerror = (e) => { setError(e.error ?? "error"); setListening(false); };
+    rec.onend = () => {
+      if (recRef.current !== rec) return; // superseded by a newer session
+      if (wantRef.current) beginRef.current(baseRef.current + finalRef.current);
+      else setListening(false);
+    };
+    rec.onerror = (e) => {
+      const err = e.error ?? "error";
+      setError(err);
+      if (err === "not-allowed" || err === "service-not-allowed" || err === "audio-capture") {
+        wantRef.current = false;
+        setListening(false);
+      }
+    };
     recRef.current = rec;
     setError(null);
     rec.start();
     setListening(true);
-  }, []);
+  };
 
-  const stop = useCallback(() => { recRef.current?.stop(); setListening(false); }, []);
+  // start(base): begin dictating, appending to `base` (e.g. text you've typed/edited).
+  const start = useCallback((base: string) => { wantRef.current = true; beginRef.current(base); }, []);
+  // stop(): the user explicitly pauses — no auto-restart until they resume.
+  const stop = useCallback(() => { wantRef.current = false; recRef.current?.stop(); setListening(false); }, []);
 
   return { supported, listening, error, start, stop };
 }
@@ -1106,7 +1119,7 @@ function TextControl({ value, onChange, max, placeholder, multiline, voiceable, 
   const { supported, listening, error, start, stop } = useDictation((t) => onChange(max != null ? t.slice(0, max) : t));
   const canVoice = !!voiceable && supported;
   const [elapsed, setElapsed] = useState(0);
-  const previewRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLTextAreaElement>(null);
 
   // Enter/leave voice mode → start/stop dictation. The current text is captured
   // as the base so dictation appends to anything already typed.
@@ -1125,29 +1138,41 @@ function TextControl({ value, onChange, max, placeholder, multiline, voiceable, 
     return () => clearInterval(t);
   }, [voice, canVoice, listening, elapsed, stop]);
 
-  // Keep the live transcript scrolled to the latest words.
-  useEffect(() => { if (previewRef.current) previewRef.current.scrollTop = previewRef.current.scrollHeight; }, [value]);
+  // While dictating, keep the transcript scrolled to the latest words; when paused
+  // we leave the scroll alone so the cursor stays put for editing.
+  useEffect(() => { if (listening && previewRef.current) previewRef.current.scrollTop = previewRef.current.scrollHeight; }, [value, listening]);
 
   if (canVoice && voice) {
     const mm = Math.floor(elapsed / 60);
     const ss = String(elapsed % 60).padStart(2, "0");
     const blocked = error === "not-allowed" || error === "service-not-allowed";
     return (
-      <div className="flex items-start gap-3 rounded-xl border border-orange bg-orange-tint/20 p-3">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange text-white ${listening ? "animate-pulse" : ""}`}><Icon name="mic" className="h-4 w-4" /></span>
-        <div className="min-w-0 flex-1">
-          <div ref={previewRef} className="max-h-20 overflow-y-auto whitespace-pre-line text-sm text-foreground">{value || (blocked ? "" : "Listening… start speaking.")}</div>
-          <p className="mt-1 text-xs text-slate-500">
+      <div className="rounded-xl border border-orange bg-orange-tint/20 p-3">
+        <div className="flex items-center gap-2">
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange text-white ${listening ? "animate-pulse" : ""}`}><Icon name="mic" className="h-4 w-4" /></span>
+          <p className="min-w-0 flex-1 truncate text-xs text-slate-500">
             {blocked
-              ? "Microphone blocked — tap “Type instead.”"
+              ? "Microphone blocked — type your answer below."
               : listening
                 ? `Recording · ${mm}:${ss} / 2:00`
                 : value
-                  ? "Paused"
+                  ? "Paused — edit below, or resume talking."
                   : "Starting… allow microphone access."}
           </p>
+          {!blocked && <button onClick={() => { if (listening) stop(); else { setElapsed(0); start(value); } }} className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-orange-dark transition-colors hover:bg-orange-tint">{listening ? "Pause" : "Resume"}</button>}
+          <button onClick={onVoice} className="shrink-0 text-xs font-semibold text-orange-dark hover:underline">Type instead</button>
         </div>
-        <button onClick={onVoice} className="shrink-0 text-xs font-semibold text-orange-dark hover:underline">Type instead</button>
+        <textarea
+          ref={previewRef}
+          value={value}
+          onChange={(e) => onChange(max != null ? e.target.value.slice(0, max) : e.target.value)}
+          readOnly={listening}
+          maxLength={max}
+          rows={2}
+          placeholder={blocked ? "Type your answer…" : listening ? "Listening… start speaking." : "Type to edit, or resume talking."}
+          className="mt-2 max-h-[40vh] min-h-[3rem] w-full resize-none overflow-y-auto rounded-lg border border-orange/40 bg-white/5 p-2.5 text-sm text-foreground [field-sizing:content] focus:border-orange focus:outline-none"
+        />
+        {max != null && <p className="mt-1 text-right text-[11px] text-slate-400">{value.length}/{max}</p>}
       </div>
     );
   }
