@@ -43,7 +43,7 @@ export function LiveWorkspace(props: LiveProps) {
     onRunSynthesis: async (force) => runSynthesis(force),
     onConfirmSynthesis: async (data) => { await confirmSynthesis(data); },
     onRunOpportunity: async () => runOpportunity(),
-    onRunVentures: async () => runVentures(),
+    onRunVentures: async (chosenSpaceId) => runVentures(chosenSpaceId),
   };
   return <DemoWorkspace plan={props.plan} live={live} />;
 }

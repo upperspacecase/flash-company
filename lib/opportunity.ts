@@ -6,7 +6,6 @@ import {
 } from "@/app/demo/data";
 import { getAnthropic } from "@/lib/synthesis";
 
-const LENS_ICONS = ["bolt", "target", "star", "chart", "copy", "alert", "scale", "sparkle", "refresh", "link", "thumb"] as const;
 const PESTLE: { key: ResearchLens["key"]; label: string }[] = [
   { key: "political", label: "Political" },
   { key: "economic", label: "Economic" },
@@ -27,55 +26,62 @@ function summarize(s: SynthesisData): string {
   ].join("\n\n");
 }
 
-/* ---------------------------------------------- spaces + lenses (structured) */
+/* ----------------------------------- opportunity spaces (mini-ventures) */
 
-const SL_SCHEMA = {
+// Each space is a small, comparable mini-venture — framed with the Click basics
+// the venture step uses — so the team can vote between them. The chosen one is
+// what the venture step births a single full venture from.
+const SPACES_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    spaces: { type: "array", items: { type: "string" } },
-    lenses: {
+    spaces: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
-          name: { type: "string" },
-          icon: { type: "string", enum: [...LENS_ICONS] },
-          question: { type: "string" },
-          reframe: { type: "string" },
+          title: { type: "string" },
+          customer: { type: "string" },
+          problem: { type: "string" },
+          market: { type: "string" },
+          advantage: { type: "string" },
+          whyNow: { type: "string" },
         },
-        required: ["name", "icon", "question", "reframe"],
+        required: ["title", "customer", "problem", "market", "advantage", "whyNow"],
       },
     },
   },
-  required: ["spaces", "lenses"],
+  required: ["spaces"],
 } as const;
 
-type RawSL = { spaces: string[]; lenses: { name: string; icon: string; question: string; reframe: string }[] };
+type RawSpace = { title: string; customer: string; problem: string; market: string; advantage: string; whyNow: string };
 
-async function generateSpacesAndLenses(client: ReturnType<typeof getAnthropic>, ctx: string) {
+async function generateSpaces(client: ReturnType<typeof getAnthropic>, ctx: string): Promise<OpportunityData["spaces"]> {
   const body = {
     model: "claude-sonnet-4-6",
     max_tokens: 16000,
     thinking: { type: "adaptive" },
-    output_config: { effort: "low", format: { type: "json_schema", schema: SL_SCHEMA } },
+    output_config: { effort: "low", format: { type: "json_schema", schema: SPACES_SCHEMA } },
     system:
-      "You are Flash. Given a founding team's confirmed synthesis, birth the broad OPPORTUNITY SPACES they're uniquely placed to pursue (each a crisp one-sentence space combining a problem, an obsession and a market), then reframe the strongest space through several distinct strategic LENSES (e.g. first principles, blue ocean, an audacious moonshot, exponential/10x, transplant-from-elsewhere, break-a-rule, smallest-lever, the one-line 'click', riskiest-assumption test). Be specific to THIS team — no generic startup talk.",
-    messages: [{ role: "user", content: `The confirmed synthesis:\n\n${ctx}\n\nProduce 4-6 opportunity spaces and 6-9 lenses.` }],
+      "You are Flash. From a founding team's confirmed synthesis, birth 4-6 OPPORTUNITY SPACES they're uniquely placed to pursue. Frame each as a small, comparable mini-venture using the Click framework's basics, so the team can vote between them: a short title, the specific customer, the problem they face, the market, why THIS team has an unfair advantage, and a concrete why-now signal. Be specific to THIS team — no generic startup talk.",
+    messages: [{ role: "user", content: `The confirmed synthesis:\n\n${ctx}\n\nProduce 4-6 opportunity spaces as mini-ventures.` }],
   };
   const message = (await client.messages.create(body as never)) as { content: { type: string; text?: string }[] };
   const raw = message.content.filter((b) => b.type === "text" && b.text).map((b) => b.text as string).join("");
-  const parsed = JSON.parse(raw) as RawSL;
-  const spaces = (parsed.spaces ?? []).filter((t) => t && t.trim()).map((text, i) => ({ id: `sp${i}`, text, votes: 0 }));
-  const lenses = (parsed.lenses ?? []).map((l, i) => ({
-    id: `l${i}`,
-    name: l.name,
-    icon: (LENS_ICONS as readonly string[]).includes(l.icon) ? (l.icon as OpportunityData["lenses"][number]["icon"]) : "sparkle",
-    question: l.question,
-    reframe: l.reframe,
-  }));
-  return { spaces, lenses };
+  const parsed = JSON.parse(raw) as { spaces: RawSpace[] };
+  return (parsed.spaces ?? [])
+    .filter((s) => s.title && s.title.trim())
+    .map((s, i) => ({
+      id: `sp${i}`,
+      title: s.title,
+      customer: s.customer,
+      problem: s.problem,
+      market: s.market,
+      advantage: s.advantage,
+      whyNow: s.whyNow,
+      votes: 0,
+    }));
 }
 
 /* ------------------------------------- PESTLE: live web search + LLM grounding */
@@ -101,8 +107,6 @@ async function generatePestle(client: ReturnType<typeof getAnthropic>, theme: st
     const body = {
       model: "claude-sonnet-4-6",
       max_tokens: 6000,
-      // No extended thinking + a tight search cap keeps this background step to
-      // a sensible latency; it still searches the live web before answering.
       thinking: { type: "disabled" },
       output_config: { effort: "low" },
       tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
@@ -115,7 +119,7 @@ async function generatePestle(client: ReturnType<typeof getAnthropic>, theme: st
     };
     text = message.content.filter((b) => b.type === "text" && b.text).map((b) => b.text as string).join("\n");
     if (message.stop_reason !== "pause_turn") break;
-    messages.push({ role: "assistant", content: message.content }); // resume server tool loop
+    messages.push({ role: "assistant", content: message.content });
   }
   const obj = extractJson(text) as Record<string, string> | null;
   if (!obj) throw new Error("PESTLE: could not parse findings");
@@ -129,11 +133,12 @@ export async function generateOpportunity(synthesis: SynthesisData): Promise<Opp
   const ctx = summarize(synthesis);
   const theme = [synthesis.markets[0]?.text, synthesis.problems[0]?.text].filter(Boolean).join(" — ") || "this founding team's opportunity";
 
-  const [sl, research] = await Promise.all([
-    generateSpacesAndLenses(client, ctx),
-    // Live web search powers PESTLE; fall back to the authored scan only on a hard error.
+  const [spaces, research] = await Promise.all([
+    generateSpaces(client, ctx),
+    // Live web search powers PESTLE for the chosen direction; fall back to the
+    // authored scan only on a hard error.
     generatePestle(client, theme).catch(() => RESEARCH_LENSES.map((r) => ({ ...r }))),
   ]);
 
-  return { spaces: sl.spaces, research, lenses: sl.lenses };
+  return { spaces, research };
 }

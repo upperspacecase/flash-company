@@ -1,50 +1,61 @@
 import {
+  LENSES,
   type OpportunityData,
   type SynthesisData,
   type Venture,
 } from "@/app/demo/data";
 import { getAnthropic } from "@/lib/synthesis";
 
-// Candidate ventures born from the team's confirmed synthesis + agreed
-// opportunity. Same shape the Ventures phase already renders (Venture[]), keyed
-// with stable ids and a single recommended pick. Mirrors lib/opportunity.ts.
+// The single venture the team is uniquely placed to build, born from the
+// opportunity space they chose. Returns a one-element Venture[] (the UI renders
+// a list) with the Magic Lenses generated for its Approach.
 
 const clamp = (n: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, Math.round(Number.isFinite(n) ? n : lo)));
+
+const LENS_NAMES = LENSES.map((l) => l.name);
+const LENS_GUIDE = LENSES.map((l) => `- ${l.name}: ${l.question}`).join("\n");
 
 const VENT_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    ventures: {
+    venture: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        name: { type: "string" },
+        thesis: { type: "string" },
+        problemScore: { type: "integer" },
+        solution: { type: "string", enum: ["Painkiller", "Vitamin"] },
+        market: { type: "string" },
+        differentiation: { type: "string" },
+        purpose: { type: "string" },
+        unique: { type: "string" },
+        earn: { type: "string" },
+        spark: { type: "integer" },
+        conviction: { type: "integer" },
+      },
+      required: [
+        "name", "thesis", "problemScore", "solution", "market",
+        "differentiation", "purpose", "unique", "earn", "spark", "conviction",
+      ],
+    },
+    lenses: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
-          name: { type: "string" },
-          thesis: { type: "string" },
-          problemScore: { type: "integer" },
-          solution: { type: "string", enum: ["Painkiller", "Vitamin"] },
-          market: { type: "string" },
-          differentiation: { type: "string" },
-          purpose: { type: "string" },
-          unique: { type: "string" },
-          earn: { type: "string" },
-          spark: { type: "integer" },
-          conviction: { type: "integer" },
-          recommended: { type: "boolean" },
+          name: { type: "string", enum: LENS_NAMES },
+          reframe: { type: "string" },
         },
-        required: [
-          "name", "thesis", "problemScore", "solution", "market",
-          "differentiation", "purpose", "unique", "earn", "spark",
-          "conviction", "recommended",
-        ],
+        required: ["name", "reframe"],
       },
     },
   },
-  required: ["ventures"],
-} as const;
+  required: ["venture", "lenses"],
+};
 
 type RawVenture = {
   name: string;
@@ -58,28 +69,31 @@ type RawVenture = {
   earn: string;
   spark: number;
   conviction: number;
-  recommended: boolean;
 };
 
-function context(synthesis: SynthesisData, opportunity: OpportunityData): string {
+function context(synthesis: SynthesisData, opportunity: OpportunityData, chosenSpaceId?: string): string {
+  const space = opportunity.spaces.find((s) => s.id === chosenSpaceId) ?? opportunity.spaces[0];
   const list = (xs: { text: string }[]) => xs.map((x) => `- ${x.text}`).join("\n");
-  const topSpace = [...opportunity.spaces].sort((a, b) => b.votes - a.votes)[0]?.text;
   return [
-    topSpace ? `Agreed opportunity space:\n${topSpace}` : "",
+    space
+      ? `The team chose this opportunity — build the venture from it:\nTitle: ${space.title}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nMarket: ${space.market}\nUnfair advantage: ${space.advantage}\nWhy now: ${space.whyNow}`
+      : "",
     `Lived problems:\n${list(synthesis.problems)}`,
     `Obsessions:\n${list(synthesis.obsessions)}`,
     `Target markets:\n${list(synthesis.markets)}`,
     `Roles: ${synthesis.roles.map((r) => r.role).join(", ")}`,
     `Network: ${synthesis.network.map((n) => `${n.name} (${n.opportunity})`).join("; ")}`,
-    `Strategic angles:\n${opportunity.lenses.map((l) => `- ${l.name}: ${l.reframe}`).join("\n")}`,
   ].filter(Boolean).join("\n\n");
 }
 
-const SYSTEM = `You are Flash. From a founding team's confirmed synthesis and agreed opportunity space, birth 4-5 candidate VENTURES the three of them are uniquely placed to build. Each venture is concrete and specific to THIS team — name it, state a one-sentence thesis (what it is, for whom, why now), the market they can actually reach, what makes it differentiated, the purpose driving it, and the "only this team" reason. Score each: problemScore 0-10 (how real/painful the problem), solution Painkiller vs Vitamin, spark 0-5 (energy/excitement), conviction 0-5 (how strongly it fits the team). Mark exactly ONE as recommended — the strongest fit. earn is an illustrative 3-year revenue range. No generic startup talk; ground everything in what the team actually brings.`;
+const SYSTEM = `You are Flash. The team has chosen one opportunity space. Birth the SINGLE venture they are uniquely placed to build from it — concrete and specific to THIS team. Give it a name, a one-sentence thesis (what it is, for whom, why now), the market they can actually reach, what makes it differentiated, the purpose driving it, and the "only this team" reason. Score it: problemScore 0-10 (how real/painful), solution Painkiller vs Vitamin, spark 0-5 (energy), conviction 0-5 (fit). earn is an illustrative 3-year revenue range. Then view the venture through each of these Magic Lenses and write a one-paragraph reframe for each (how that lens sees THIS venture):
+${LENS_GUIDE}
+No generic startup talk; ground everything in the chosen opportunity and what the team brings.`;
 
 export async function generateVentures(
   synthesis: SynthesisData,
   opportunity: OpportunityData,
+  chosenSpaceId?: string,
 ): Promise<Venture[]> {
   const client = getAnthropic();
   const body = {
@@ -88,14 +102,19 @@ export async function generateVentures(
     thinking: { type: "adaptive" },
     output_config: { effort: "low", format: { type: "json_schema", schema: VENT_SCHEMA } },
     system: SYSTEM,
-    messages: [{ role: "user", content: `The confirmed synthesis and opportunity:\n\n${context(synthesis, opportunity)}\n\nBirth 4-5 candidate ventures.` }],
+    messages: [{ role: "user", content: `The confirmed synthesis and the chosen opportunity:\n\n${context(synthesis, opportunity, chosenSpaceId)}\n\nBirth the single venture, and the lens reframes.` }],
   };
   const message = (await client.messages.create(body as never)) as { content: { type: string; text?: string }[] };
   const raw = message.content.filter((b) => b.type === "text" && b.text).map((b) => b.text as string).join("");
-  const parsed = JSON.parse(raw) as { ventures: RawVenture[] };
+  const parsed = JSON.parse(raw) as { venture: RawVenture; lenses: { name: string; reframe: string }[] };
+  const v = parsed.venture;
 
-  const ventures: Venture[] = (parsed.ventures ?? []).slice(0, 5).map((v, i) => ({
-    id: `v${i}`,
+  const byName: Record<string, string> = {};
+  for (const l of parsed.lenses ?? []) byName[l.name] = l.reframe;
+  const lenses = LENSES.map((base) => ({ ...base, reframe: byName[base.name] || base.reframe }));
+
+  const venture: Venture = {
+    id: "v0",
     name: v.name,
     thesis: v.thesis,
     problemScore: clamp(v.problemScore, 0, 10),
@@ -108,15 +127,8 @@ export async function generateVentures(
     votes: 0,
     spark: clamp(v.spark, 0, 5),
     conviction: clamp(v.conviction, 0, 5),
-    recommended: false,
-  }));
-
-  // Exactly one recommended: honour the model's pick, else the highest-scored.
-  const flagged = (parsed.ventures ?? []).findIndex((v) => v.recommended);
-  const recIdx = flagged >= 0 && flagged < ventures.length
-    ? flagged
-    : ventures.reduce((best, v, i, arr) => (v.problemScore + v.conviction > arr[best].problemScore + arr[best].conviction ? i : best), 0);
-  if (ventures[recIdx]) ventures[recIdx].recommended = true;
-
-  return ventures;
+    recommended: true,
+    lenses,
+  };
+  return [venture];
 }

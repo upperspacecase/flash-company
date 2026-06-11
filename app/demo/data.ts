@@ -243,11 +243,24 @@ export function mockSynthesisData(): SynthesisData {
 // Before agreeing a venture, the group agrees a broad opportunity space. These
 // are fed by the synthesis voting (top problems × obsessions × markets). Votes
 // here are seeded from the other two members.
-export const OPPORTUNITY_SPACES: Votable[] = [
-  { id: "reentry", text: "Guided re-entry — a supportive path back to work for parents after a break.", votes: 3 },
-  { id: "employer", text: "Employer returnships — help companies hire from an overlooked talent pool.", votes: 1 },
-  { id: "confidence", text: "Confidence & coaching — rebuild the belief that erodes during time out.", votes: 1 },
-  { id: "community", text: "Returner community — peers, leads, and accountability for the comeback.", votes: 2 },
+// Each opportunity is a small, researched mini-venture — enough to compare and
+// vote on — framed with the Click "basics" the venture step uses as guides.
+export type OpportunitySpace = {
+  id: string;
+  title: string;
+  customer: string;
+  problem: string;
+  market: string;
+  advantage: string; // why this team
+  whyNow: string;
+  votes: number;
+};
+
+export const OPPORTUNITY_SPACES: OpportunitySpace[] = [
+  { id: "reentry", title: "Guided re-entry", customer: "Parents returning to work after a career break.", problem: "Going back is cold and confidence-eroding; job boards screen out the gap.", market: "Millions of returners a year; returnship demand is climbing.", advantage: "A trusted 4,000-parent community and a team that's lived the comeback.", whyNow: "Returnships are going mainstream and tight labour markets prize overlooked talent.", votes: 3 },
+  { id: "employer", title: "Employer returnships", customer: "Companies that want to hire from an overlooked talent pool.", problem: "They can't read a career gap and miss capable candidates.", market: "Enterprise talent + DEI budgets; returnship programmes scaling.", advantage: "Warm access to returners plus insight into what employers misread.", whyNow: "Returnship incentives and DEI pressure make this fundable now.", votes: 1 },
+  { id: "confidence", title: "Confidence & coaching", customer: "Returners whose self-belief eroded during time out.", problem: "The block isn't skills — it's confidence and a broken signal.", market: "Coaching and upskilling spend; large and fragmented.", advantage: "A brand that's lived the comeback and a community to coach within.", whyNow: "The motherhood penalty is in the spotlight; returning is being destigmatised.", votes: 1 },
+  { id: "community", title: "Returner community", customer: "Parents who need peers, leads, and accountability for the comeback.", problem: "Re-entry is isolating; there's no trusted place for warm intros and momentum.", market: "Community plus jobs; recurring-membership potential.", advantage: "An existing 4,000-member community to build the flywheel on.", whyNow: "Warm intros and word-of-mouth compound fastest right now.", votes: 2 },
 ];
 
 // Stage 3 market research — PESTLE's six dimensions, run against the agreed
@@ -280,6 +293,7 @@ export type Venture = {
   spark: number;
   conviction: number;
   recommended?: boolean;
+  lenses?: Lens[]; // Magic Lenses — generated for this venture's Approach
 };
 
 export const VENTURES: Venture[] = [
@@ -654,6 +668,7 @@ export type VentureDraft = {
   unique: string;
   scorecard: Record<ScorecardKey, boolean>; // the Click validation scorecard
   capTable: { pool: number; rows: { memberId: string; role: string; responsibility: string; equity: string; vesting: string }[] };
+  lenses: Lens[]; // Click "Approach" — Magic Lenses on the chosen venture
 };
 
 // A working draft of the chosen venture the cohort edits in the demo.
@@ -689,6 +704,7 @@ export function makeVentureDraft(): VentureDraft {
       pool: CAP_TABLE.pool,
       rows: VENTURE_DETAILS.team.map((r) => ({ memberId: r.memberId, role: r.role, responsibility: r.responsibility, equity: "", vesting: CAP_TABLE.vestingDefault })),
     },
+    lenses: LENSES.map((l) => ({ ...l })),
   };
 }
 
@@ -721,15 +737,13 @@ export const LENSES: Lens[] = [
 // synthesis (spaces + lenses), with PESTLE findings grounded by live web search
 // — see lib/opportunity.ts. Same shapes the UI already renders.
 export type OpportunityData = {
-  spaces: Votable[];
+  spaces: OpportunitySpace[];
   research: ResearchLens[];
-  lenses: Lens[];
 };
 
 export function mockOpportunityData(): OpportunityData {
   return {
     spaces: OPPORTUNITY_SPACES.map((s) => ({ ...s })),
     research: RESEARCH_LENSES.map((r) => ({ ...r })),
-    lenses: LENSES.map((l) => ({ ...l })),
   };
 }

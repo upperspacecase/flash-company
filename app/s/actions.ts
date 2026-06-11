@@ -203,7 +203,7 @@ export async function runOpportunity(): Promise<OpportunityData> {
 
 // Generate (or return cached) the candidate ventures, born from the confirmed
 // synthesis + agreed opportunity.
-export async function runVentures(): Promise<Venture[]> {
+export async function runVentures(chosenSpaceId?: string): Promise<Venture[]> {
   const m = await currentMember();
   if (!m) throw new Error("Not in a team.");
 
@@ -213,7 +213,7 @@ export async function runVentures(): Promise<Venture[]> {
   const [synthesis, opportunity] = await Promise.all([getSynthesis(m.team_id), getOpportunity(m.team_id)]);
   if (!synthesis || !opportunity) throw new Error("Agree your opportunity first.");
 
-  const data = await generateVentures(synthesis as SynthesisData, opportunity as OpportunityData);
+  const data = await generateVentures(synthesis as SynthesisData, opportunity as OpportunityData, chosenSpaceId);
   await saveVentures(m.team_id, data);
   return data;
 }

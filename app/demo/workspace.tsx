@@ -83,7 +83,7 @@ export type LiveCtx = {
   onRunSynthesis: (force?: boolean) => Promise<SynthesisData>;
   onConfirmSynthesis: (data: SynthesisData) => Promise<void>;
   onRunOpportunity: () => Promise<OpportunityData>;
-  onRunVentures: () => Promise<Venture[]>;
+  onRunVentures: (chosenSpaceId?: string) => Promise<Venture[]>;
 };
 
 // Real members carry no styling; assign avatar ring/dot by position so they line
@@ -247,6 +247,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
 
   const [ventureId, setVentureId] = useState(CHOSEN_ID);
+  const [spaceId, setSpaceId] = useState(""); // the opportunity space the team agreed on
   const [name, setName] = useState(VENTURE_DETAILS.name);
   const [recorded, setRecorded] = useState<Record<string, boolean>>(
     Object.fromEntries(VENTURE_DETAILS.commitments.map((c) => [c.memberId, c.recorded]))
@@ -297,14 +298,14 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   useEffect(() => {
     if (!live || reached < 4 || ventData) return;
     let active = true;
-    live.onRunVentures().then((d) => { if (active) setVentData(d); }).catch(() => { if (active) setVentError(true); });
+    live.onRunVentures(spaceId || undefined).then((d) => { if (active) setVentData(d); }).catch(() => { if (active) setVentError(true); });
     return () => { active = false; };
-  }, [live, reached, ventData]);
+  }, [live, reached, ventData, spaceId]);
 
   const retryVentures = () => {
     if (!live) return;
     setVentError(false);
-    live.onRunVentures().then(setVentData).catch(() => setVentError(true));
+    live.onRunVentures(spaceId || undefined).then(setVentData).catch(() => setVentError(true));
   };
 
   // Gating. Invite (0) is always open. Later steps open once you've accepted AND
@@ -375,7 +376,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       case 2:
         return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} data={synthesisData} />;
       case 3:
-        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} />;
+        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} spaceId={spaceId} onSpace={setSpaceId} />;
       case 4:
         return <VenturesPhase plan={plan} live={!!live} ventures={live ? (ventData ?? undefined) : undefined} error={live ? ventError : false} onRetry={retryVentures} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />;
       default:
@@ -1528,22 +1529,25 @@ function FiveWhys({ value, onChange }: { value: string[]; onChange: (v: string[]
 
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
-function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: OpportunityData }) {
+function OpportunityPhase({ onNext, data, spaceId, onSpace }: { onNext: () => void; data?: OpportunityData; spaceId: string; onSpace: (id: string) => void }) {
   const od = data ?? mockOpportunityData();
   const spaces = [...od.spaces].sort((a, b) => b.votes - a.votes);
-  const [spaceId, setSpaceId] = useState(spaces[0]?.id ?? "");
+  const topId = spaces[0]?.id;
   const [whys, setWhys] = useState<Record<string, string[]>>({});
   const [whysOpen, setWhysOpen] = useState(false);
-  const agreed = od.spaces.find((s) => s.id === spaceId) ?? spaces[0] ?? { id: "", text: "—", votes: 0 };
+  // Seed the agreed space to the top-voted one until the team picks.
+  useEffect(() => { if (!spaceId && topId) onSpace(topId); }, [spaceId, topId, onSpace]);
+  const sel = spaceId || topId || "";
+  const agreed = od.spaces.find((s) => s.id === sel) ?? spaces[0];
+  const agreedTitle = agreed?.title ?? "—";
   return (
     <Columns
       left={
         <div className="space-y-4">
           <RailTitle>Stages</RailTitle>
           {[
-            { t: "Opportunity spaces", d: "Agree the broad space.", n: "1" },
+            { t: "Opportunity spaces", d: "Vote on the mini-ventures.", n: "1" },
             { t: "Market research", d: "PESTLE's six dimensions.", n: "2" },
-            { t: "Angles", d: "Lenses on the opportunity.", n: "3" },
           ].map((s) => (
             <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
           ))}
@@ -1557,16 +1561,25 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
             <p className="mt-1 text-slate-500">Before a venture, the group agrees a broad opportunity space — then researches it.</p>
           </Card>
 
-          <Part label="Opportunity spaces" hint="Agree the space first. Vote counts carried from synthesis.">
+          <Part label="Opportunity spaces" hint="Researched mini-ventures — vote on the one to take forward.">
             <p className="-mt-1 mb-1 text-xs text-slate-400">Select the space the team is agreeing on.</p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {spaces.map((s) => {
-                const active = s.id === spaceId;
+                const active = s.id === sel;
                 return (
-                  <button key={s.id} onClick={() => setSpaceId(s.id)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
-                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${active ? "bg-orange text-white" : "border border-slate-300"}`}>{active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}</span>
-                    <span className="flex-1 text-sm text-foreground">{s.text}</span>
-                    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-400"><Icon name="thumb" className="h-3.5 w-3.5" />{s.votes}</span>
+                  <button key={s.id} onClick={() => onSpace(s.id)} className={`block w-full rounded-xl border p-4 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
+                    <div className="flex items-center gap-2.5">
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${active ? "bg-orange text-white" : "border border-slate-300"}`}>{active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}</span>
+                      <span className="flex-1 text-sm font-bold text-foreground">{s.title}</span>
+                      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-400"><Icon name="thumb" className="h-3.5 w-3.5" />{s.votes}</span>
+                    </div>
+                    <dl className="mt-3 grid gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
+                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Customer</dt><dd className="mt-0.5 text-slate-600">{s.customer}</dd></div>
+                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Problem</dt><dd className="mt-0.5 text-slate-600">{s.problem}</dd></div>
+                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Market</dt><dd className="mt-0.5 text-slate-600">{s.market}</dd></div>
+                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Advantage</dt><dd className="mt-0.5 text-slate-600">{s.advantage}</dd></div>
+                      <div className="sm:col-span-2"><dt className="font-semibold uppercase tracking-wide text-orange-dark">Why now</dt><dd className="mt-0.5 text-slate-600">{s.whyNow}</dd></div>
+                    </dl>
                   </button>
                 );
               })}
@@ -1576,16 +1589,16 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-tint text-[11px] font-bold text-orange-dark">?</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold text-foreground">5 Whys</span>
-                  <span className="block truncate text-xs text-slate-400">Interrogate the root of {agreed.text}</span>
+                  <span className="block truncate text-xs text-slate-400">Interrogate the root of {agreedTitle}</span>
                 </span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 shrink-0 text-slate-300 transition-transform ${whysOpen ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
               </button>
-              {whysOpen && <FiveWhys value={whys[spaceId] ?? ["", "", "", "", ""]} onChange={(arr) => setWhys((w) => ({ ...w, [spaceId]: arr }))} />}
+              {whysOpen && <FiveWhys value={whys[sel] ?? ["", "", "", "", ""]} onChange={(arr) => setWhys((w) => ({ ...w, [sel]: arr }))} />}
             </div>
           </Part>
 
           <Part label="Market research" hint="PESTLE's six dimensions, run against the agreed space.">
-            <p className="-mt-1 mb-2 text-xs text-slate-400">Researching: <span className="font-semibold text-orange-dark">{agreed.text}</span></p>
+            <p className="-mt-1 mb-2 text-xs text-slate-400">Researching: <span className="font-semibold text-orange-dark">{agreedTitle}</span></p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {od.research.map((l) => (
                 <div key={l.key} className="rounded-xl border border-slate-200 p-3">
@@ -1596,25 +1609,12 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
             </div>
           </Part>
 
-          <Part label="Angles" hint="Look at the opportunity through different lenses — each gives a different version of it.">
-            <p className="-mt-1 mb-2 text-xs text-slate-400">e.g. what's the X-Prize version of this? where's the Blue Ocean angle?</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {od.lenses.map((l) => (
-                <div key={l.id} className="rounded-xl border border-slate-200 p-3">
-                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-dark"><Icon name={l.icon} className="h-3.5 w-3.5" />{l.name}</p>
-                  <p className="text-[11px] italic text-slate-400">{l.question}</p>
-                  <p className="mt-1 text-sm text-slate-700">{l.reframe}</p>
-                </div>
-              ))}
-            </div>
-          </Part>
-
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-orange/40 bg-orange-tint/20 p-5 sm:flex-row sm:items-center">
             <div className="flex-1">
-              <p className="text-sm font-bold text-foreground">Agree the space — it births your ventures</p>
-              <p className="mt-0.5 text-xs text-slate-500">Once the team agrees on <span className="font-semibold text-orange-dark">{agreed.text}</span>, Flash births a handful of candidate ventures from it to take into formation.</p>
+              <p className="text-sm font-bold text-foreground">Agree the space — it births your venture</p>
+              <p className="mt-0.5 text-xs text-slate-500">Once the team agrees on <span className="font-semibold text-orange-dark">{agreedTitle}</span>, Flash births the single venture you&rsquo;re best placed to build from it.</p>
             </div>
-            <PrimaryBtn label="Birth ventures" onClick={onNext} icon="sparkle" />
+            <PrimaryBtn label="Birth the venture" onClick={onNext} icon="sparkle" />
           </div>
         </div>
       }
@@ -1622,8 +1622,8 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
         <div className="space-y-4 lg:sticky lg:top-4">
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
             <RailTitle>Agreed space</RailTitle>
-            <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{agreed.text}</p></div>
-            <p className="text-xs text-slate-400">Researched and viewed through the lenses, then it births your candidate ventures.</p>
+            <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{agreedTitle}</p>{agreed && <p className="mt-1 text-xs text-slate-500">{agreed.customer}</p>}</div>
+            <p className="text-xs text-slate-400">Researched, then it births your single venture.</p>
           </div>
         </div>
       }
@@ -1727,6 +1727,12 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Only we can do this</p>
                   <p className="mt-1 text-sm text-foreground">{v.unique}</p>
                 </div>
+                {isChosen && v.lenses && v.lenses.length > 0 && (
+                  <div className="mt-3">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Approach · Magic Lenses</p>
+                    <LensCards lenses={v.lenses} />
+                  </div>
+                )}
                 {isChosen ? (
                   <div className="mt-6"><Upsell title="Full venture details are part of Seed" text="Origin story, team & equity, financials, the 7-day sprint, risk register, and the commitment ritual — plus the validation engine." /></div>
                 ) : (
@@ -1756,6 +1762,21 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
 
 function Field({ label, value }: { label: string; value: string }) {
   return <div className="rounded-xl border border-slate-200 p-3"><p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p><p className="mt-0.5 text-sm text-foreground">{value}</p></div>;
+}
+
+// Magic Lenses — the venture's Approach, viewing it through each strategic angle.
+function LensCards({ lenses }: { lenses: NonNullable<Venture["lenses"]> }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {lenses.map((l) => (
+        <div key={l.id} className="rounded-xl border border-slate-200 p-3">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-dark"><Icon name={l.icon} className="h-3.5 w-3.5" />{l.name}</p>
+          <p className="text-[11px] italic text-slate-400">{l.question}</p>
+          <p className="mt-1 text-sm text-slate-700">{l.reframe}</p>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
@@ -2125,6 +2146,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: {
 
       <Part label="Approach" hint="How you'll solve it — never commit to your first idea.">
         <Section title="Options"><ApproachOptions chosen={venture.approachId} onPick={(id) => set("approachId", id)} /></Section>
+        <Section title="Magic Lenses"><LensCards lenses={venture.lenses} /></Section>
       </Part>
 
       <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} />
