@@ -91,6 +91,9 @@ export type LiveCtx = {
   onSaveDraft: (draft: VentureDraft) => void | Promise<void>;
 };
 
+// A real, pipeline-generated sprint persisted under the demo team — feeds /demo.
+export type DemoSeed = { synthesis: SynthesisData | null; opportunity: OpportunityData | null; ventures: Venture[] | null; draft: VentureDraft | null };
+
 // Real members carry no styling; assign avatar ring/dot by position so they line
 // up with PALETTE (used by the radar/network).
 const RING_CLASSES = [
@@ -233,7 +236,7 @@ function Upsell({ title, text }: { title: string; text: string }) {
 
 type MemberStatus = { id: string; name: string | null; accepted: boolean; intakeComplete: boolean };
 
-export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: LiveCtx }) {
+export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; live?: LiveCtx; seed?: DemoSeed | null }) {
   const isFree = plan === "free";
   const youId = live ? live.meId : YOU;
 
@@ -246,9 +249,9 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   const [teamReady, setTeamReady] = useState(live ? live.teamIntakeComplete : true);
   const [waiting, setWaiting] = useState(false); // "waiting for teammates" beat
   const [status, setStatus] = useState<MemberStatus[] | null>(live ? live.status : null);
-  const [synthData, setSynthData] = useState<SynthesisData | null>(live ? live.synthesis : null);
-  const [oppData, setOppData] = useState<OpportunityData | null>(live ? live.opportunity : null);
-  const [ventData, setVentData] = useState<Venture[] | null>(live ? live.ventures : null);
+  const [synthData, setSynthData] = useState<SynthesisData | null>(live ? live.synthesis : (seed?.synthesis ?? null));
+  const [oppData, setOppData] = useState<OpportunityData | null>(live ? live.opportunity : (seed?.opportunity ?? null));
+  const [ventData, setVentData] = useState<Venture[] | null>(live ? live.ventures : (seed?.ventures ?? null));
   const [ventError, setVentError] = useState(false);
 
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
@@ -260,7 +263,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
     Object.fromEntries(VENTURE_DETAILS.commitments.map((c) => [c.memberId, c.recorded]))
   );
   const [checkin, setCheckin] = useState("Day 7");
-  const [venture, setVenture] = useState<VentureDraft>(makeVentureDraft);
+  const [venture, setVenture] = useState<VentureDraft>(() => (!live && seed?.draft) ? seed.draft : makeVentureDraft());
   const [published, setPublished] = useState(false);
 
   // Live: poll team status so teammates accepting / finishing on their own
@@ -401,7 +404,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       case 3:
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} spaceId={spaceId} onSpace={setSpaceId} />;
       case 4:
-        return <VenturesPhase plan={plan} live={!!live} ventures={live ? (ventData ?? undefined) : undefined} error={live ? ventError : false} onRetry={retryVentures} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
+        return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} onRetry={retryVentures} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
         return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} gated={isFree} />;
     }
@@ -1713,7 +1716,7 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
   const recommendedId = list.find((x) => x.recommended)?.id ?? list[0]?.id ?? "";
   const selId = list.some((x) => x.id === ventureId) ? ventureId : recommendedId;
   const v = list.find((x) => x.id === selId)!;
-  const isChosen = live ? !!v.recommended : v.id === CHOSEN_ID;
+  const isChosen = !!v.recommended || v.id === CHOSEN_ID;
   // The venture page is open to see and edit for everyone — only Validation is gated.
   const editable = isChosen;
   const chosenName = live ? (list.find((x) => x.recommended)?.name ?? "the top venture") : VENTURE_DETAILS.name;

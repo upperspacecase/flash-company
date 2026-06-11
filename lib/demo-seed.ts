@@ -1,0 +1,111 @@
+// Realistic intake answers for the demo team (Maya / Alex / Priya), used to seed
+// the demo with a real, pipeline-generated sprint instead of hand-authored mocks.
+// The member ids match COHORT so the generated synthesis maps onto the demo team.
+// The /api/seed-demo route runs the real pipeline over these and saves the result
+// to the DB under DEMO_TEAM_ID; /demo reads that bundle (falling back to mocks).
+
+export const DEMO_TEAM_ID = "demo";
+
+type Answers = Record<string, unknown>;
+
+const maya: Answers = {
+  name: "Maya",
+  email: "maya@demo.flashco.org",
+  location: "Lisbon, Portugal",
+  otherLocations: "Dublin, São Paulo",
+  languages: { sel: ["English", "Portuguese"] },
+  built: "I built and run a 4,000-member online community for new and returning parents — started as a WhatsApp group after my own maternity leave, now a paid Circle community with weekly events, a job board, and a peer-mentoring programme. I've run it for three years; it pays me a modest salary.",
+  roles: { sel: ["Marketing/Growth", "Operations", "Founder/CEO"] },
+  orgs: "My own community (ParentsWhoBuild). Before that, 6 years in growth at two consumer startups — a meal-kit company (Series B) and a fintech app.",
+  achievements: "Grew the community from 0 to 4k with no ad spend, ~60% monthly active. Placed 40+ parents into flexible roles through warm intros last year. Ran a returnship pilot with two employers that hired 7 of 9 participants.",
+  failure: "I tried to launch a paid coaching product too early, before I understood what people would actually pay for. Sold 4 seats, refunded 3. Learned to validate willingness-to-pay with a real offer before building the thing.",
+  greatAt: "Building trust at scale — turning a cold audience into people who show up, refer friends, and buy. Distribution through genuine community.",
+  paidFor: "Community strategy consulting, running returnship cohorts, sponsorships and a paid membership.",
+  superpowers: "I can read what a group of parents actually needs before they can articulate it, and I'm relentless about follow-through on intros.",
+  decisions: { sel: ["Talk it out", "Fast gut"] },
+  pressure: { sel: ["Push harder", "Find flow"] },
+  conflict: { sel: ["Direct", "Mediate"] },
+  comms: { ranked: ["Voice memo", "Text", "Video call", "In-person"] },
+  energizes: "Talking to members, designing the programme, and watching someone land a role they thought was out of reach.",
+  drains: "Spreadsheets, billing admin, and anything pixel-level in design.",
+  boundary: "I'll walk if we ever treat the community as a list to extract from rather than people to serve. Trust is the whole asset.",
+  industries: { sel: ["Community", "Health/Wellness", "Education"], other: "Future-of-work" },
+  market: "Returning parents — specifically the 4k (and growing) in my community plus the adjacent communities I'm trusted in.",
+  hours: 30,
+  runway: 9,
+  putIn: { sel: ["Audience", "Introductions"] },
+  trend: "Employers keep saying they can't find talent while screening out anyone with a 2-year care gap. Returnship programmes are spreading but they're clunky, corporate, and don't reach the people in my community. The gap between demand and these broken pipelines keeps bouncing around my head.",
+  forFree: "Connecting two people who should obviously know each other, and coaching someone through their first interview back.",
+  obsessed: "Onboarding flows. I'll redo a welcome sequence ten times for a community I'm not even in.",
+  changeWorld: "That a career break to raise kids stops being treated as a deficit.",
+};
+
+const alex: Answers = {
+  name: "Alex",
+  email: "alex@demo.flashco.org",
+  location: "Berlin, Germany",
+  otherLocations: "London",
+  languages: { sel: ["English", "German"] },
+  built: "Full-stack engineer, 10 years. Built the payments and onboarding stack at a fintech (took it from 0 to ~200k users), and shipped two side projects — a scheduling tool that got to $2k MRR before I shut it down, and an open-source CSV importer that gets real usage.",
+  roles: { sel: ["Engineer/Developer", "CTO/Technical lead", "Product manager"] },
+  orgs: "A Series-B fintech (payments infra), an early-stage logistics startup, and freelance for two agencies.",
+  achievements: "Rebuilt KYC onboarding to cut drop-off from 40% to 18%. Led a 4-engineer team. Designed an event pipeline handling 5M events/day. Shipped the scheduling side project solo, end to end.",
+  failure: "My scheduling side project had users who liked it but I never charged enough or talked to them — I optimised the code instead of the business. Shut it down with $2k MRR. Learned to sell before I build.",
+  greatAt: "Shipping a clean, reliable product fast — especially anything with payments, auth, or data pipelines. I make the boring infrastructure invisible.",
+  paidFor: "Building payment and onboarding systems, fractional CTO work, and code review.",
+  superpowers: "I can scope a messy idea into a 2-week shippable slice better than almost anyone, and I genuinely enjoy the unglamorous reliability work.",
+  decisions: { sel: ["Slow data", "Talk it out"] },
+  pressure: { sel: ["Step back", "Find flow"] },
+  conflict: { sel: ["Direct"] },
+  comms: { ranked: ["Text", "Video call", "Voice memo", "In-person"] },
+  energizes: "Turning a vague idea into a working prototype people can click, and removing friction from a flow.",
+  drains: "Open-ended meetings with no decision, and pure brand/visual debates.",
+  boundary: "I won't build something dishonest with people's money or data. Hard line.",
+  industries: { sel: ["Tech/Startup", "Finance"] },
+  market: "Fintech and developer communities in Berlin and London — I can get a prototype in front of sharp early adopters quickly.",
+  hours: 25,
+  runway: 12,
+  putIn: { sel: ["Tools", "Money", "Introductions"] },
+  trend: "Every 'AI matching' product I see for hiring is a black box that candidates don't trust and employers don't either. The interesting shift is verified, human-vouched signals beating opaque scores — but nobody's built that well for non-traditional candidates.",
+  forFree: "Pairing on a gnarly technical problem, and making a slow thing fast.",
+  obsessed: "Latency. I'll spend a weekend shaving 200ms off a page nobody complained about.",
+  changeWorld: "That hiring judged what you can do now, not the shape of your CV.",
+};
+
+const priya: Answers = {
+  name: "Priya",
+  email: "priya@demo.flashco.org",
+  location: "London, UK",
+  otherLocations: "Mumbai, Amsterdam",
+  languages: { sel: ["English", "Hindi"] },
+  built: "Brand and product designer, 8 years. Built the brand and content engine for a wellness app (rebrand drove a 3x lift in install-to-signup), and I run a small newsletter + creator network in the design and parenting space (~12k subscribers).",
+  roles: { sel: ["Designer", "Marketing/Growth"] },
+  orgs: "A wellness app (Series A), a design agency, and freelance brand work for a dozen early startups.",
+  achievements: "Led a rebrand that tripled signup conversion. Grew a newsletter to 12k with a 48% open rate. Built a creator network of ~30 parent-focused creators I can mobilise for a launch.",
+  failure: "I took on a startup rebrand where I never pinned down what success meant — I made it beautiful but it didn't move their numbers, and the relationship soured. Now I refuse to start design work without a measurable goal.",
+  greatAt: "Giving an idea a voice and a face people instantly trust — brand, narrative, and the content that makes a launch land.",
+  paidFor: "Brand identity, landing pages, content strategy, and creator-led launches.",
+  superpowers: "I can turn a dry value prop into a story people forward to a friend, and I have direct lines to creators who reach exactly this audience.",
+  decisions: { sel: ["Talk it out", "Wait for clarity"] },
+  pressure: { sel: ["Step back"] },
+  conflict: { sel: ["Mediate", "Avoidant"] },
+  comms: { ranked: ["Video call", "Voice memo", "Text", "In-person"] },
+  energizes: "Naming things, designing the first landing page, and shaping the story for a launch.",
+  drains: "Backend tickets, finance, and decisions made by committee.",
+  boundary: "I won't put my name on something that over-promises or manipulates. The story has to be true.",
+  industries: { sel: ["Creative/Design", "Health/Wellness", "Community"] },
+  market: "Parent-focused creators and the design community — I can get a launch in front of the right 30 creators with one message.",
+  hours: 20,
+  runway: 6,
+  putIn: { sel: ["Audience", "Introductions", "Tools"] },
+  trend: "There's a wave of 'returnship' content but it's all corporate and cold. The shift I keep noticing is that people trust peers and creators over institutions now — a warm, human brand could own this space that big job boards never will.",
+  forFree: "Designing a brand for a cause I believe in, and writing the launch story.",
+  obsessed: "Typography and the exact wording of a first sentence.",
+  changeWorld: "That the way back to work after caring for someone is warm and human, not a cold application form.",
+};
+
+export const DEMO_INTAKES: { memberId: string; answers: Answers }[] = [
+  { memberId: "maya", answers: maya },
+  { memberId: "alex", answers: alex },
+  { memberId: "priya", answers: priya },
+];
