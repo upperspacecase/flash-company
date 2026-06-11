@@ -138,8 +138,22 @@ const VENT_SCHEMA = {
           type: "array",
           items: { type: "object", additionalProperties: false, properties: { label: { type: "string" }, finding: { type: "string" } }, required: ["label", "finding"] },
         },
+        approaches: {
+          type: "array",
+          items: { type: "object", additionalProperties: false, properties: { title: { type: "string" }, why: { type: "string" } }, required: ["title", "why"] },
+        },
+        revenue: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            modelId: { type: "string", enum: ["cohort", "placement", "subscription", "marketplace"] },
+            growth: { type: "integer" },
+            drivers: { type: "array", items: { type: "object", additionalProperties: false, properties: { key: { type: "string" }, value: { type: "number" } }, required: ["key", "value"] } },
+          },
+          required: ["modelId", "growth", "drivers"],
+        },
       },
-      required: ["customer", "problem", "advantage", "competition", "problemBreakdown", "differentiation", "principles", "origin", "sprint", "risks", "financials", "market"],
+      required: ["customer", "problem", "advantage", "competition", "problemBreakdown", "differentiation", "principles", "origin", "sprint", "risks", "financials", "market", "approaches", "revenue"],
     },
     lenses: {
       type: "array",
@@ -162,6 +176,8 @@ type RawDetail = {
   risks: { risk: string; mitigation: string }[];
   financials: { note: string; rows: { label: string; value: string }[] };
   market: { label: string; finding: string }[];
+  approaches: { title: string; why: string }[];
+  revenue: { modelId: string; growth: number; drivers: { key: string; value: number }[] };
 };
 
 type RawVenture = {
@@ -241,6 +257,8 @@ export async function generateVentures(
       risks: d.risks ?? [],
       financials: d.financials ?? { note: "", rows: [] },
       market: d.market ?? [],
+      approaches: d.approaches ?? [],
+      revenue: d.revenue ?? { modelId: "cohort", growth: 80, drivers: [] },
     },
   };
   return [venture];

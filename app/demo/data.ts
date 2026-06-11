@@ -293,6 +293,8 @@ export type VentureDetail = {
   risks: { risk: string; mitigation: string }[];
   financials: { note: string; rows: { label: string; value: string }[] };
   market: { label: string; finding: string }[]; // research-grounded market read
+  approaches: { title: string; why: string }[]; // Click "Approach" options (>=3)
+  revenue: { modelId: string; growth: number; drivers: { key: string; value: number }[] };
 };
 
 export type Venture = {
@@ -680,7 +682,8 @@ export type VentureDraft = {
   // Click "Differentiation" — the statement, a clarity score, and operating principles.
   differentiation: { statement: string; clarity: number };
   principles: string[];
-  // Click "Approach" — the chosen option (how we'll solve it).
+  // Click "Approach" — the options (≥3) and the chosen one.
+  approaches: ApproachOption[];
   approachId: string;
   revenue: { id: string; growth: number; drivers: Record<string, number> };
   unique: string;
@@ -714,6 +717,7 @@ export function makeVentureDraft(): VentureDraft {
       "Outcomes over activity — measure placements, not logins.",
       "The community is the product — protect trust above growth.",
     ],
+    approaches: APPROACH_OPTIONS.map((a) => ({ ...a })),
     approachId: APPROACH_OPTIONS[0].id,
     revenue: revenueDefaults(REVENUE_MODELS[0]),
     unique: CHOSEN.unique,
@@ -724,6 +728,15 @@ export function makeVentureDraft(): VentureDraft {
     },
     lenses: LENSES.map((l) => ({ ...l })),
   };
+}
+
+// Map a generated revenue pick onto a known model + its driver defaults (so the
+// revenue modeller's math stays valid), overriding any driver values the LLM gave.
+function seedRevenue(r: VentureDetail["revenue"]): VentureDraft["revenue"] {
+  const model = REVENUE_MODELS.find((m) => m.id === r.modelId) ?? REVENUE_MODELS[0];
+  const drivers: Record<string, number> = Object.fromEntries(model.drivers.map((d) => [d.key, d.value]));
+  for (const dv of r.drivers ?? []) if (dv.key in drivers) drivers[dv.key] = dv.value;
+  return { id: model.id, growth: r.growth || model.growth, drivers };
 }
 
 // Seed the editable draft from a live, LLM-generated venture: free-text Click
@@ -746,6 +759,9 @@ export function draftFromVenture(v: Venture, cohort: Member[]): VentureDraft {
       : base.problem,
     differentiation: d ? { statement: d.differentiation.statement, clarity: d.differentiation.clarity } : base.differentiation,
     principles: d && d.principles.length ? [...d.principles] : base.principles,
+    approaches: d && d.approaches.length ? d.approaches.map((a, i) => ({ id: `a${i}`, title: a.title, why: a.why })) : base.approaches,
+    approachId: d && d.approaches.length ? "a0" : base.approachId,
+    revenue: d ? seedRevenue(d.revenue) : base.revenue,
     capTable: {
       pool: base.capTable.pool,
       rows: cohort.length

@@ -32,6 +32,7 @@ import {
   mockSynthesisData,
   revenueBuild,
   revenueDefaults,
+  type ApproachOption,
   type DeckSlide,
   type IconName,
   type IntakeField,
@@ -2168,7 +2169,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
       </Part>
 
       <Part label="Approach" hint="How you'll solve it — never commit to your first idea.">
-        <Section title="Options"><ApproachOptions chosen={venture.approachId} onPick={(id) => set("approachId", id)} /></Section>
+        <Section title="Options"><ApproachOptions chosen={venture.approachId} onPick={(id) => set("approachId", id)} options={venture.approaches} /></Section>
         <Section title="Magic Lenses"><LensCards lenses={venture.lenses} /></Section>
       </Part>
 
@@ -2266,12 +2267,12 @@ function PrinciplesEditor({ principles, onChange }: { principles: string[]; onCh
   );
 }
 
-function ApproachOptions({ chosen, onPick }: { chosen: string; onPick: (id: string) => void }) {
+function ApproachOptions({ chosen, onPick, options = APPROACH_OPTIONS }: { chosen: string; onPick: (id: string) => void; options?: ApproachOption[] }) {
   return (
     <div>
       <p className="-mt-1 mb-3 text-xs text-slate-400">At least three. Each is a one-pager — pick the one to carry into validation.</p>
       <div className="grid gap-3 sm:grid-cols-3">
-        {APPROACH_OPTIONS.map((o) => {
+        {options.map((o) => {
           const active = o.id === chosen;
           return (
             <button key={o.id} onClick={() => onPick(o.id)} className={`flex flex-col rounded-xl border p-3 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
