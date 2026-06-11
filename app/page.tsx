@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const SECTIONS = [
@@ -14,15 +15,15 @@ const SECTIONS = [
 ];
 
 const HOW = [
-  { n: "01", title: "Form your team", text: "Invite two people. Any two — friends, colleagues, strangers who should meet. You each invest €10 and get access to a shared AI agent tuned for venture design." },
-  { n: "02", title: "48-hour ideation sprint", text: "About an hour each over a 48-hour window. The agent maps your overlapping skills and guides you through a structured ideation process. At the end: one venture concept worth testing." },
-  { n: "03", title: "30-day validation", text: "Invest an additional €40 per person to unlock a detailed validation roadmap — experiments, metrics, and a go/no-go decision framework. Run it. Prove it. Launch it. Or kill it fast." },
+  { n: "01", title: "Form your team", text: "Invite two people. Any two friends, colleagues, strangers who should meet. Invest €10 each and get access to a shared AI agent tuned for ideation." },
+  { n: "02", title: "48-hour ideation sprint", text: "Contribute 90 mins each over a 48-hour period. Our AI agent does the heavy lifting of finding your overlapping opportunities and deep market research. After 48 hrs you'll have one idea worth sharing." },
+  { n: "03", title: "30-day validation", text: "Invest an additional €40 per person to unlock a detailed validation plan with experiments, metrics, and a clear decision making framework to grow your idea." },
 ];
 
 type Tier = { name: string; price: string; period: string; desc: string; featured?: boolean };
 
 const PRICING: Tier[] = [
-  { name: "Ideation Sprint", price: "€10", period: "/ person", desc: "Your trio plus a shared AI agent. A 48-hour sprint down to one venture concept worth testing.", featured: true },
+  { name: "Ideation Sprint", price: "€10", period: "/ person", desc: "A 48 hr ideation sprint to find one idea worth sharing.", featured: true },
   { name: "Validation Plan", price: "+€40", period: "/ person", desc: "Unlock the 30-day validation roadmap — experiments, metrics, and a go/no-go decision framework." },
   { name: "Enterprise", price: "€2,000", period: "/ month", desc: "Run Flash Company across your organisation — up to 100 teams." },
 ];
@@ -34,11 +35,9 @@ const NOTE = [
 ];
 
 function EmailCapture({ note }: { note?: string }) {
+  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  if (status === "done") {
-    return <p className="text-sm font-semibold text-accent">Thanks — we&rsquo;ll email you when the next Flash cohort opens.</p>;
-  }
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   return (
     <div>
       <form
@@ -50,7 +49,8 @@ function EmailCapture({ note }: { note?: string }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email }),
           });
-          setStatus(res.ok ? "done" : "error");
+          if (res.ok) router.push("/start");
+          else setStatus("error");
         }}
         className="flex w-full max-w-md flex-col gap-3 sm:flex-row"
       >
@@ -59,12 +59,12 @@ function EmailCapture({ note }: { note?: string }) {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@email.com"
+          placeholder="Your@email"
           aria-label="Email address"
           className="h-12 rounded-md border border-white/20 bg-white/5 px-4 text-sm text-white placeholder:text-white/35 focus:border-accent focus:outline-none sm:flex-1"
         />
         <button type="submit" disabled={status === "loading"} className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-6 text-sm font-semibold text-black transition-colors hover:bg-accent/90 disabled:opacity-60">
-          {status === "loading" ? "…" : "Get early access"}
+          {status === "loading" ? "…" : "Start a Flash"}
         </button>
       </form>
       {status === "error" ? (
@@ -190,12 +190,12 @@ export default function Home() {
 
       {/* HERO */}
       <Section id="hero">
-        <h1 className="max-w-4xl text-5xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">Ever wonder what you and 2 <CyclingWord /> could build?</h1>
+        <h1 className="max-w-4xl text-5xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">Ever wonder what you and <span className="text-accent">two</span> <CyclingWord /> could start?</h1>
         <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">
-          Invite two people into a guided ideation process that maps your combined skills, networks, and insights into an idea <span className="text-accent">worth sharing</span>.
+          Invite two people to a 48-hour structured ideation process that maps your combined skills, networks, and insights into an idea worth sharing.
         </p>
         <div className="mt-9">
-          <EmailCapture note="Early access — no spam, just a note when the next window opens." />
+          <EmailCapture note="No spam, no newsletter, just an invite to start your own Flash Company when the next cohort opens." />
         </div>
       </Section>
 
@@ -203,7 +203,7 @@ export default function Home() {
       <Section id="problem">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Problem</p>
         <h2 className="mt-7 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl">You don&rsquo;t need more ideas.<br />You need the right next step.</h2>
-        <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">Most people have dozens of half-formed ideas and a contacts list full of potential co-founders. What they lack is a guided process that maps one to the other — that asks the right questions, finds the overlap, and turns scattered curiosity into a focused venture concept.</p>
+        <p className="mt-7 max-w-2xl text-lg leading-8 text-white/60">Most people have dozens of half-formed ideas and a contacts list full of potential co-founders. What they lack is a guided process that maps one to the other — that asks the right questions, finds the overlap, and turns scattered curiosity into a focused concept.</p>
         <p className="mt-7 max-w-2xl text-2xl font-bold leading-snug text-white">Flash Company is the next step.</p>
       </Section>
 
