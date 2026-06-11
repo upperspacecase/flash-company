@@ -1328,7 +1328,7 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data }: { onConfirm: (data
           <Part label="Team" hint="Confirm your profile — add, edit, confirm. Nothing's removed here.">
             <div className="space-y-3">
               <ConfirmItem title="Skills & energy" hint="Tap a dot to adjust — outer energises, inner drains." open={open.skills} onToggle={() => toggleOpen("skills")} confirmed={confirmed.skills} onConfirm={() => toggleConfirm("skills")}>
-                <SkillRadar cohort={cohort} energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} editId={editId} onEdit={(id) => { setEditId(id); setShown((s) => ({ ...s, [id]: true })); }} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
+                <SkillBloom cohort={cohort} energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} editId={editId} onEdit={(id) => { setEditId(id); setShown((s) => ({ ...s, [id]: true })); }} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
               </ConfirmItem>
               <ConfirmItem title="Network" hint="Industries you can talk to." open={open.network} onToggle={() => toggleOpen("network")} confirmed={confirmed.network} onConfirm={() => toggleConfirm("network")}>
                 <NetworkList cohort={cohort} nodes={industries} onNodes={setIndustries} kind="industry" icon="building" addLabel="industry" />
@@ -1426,34 +1426,56 @@ function CountdownBadge() {
 
 const TEAM_COLOR = "#6f8f5f";
 
-function SkillRadar({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, onEnergy }: { cohort?: Member[]; energy: Record<string, number[]>; shown: Record<string, boolean>; onToggle: (k: string) => void; editId: string; onEdit: (id: string) => void; onEnergy: (id: string, i: number, val: number) => void }) {
-  const n = SKILLS.length, cx = 130, cy = 128, R = 88, max = 5;
-  const pt = (i: number, val: number): [number, number] => {
-    const a = (Math.PI * 2 * i) / n - Math.PI / 2;
-    const r = (val / max) * R;
-    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+function SkillBloom({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, onEnergy }: { cohort?: Member[]; energy: Record<string, number[]>; shown: Record<string, boolean>; onToggle: (k: string) => void; editId: string; onEdit: (id: string) => void; onEnergy: (id: string, i: number, val: number) => void }) {
+  const cx = 130, cy = 130, R0 = 64, Lmax = 60, max = 5, DENS = 9;
+  const skills = SKILLS.length;
+  const smooth = (t: number) => t * t * (3 - 2 * t);
+  const polar = (r: number, a: number): [number, number] => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  // Everyone shares ONE circle: the 8 skills sit at fixed positions around it, so
+  // a given skill is the same angle for all. Team (best of everyone per skill) +
+  // each shown member, overlaid — equal values read as the same wave in each colour.
+  const bands = [
+    ...(shown.team ? [{ id: "team", color: TEAM_COLOR, vals: SKILLS.map((_, i) => Math.max(0, ...cohort.map((m) => energy[m.id]?.[i] ?? 0))) }] : []),
+    ...cohort.filter((m) => shown[m.id]).map((m) => ({ id: m.id, color: colorFor(cohort, m.id), vals: energy[m.id] ?? SKILLS.map(() => 0) })),
+  ];
+  const N = Math.max(1, bands.length);
+  const samples = skills * DENS;          // dense samples around the full circle
+  const slot = (Math.PI * 2) / samples;   // angular width of one sample
+  const angleAt = (s: number) => -Math.PI / 2 + (s / samples) * Math.PI * 2;
+  // A person's interpolated value at sample s (skills wrap around the ring).
+  const valueAt = (vals: number[], s: number) => {
+    const t = s / DENS, i = Math.floor(t) % skills, f = t - Math.floor(t);
+    return vals[i] + (vals[(i + 1) % skills] - vals[i]) * smooth(f);
   };
-  // Team = the outer envelope: the best of everyone on each skill.
-  const team = SKILLS.map((_, i) => Math.max(0, ...cohort.map((m) => energy[m.id]?.[i] ?? 0)));
-  const polyStr = (vals: number[]) => vals.map((v, i) => { const [x, y] = pt(i, v); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(" ");
   const toggles = [{ id: "team", name: "Team", color: TEAM_COLOR }, ...cohort.map((m) => ({ id: m.id, name: m.name, color: colorFor(cohort, m.id) }))];
   const editEnergy = energy[editId] ?? SKILLS.map(() => 3);
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
       <svg viewBox="0 0 260 260" className="mx-auto w-full max-w-[300px]">
-        {[1, 2, 3, 4, 5].map((ring) => <polygon key={ring} points={polyStr(SKILLS.map(() => ring))} fill="none" stroke="#e2e8f0" strokeWidth="1" />)}
+        <defs>
+          {bands.map((b) => (
+            <radialGradient key={b.id} id={`bloom-${b.id}`} gradientUnits="userSpaceOnUse" cx={cx} cy={cy} r={R0 + Lmax}>
+              <stop offset={R0 / (R0 + Lmax)} stopColor={b.color} stopOpacity="0.28" />
+              <stop offset="1" stopColor={b.color} stopOpacity="1" />
+            </radialGradient>
+          ))}
+        </defs>
+        <circle cx={cx} cy={cy} r={R0} fill="none" stroke="#e2e8f0" strokeWidth="1" />
+        {Array.from({ length: samples }).flatMap((_, s) =>
+          bands.map((b, k) => {
+            const a = angleAt(s) + ((k + 0.5) / N - 0.5) * slot; // interleave the people within each sample slot
+            const v = valueAt(b.vals, s);
+            const [x1, y1] = polar(R0, a), [x2, y2] = polar(R0 + Math.max(2, (v / max) * Lmax), a);
+            return <line key={`${b.id}-${s}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`url(#bloom-${b.id})`} strokeWidth="1.2" strokeLinecap="round" />;
+          }),
+        )}
         {SKILLS.map((label, i) => {
-          const [x, y] = pt(i, max);
-          const [lx, ly] = pt(i, max + 0.85);
-          return (
-            <g key={label}>
-              <line x1={cx} y1={cy} x2={x} y2={y} stroke="#e2e8f0" strokeWidth="1" />
-              <text x={lx} y={ly} fontSize="7.5" fill="#64748b" textAnchor={lx > cx + 6 ? "start" : lx < cx - 6 ? "end" : "middle"} dominantBaseline="middle">{label}</text>
-            </g>
-          );
+          const a = -Math.PI / 2 + (i / skills) * Math.PI * 2;
+          const [lx, ly] = polar(R0 - 6, a);
+          let deg = (a * 180) / Math.PI + 90;
+          if (a > 0 && a < Math.PI) deg += 180; // keep bottom-half labels upright
+          return <text key={i} x={lx} y={ly} fontSize="5" fill="#64748b" textAnchor="middle" dominantBaseline="middle" transform={`rotate(${deg} ${lx} ${ly})`}>{label}</text>;
         })}
-        {shown.team && <polygon points={polyStr(team)} fill="rgba(111,143,95,0.15)" stroke={TEAM_COLOR} strokeWidth="2" />}
-        {cohort.map((m) => shown[m.id] && <polygon key={m.id} points={polyStr(energy[m.id] ?? [])} fill="none" stroke={colorFor(cohort, m.id)} strokeWidth="2" />)}
       </svg>
       <div>
         <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">Show</p>
@@ -1467,7 +1489,7 @@ function SkillRadar({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, 
             );
           })}
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">Outer = energises (create), inner = drains. Team is the outer envelope — the best of everyone on each skill.</p>
+        <p className="mt-2 text-[11px] text-slate-400">Each band is a person&rsquo;s energy bloom — longer spoke = more energised by that skill. Team = the best of everyone.</p>
 
         <div className="mt-4 rounded-xl border border-orange/30 bg-orange-tint/15 p-3">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-dark">
