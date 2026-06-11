@@ -50,13 +50,15 @@ async function research(client: ReturnType<typeof getAnthropic>, space?: Space):
     { role: "user", content: `Opportunity:\nTitle: ${space.title}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nMarket: ${space.market}\n\nResearch it thoroughly.` },
   ];
   let text = "";
-  for (let i = 0; i < 8; i++) {
+  // Bounded research — a few rounds is plenty for a market brief and keeps the
+  // venture step inside the serverless function limit.
+  for (let i = 0; i < 3; i++) {
     const body = {
       model: "claude-sonnet-4-6",
       max_tokens: 8000,
       thinking: { type: "disabled" },
       output_config: { effort: "medium" },
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
       system,
       messages,
     };
