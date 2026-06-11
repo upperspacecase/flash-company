@@ -69,14 +69,15 @@ async function research(client: ReturnType<typeof getAnthropic>, space?: Space):
     { role: "user", content: `Opportunity:\nTitle: ${space.title}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nMarket: ${space.market}\n\nResearch it thoroughly.` },
   ];
   let text = "";
-  // Bounded — a few rounds is plenty for a market brief and keeps the step fast.
-  for (let i = 0; i < 3; i++) {
+  // Tightly bounded so this step lands under the ~300s function cap (matches the
+  // PESTLE budget that completes reliably). A handful of searches is plenty.
+  for (let i = 0; i < 2; i++) {
     const body = {
       model: "claude-sonnet-4-6",
       max_tokens: 8000,
       thinking: { type: "disabled" },
       output_config: { effort: "medium" },
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
       system: RESEARCH_SYSTEM,
       messages,
     };
@@ -128,7 +129,7 @@ type RawCore = {
 
 function buildCore(client: ReturnType<typeof getAnthropic>, synthesis: SynthesisData, space: Space | undefined, brief: string): Promise<RawCore> {
   const user = `Synthesis and chosen opportunity:\n\n${teamContext(synthesis, space)}\n\nResearch brief:\n${brief || "(no external findings — reason from the opportunity and team)"}\n\nDefine the venture's core.`;
-  return callJson<RawCore>(client, VENTURE_CORE_SYSTEM, user, CORE_SCHEMA, "high");
+  return callJson<RawCore>(client, VENTURE_CORE_SYSTEM, user, CORE_SCHEMA, "medium");
 }
 
 /* ----------------------------------------- step 3: market & money */
@@ -162,7 +163,7 @@ type RawPlan = {
 
 function buildPlan(client: ReturnType<typeof getAnthropic>, space: Space | undefined, brief: string, core: RawCore): Promise<RawPlan> {
   const user = `Venture core:\nName: ${core.name}\nThesis: ${core.thesis}\nCustomer: ${core.customer}\nProblem: ${core.problem}\nAdvantage: ${core.advantage.capability}\nChosen market: ${space?.market ?? ""}\n\nResearch brief:\n${brief || "(no external findings)"}\n\nProduce the market read and the numbers, grounded in the research.`;
-  return callJson<RawPlan>(client, VENTURE_PLAN_SYSTEM, user, PLAN_SCHEMA, "high");
+  return callJson<RawPlan>(client, VENTURE_PLAN_SYSTEM, user, PLAN_SCHEMA, "medium");
 }
 
 /* ----------------------------------------- step 4: lenses */
