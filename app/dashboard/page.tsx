@@ -1,5 +1,6 @@
 import { UserButton } from "@clerk/nextjs";
 import { ensureSchema, getSql } from "@/lib/db";
+import { DashboardTabs } from "./tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -55,38 +56,44 @@ export default async function Dashboard() {
           </div>
         )}
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Visitors" value={visits.toLocaleString()} sub="sessions tracked" />
-          <Stat label="Signups" value={signups.toLocaleString()} sub={`${signups30} in the last 30 days`} />
-          <Stat label="Signup rate" value={`${rate}%`} sub="signups ÷ visitors" />
-          <Stat label="Customers" value="—" sub="when payments go live" />
-        </div>
+        <DashboardTabs
+          analytics={
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Stat label="Visitors" value={visits.toLocaleString()} sub="sessions tracked" />
+                <Stat label="Signups" value={signups.toLocaleString()} sub={`${signups30} in the last 30 days`} />
+                <Stat label="Signup rate" value={`${rate}%`} sub="signups ÷ visitors" />
+                <Stat label="Customers" value="—" sub="when payments go live" />
+              </div>
 
-        <section className="mt-8 rounded-xl border border-white/10 bg-white/5">
-          <div className="border-b border-white/10 px-5 py-4">
-            <h2 className="text-sm font-semibold">Recent signups</h2>
-          </div>
-          {recent.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-white/40">No signups yet.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-white/40">
-                  <th className="px-5 py-3 font-medium">Email</th>
-                  <th className="px-5 py-3 font-medium">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((r) => (
-                  <tr key={r.email} className="border-t border-white/5">
-                    <td className="px-5 py-3 text-white/80">{r.email}</td>
-                    <td className="px-5 py-3 text-white/50">{new Date(r.created_at).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
+              <section className="mt-6 rounded-xl border border-white/10 bg-white/5">
+                <div className="border-b border-white/10 px-5 py-4">
+                  <h2 className="text-sm font-semibold">Recent signups</h2>
+                </div>
+                {recent.length === 0 ? (
+                  <p className="px-5 py-8 text-sm text-white/40">No signups yet.</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-wide text-white/40">
+                        <th className="px-5 py-3 font-medium">Email</th>
+                        <th className="px-5 py-3 font-medium">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recent.map((r) => (
+                        <tr key={r.email} className="border-t border-white/5">
+                          <td className="px-5 py-3 text-white/80">{r.email}</td>
+                          <td className="px-5 py-3 text-white/50">{new Date(r.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+            </>
+          }
+        />
       </div>
     </main>
   );

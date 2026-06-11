@@ -5,6 +5,7 @@ import {
   type IntakeField,
   type SynthesisData,
 } from "@/app/demo/data";
+import { SYNTHESIS_SYSTEM } from "@/lib/llm-spec";
 
 // Lazy so a missing ANTHROPIC_API_KEY only fails when a generation actually
 // runs, not at build/import. The SDK reads ANTHROPIC_API_KEY from the env.
@@ -132,10 +133,6 @@ function renderIntake(answers: Record<string, unknown>): string {
   return lines.join("\n");
 }
 
-const SYSTEM = `You are Flash, an agent that synthesises a small founding team (2-3 people) into the raw material for a venture. You have just read each member's private intake. Your job is to find what's true ABOUT THE TEAM TOGETHER — the overlaps, tensions, and complementary strengths no single member could see — and turn it into a structured synthesis the team will vote on.
-
-Be specific and grounded in what they actually wrote. No generic startup platitudes. Name real things from their answers. The convergence signals are the most important output: surface genuine overlaps (the same theme appearing independently across members), real tensions, gaps, and hidden complementarity.`;
-
 const clampScore = (n: number) => Math.max(0, Math.min(5, Math.round(Number.isFinite(n) ? n : 3)));
 
 /**
@@ -178,7 +175,7 @@ export async function synthesizeTeam(intakes: IntakeRecord[]): Promise<Synthesis
       effort: "low",
       format: { type: "json_schema", schema: SYNTH_SCHEMA },
     },
-    system: SYSTEM,
+    system: SYNTHESIS_SYSTEM,
     messages: [{ role: "user", content: userContent }],
   };
 

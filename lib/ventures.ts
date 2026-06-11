@@ -5,6 +5,7 @@ import {
   type Venture,
 } from "@/app/demo/data";
 import { getAnthropic } from "@/lib/synthesis";
+import { RESEARCH_SYSTEM, VENTURES_SYSTEM } from "@/lib/llm-spec";
 
 // Birth the single, comprehensive venture from the chosen opportunity. Two
 // phases: (1) deep live web-search research (market, competition, willingness to
@@ -15,7 +16,6 @@ const clamp = (n: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, Math.round(Number.isFinite(n) ? n : lo)));
 
 const LENS_NAMES = LENSES.map((l) => l.name);
-const LENS_GUIDE = LENSES.map((l) => `- ${l.name}: ${l.question}`).join("\n");
 
 type Space = OpportunityData["spaces"][number];
 
@@ -45,8 +45,7 @@ function extractText(content: { type: string; text?: string }[]): string {
 
 async function research(client: ReturnType<typeof getAnthropic>, space?: Space): Promise<string> {
   if (!space) return "";
-  const system =
-    "You are a venture research analyst. Use the web_search tool to gather CURRENT (2026) real-world evidence for this opportunity: market size and growth, named competitors / incumbents and what they charge, customer willingness to pay, and financial / pricing benchmarks for comparable businesses. Then write a concise findings brief in bullet points, with concrete numbers and named sources where you found them. Output only the brief.";
+  const system = RESEARCH_SYSTEM;
   const messages: { role: "user" | "assistant"; content: unknown }[] = [
     { role: "user", content: `Opportunity:\nTitle: ${space.title}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nMarket: ${space.market}\n\nResearch it thoroughly.` },
   ];
@@ -181,10 +180,6 @@ type RawVenture = {
   lenses: { name: string; reframe: string }[];
 };
 
-const SYSTEM = `You are Flash. The team has chosen one opportunity. Using their synthesis, the chosen opportunity, and a live research brief, build the SINGLE comprehensive venture they are uniquely placed to build. Real best-effort — fill every field thoroughly and concretely, grounded in the research (especially the market read and financials; financials must be derived from the research, not invented round numbers). Give it a name and a one-sentence thesis. In detail, write: the exact customer and the problem; the Advantage (capability/insight/motivation); the Competition (incumbent gorilla + alternatives/non-consumption); a problem-score breakdown (painful 0-5, frequent 0-5, whyNow 0-5, and what they pay today); a Differentiation statement + a clarity score 0-10; 3-5 operating Principles; a short origin story (2-3 paragraphs); a credible 7-day sprint plan (one entry per day or day-range); a risk register (3-5 risks + mitigations); illustrative-but-research-grounded Financials (a note + labelled rows); and a market read (3-6 labelled findings drawn from the research). Score the venture: problemScore 0-10, solution Painkiller vs Vitamin, spark 0-5, conviction 0-5. earn is a research-grounded 3-year revenue range. Then view the venture through each Magic Lens and write a one-paragraph reframe for each:
-${LENS_GUIDE}
-No generic startup talk; ground everything in the chosen opportunity, the team, and the research.`;
-
 export async function generateVentures(
   synthesis: SynthesisData,
   opportunity: OpportunityData,
@@ -200,7 +195,7 @@ export async function generateVentures(
     max_tokens: 16000,
     thinking: { type: "adaptive" },
     output_config: { effort: "high", format: { type: "json_schema", schema: VENT_SCHEMA } },
-    system: SYSTEM,
+    system: VENTURES_SYSTEM,
     messages: [{ role: "user", content: `Synthesis and chosen opportunity:\n\n${ctx}\n\nResearch brief:\n${findings || "(no external findings available — reason from the opportunity and team)"}\n\nBuild the comprehensive venture and the lens reframes.` }],
   };
   const message = (await client.messages.create(body as never)) as { content: { type: string; text?: string }[] };

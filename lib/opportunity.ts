@@ -5,6 +5,7 @@ import {
   type SynthesisData,
 } from "@/app/demo/data";
 import { getAnthropic } from "@/lib/synthesis";
+import { SPACES_SYSTEM, PESTLE_SYSTEM } from "@/lib/llm-spec";
 
 const PESTLE: { key: ResearchLens["key"]; label: string }[] = [
   { key: "political", label: "Political" },
@@ -63,8 +64,7 @@ async function generateSpaces(client: ReturnType<typeof getAnthropic>, ctx: stri
     max_tokens: 16000,
     thinking: { type: "adaptive" },
     output_config: { effort: "low", format: { type: "json_schema", schema: SPACES_SCHEMA } },
-    system:
-      "You are Flash. From a founding team's confirmed synthesis, birth 4-6 OPPORTUNITY SPACES they're uniquely placed to pursue. Frame each as a small, comparable mini-venture using the Click framework's basics, so the team can vote between them: a short title, the specific customer, the problem they face, the market, why THIS team has an unfair advantage, and a concrete why-now signal. Be specific to THIS team — no generic startup talk.",
+    system: SPACES_SYSTEM,
     messages: [{ role: "user", content: `The confirmed synthesis:\n\n${ctx}\n\nProduce 4-6 opportunity spaces as mini-ventures.` }],
   };
   const message = (await client.messages.create(body as never)) as { content: { type: string; text?: string }[] };
@@ -97,8 +97,7 @@ function extractJson(text: string): unknown | null {
 }
 
 async function generatePestle(client: ReturnType<typeof getAnthropic>, theme: string): Promise<ResearchLens[]> {
-  const system =
-    "You are a market analyst. Use the web_search tool to find CURRENT (2026) real-world signals, then write a PESTLE scan. Ground each finding in what you actually found — concrete trends, policies, numbers. After researching, output ONLY a JSON object (no prose around it) with exactly these keys: political, economic, social, technological, environmental, legal. Each value is one or two sentences.";
+  const system = PESTLE_SYSTEM;
   const messages: { role: "user" | "assistant"; content: unknown }[] = [
     { role: "user", content: `Run a PESTLE scan for this opportunity: ${theme}` },
   ];
