@@ -19,12 +19,14 @@ import {
   getVentures,
   saveVentures,
   saveVentureDraft,
+  getVentureBuild,
+  saveVentureBuild,
   setMemberPayment,
   type MemberRow,
 } from "@/lib/db";
 import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
-import { generateVentures } from "@/lib/ventures";
+import { advanceVenture, type VentureBuildState } from "@/lib/ventures";
 import { emailConfigured, sendEmail, synthesisReadyEmail, teammateFinishedEmail } from "@/lib/email";
 import { getStripe } from "@/lib/stripe";
 import { PRICE, type OpportunityData, type SynthesisData, type Venture, type VentureDraft } from "@/app/demo/data";
@@ -202,21 +204,27 @@ export async function runOpportunity(): Promise<OpportunityData> {
   return data;
 }
 
-// Generate (or return cached) the candidate ventures, born from the confirmed
-// synthesis + agreed opportunity.
-export async function runVentures(chosenSpaceId?: string): Promise<Venture[]> {
+// Birth the venture in small steps (research -> core -> market & money -> lenses),
+// one per call, so each fits a serverless invocation. The client calls this in a
+// loop until { done: true }, persisting the accumulating build state server-side.
+export async function runVentureStep(chosenSpaceId?: string): Promise<{ stage: string; done: boolean; ventures?: Venture[] }> {
   const m = await currentMember();
   if (!m) throw new Error("Not in a team.");
 
   const cached = await getVentures(m.team_id);
-  if (cached) return cached as Venture[];
+  if (cached) return { stage: "done", done: true, ventures: cached as Venture[] };
 
   const [synthesis, opportunity] = await Promise.all([getSynthesis(m.team_id), getOpportunity(m.team_id)]);
   if (!synthesis || !opportunity) throw new Error("Agree your opportunity first.");
 
-  const data = await generateVentures(synthesis as SynthesisData, opportunity as OpportunityData, chosenSpaceId);
-  await saveVentures(m.team_id, data);
-  return data;
+  const state = ((await getVentureBuild(m.team_id)) as VentureBuildState | null) ?? {};
+  const step = await advanceVenture(synthesis as SynthesisData, opportunity as OpportunityData, state, chosenSpaceId);
+  if (step.done && step.ventures) {
+    await saveVentures(m.team_id, step.ventures);
+    return { stage: step.stage, done: true, ventures: step.ventures };
+  }
+  await saveVentureBuild(m.team_id, step.state);
+  return { stage: step.stage, done: false };
 }
 
 // Persist the team's edits to the working venture draft (the editable venture page).

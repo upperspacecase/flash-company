@@ -87,7 +87,7 @@ export type LiveCtx = {
   onRunSynthesis: (force?: boolean) => Promise<SynthesisData>;
   onConfirmSynthesis: (data: SynthesisData) => Promise<void>;
   onRunOpportunity: () => Promise<OpportunityData>;
-  onRunVentures: (chosenSpaceId?: string) => Promise<Venture[]>;
+  onRunVentureStep: (chosenSpaceId?: string) => Promise<{ stage: string; done: boolean; ventures?: Venture[] }>;
   onSaveDraft: (draft: VentureDraft) => void | Promise<void>;
 };
 
@@ -253,6 +253,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   const [oppData, setOppData] = useState<OpportunityData | null>(live ? live.opportunity : (seed?.opportunity ?? null));
   const [ventData, setVentData] = useState<Venture[] | null>(live ? live.ventures : (seed?.ventures ?? null));
   const [ventError, setVentError] = useState(false);
+  const [ventStage, setVentStage] = useState("");
 
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
 
@@ -302,19 +303,31 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
     return () => { active = false; };
   }, [live, reached, oppData]);
 
-  // Live: once the opportunity is agreed (reached Ventures), birth (or fetch
-  // cached) the candidate ventures from the confirmed synthesis + opportunity.
+  // Live: once the opportunity is agreed (reached Ventures), build the venture in
+  // steps (research -> core -> market & money -> lenses), one server call each,
+  // surfacing the current stage. Loops until the venture is assembled.
+  const buildVentureLoop = useCallback(async (isActive: () => boolean) => {
+    if (!live) return;
+    try {
+      for (;;) {
+        const r = await live.onRunVentureStep(spaceId || undefined);
+        if (!isActive()) return;
+        if (r.done && r.ventures) { setVentData(r.ventures); return; }
+        setVentStage(r.stage);
+      }
+    } catch { if (isActive()) setVentError(true); }
+  }, [live, spaceId]);
+
   useEffect(() => {
     if (!live || reached < 4 || ventData) return;
     let active = true;
-    live.onRunVentures(spaceId || undefined).then((d) => { if (active) setVentData(d); }).catch(() => { if (active) setVentError(true); });
+    buildVentureLoop(() => active);
     return () => { active = false; };
-  }, [live, reached, ventData, spaceId]);
+  }, [live, reached, ventData, buildVentureLoop]);
 
   const retryVentures = () => {
-    if (!live) return;
     setVentError(false);
-    live.onRunVentures(spaceId || undefined).then(setVentData).catch(() => setVentError(true));
+    buildVentureLoop(() => true);
   };
 
   // Live: seed the editable venture draft from the persisted draft, else from the
@@ -403,7 +416,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 3:
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} spaceId={spaceId} onSpace={setSpaceId} />;
       case 4:
-        return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
+        return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
         return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} gated={isFree} />;
     }
@@ -1704,12 +1717,18 @@ function ErrorState({ title, sub, onRetry }: { title: string; sub: string; onRet
   );
 }
 
-function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, name, onName, venture, onVenture, recorded, onRecord, onNext, cohort = [] }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; cohort?: Member[] }) {
-  // Live: building the venture (or a failure with a retry).
+function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, stage = "", name, onName, venture, onVenture, recorded, onRecord, onNext, cohort = [] }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; stage?: string; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; cohort?: Member[] }) {
+  // Live: building the venture in steps (or a failure with a retry).
   if (live && (!ventures || ventures.length === 0)) {
+    const stageSub: Record<string, string> = {
+      research: "Step 1 of 4 — researching the market, competitors, and pricing.",
+      core: "Step 2 of 4 — shaping the venture: customer, problem, advantage, approach.",
+      plan: "Step 3 of 4 — modelling the market read, financials, and revenue.",
+      lenses: "Step 4 of 4 — viewing it through the Magic Lenses.",
+    };
     return error
-      ? <ErrorState title="Couldn't birth your ventures" sub="The agent hit a snag turning your opportunity into ventures. Give it another go." onRetry={onRetry} />
-      : <GeneratingState title="Building your venture" sub="Flash is handing off to research agents — deep market & competitor research, financial modelling, a red-team pass, and the lens gates. This is the full build, so it can take several minutes. You can leave and come back — it'll be here." />;
+      ? <ErrorState title="Couldn't build your venture" sub="The agent hit a snag building the venture. Give it another go — it picks up where it left off." onRetry={onRetry} />
+      : <GeneratingState title="Building your venture" sub={stageSub[stage] ?? "Handing off to the research agents — this runs in a few short steps and can take a few minutes. You can leave and come back."} />;
   }
   const list = ventures && ventures.length ? ventures : VENTURES;
   // One venture is birthed from the chosen opportunity — show it (no slate).

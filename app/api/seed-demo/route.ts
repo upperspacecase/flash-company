@@ -2,10 +2,11 @@ import { COHORT, draftFromVenture, type SynthesisData, type OpportunityData } fr
 import { DEMO_TEAM_ID, DEMO_INTAKES } from "@/lib/demo-seed";
 import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
-import { generateVentures } from "@/lib/ventures";
+import { advanceVenture, type VentureBuildState } from "@/lib/ventures";
 import {
   getSynthesis, getOpportunity, getVentures, getVentureDraft,
   saveSynthesis, saveOpportunity, saveVentures, saveVentureDraft,
+  getVentureBuild, saveVentureBuild,
 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -45,10 +46,16 @@ export async function POST(req: Request) {
 
   const ventures = await getVentures(DEMO_TEAM_ID).catch(() => null);
   if (!ventures) {
-    const v = await generateVentures(synthesis, opportunity);
-    await saveVentures(DEMO_TEAM_ID, v);
-    if (v[0]) await saveVentureDraft(DEMO_TEAM_ID, draftFromVenture(v[0], COHORT));
-    return Response.json({ step: "ventures", venture: v[0]?.name ?? null, complete: true });
+    // Build the venture one step at a time (research -> core -> plan -> lenses).
+    const state = ((await getVentureBuild(DEMO_TEAM_ID).catch(() => null)) as VentureBuildState | null) ?? {};
+    const step = await advanceVenture(synthesis, opportunity, state);
+    if (step.done && step.ventures) {
+      await saveVentures(DEMO_TEAM_ID, step.ventures);
+      if (step.ventures[0]) await saveVentureDraft(DEMO_TEAM_ID, draftFromVenture(step.ventures[0], COHORT));
+      return Response.json({ step: `venture:${step.stage}`, venture: step.ventures[0]?.name ?? null, complete: true });
+    }
+    await saveVentureBuild(DEMO_TEAM_ID, step.state);
+    return Response.json({ step: `venture:${step.stage}`, next: "POST again for the next venture step" });
   }
 
   return Response.json({ seeded: true, complete: true });
