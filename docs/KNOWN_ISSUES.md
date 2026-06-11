@@ -16,12 +16,11 @@ with a date when resolved.
 - [ ] **`app/demo/_v1/` uses the old `-sage` classes** — archived/orphaned (nothing
   imports it). Left untouched during the sage→orange rename. Delete the folder, or
   rename its classes if it's being kept.
-- [ ] **Input phase (mobile): the current question sits below the input box** — with
-  the input moved to the top on mobile, the agent's current question still renders
-  in the conversation card below it. Confirm that's fine, or pull the question up
-  next to the input.
-
 ## Fixed
+
+- [x] **Input phase (mobile): input box was disconnected from its question** — the
+  mobile layout now wraps the whole flow (stepper, Flash + questions, input) in one
+  orange border, in natural order, with "How it works" below it. (2026-06-11)
 
 - [x] **`resend` module not found** (`lib/email.ts`) — `resend` was declared in
   `package.json` (`^6.12.4`) but not installed in `node_modules`, so `tsc` failed
