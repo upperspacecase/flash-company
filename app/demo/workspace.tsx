@@ -238,10 +238,12 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
   const youId = live ? live.meId : YOU;
 
   const [phase, setPhase] = useState(0);
-  const [accepted, setAccepted] = useState(live ? live.accepted : false);
-  const [reached, setReached] = useState(live && live.accepted ? 1 : 0);
-  // Synthesis stays locked until every team member completes Intake.
-  const [teamReady, setTeamReady] = useState(live ? live.teamIntakeComplete : false);
+  // Demo: assume the full flow already ran — every step unlocked and navigable so
+  // you can click around and see it all. Live: gated step by step as before.
+  const [accepted, setAccepted] = useState(live ? live.accepted : true);
+  const [reached, setReached] = useState(live ? (live.accepted ? 1 : 0) : PHASES.length - 1);
+  // Synthesis stays locked until every team member completes Intake (live only).
+  const [teamReady, setTeamReady] = useState(live ? live.teamIntakeComplete : true);
   const [waiting, setWaiting] = useState(false); // "waiting for teammates" beat
   const [status, setStatus] = useState<MemberStatus[] | null>(live ? live.status : null);
   const [synthData, setSynthData] = useState<SynthesisData | null>(live ? live.synthesis : null);
@@ -395,7 +397,7 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
       case 2:
-        return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} data={synthesisData} />;
+        return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} data={synthesisData} showAll={!live} />;
       case 3:
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} spaceId={spaceId} onSpace={setSpaceId} />;
       case 4:
@@ -1202,8 +1204,8 @@ function TextControl({ value, onChange, max, placeholder, multiline, voiceable, 
     <div>
       <div>
         {multiline
-          ? <textarea value={value} onChange={(e) => onChange(e.target.value)} maxLength={max} rows={3} placeholder={placeholder} className="w-full resize-y rounded-xl border border-slate-200 p-3 text-sm text-foreground focus:border-orange focus:outline-none" />
-          : <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onEnter?.(); } }} maxLength={max} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 p-3 text-sm text-foreground focus:border-orange focus:outline-none" />}
+          ? <textarea autoFocus value={value} onChange={(e) => onChange(e.target.value)} maxLength={max} rows={3} placeholder={placeholder} className="w-full resize-y rounded-xl border border-slate-200 p-3 text-sm text-foreground focus:border-orange focus:outline-none" />
+          : <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onEnter?.(); } }} maxLength={max} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 p-3 text-sm text-foreground focus:border-orange focus:outline-none" />}
       </div>
       {max && <p className="mt-1 text-right text-[11px] text-slate-400">{value.length}/{max}</p>}
     </div>
@@ -1261,10 +1263,10 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
 
 /* ----------------------------------------------------- 2. Synthesis */
 
-function SynthesisPhase({ onConfirm, cohort = COHORT, data }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; data?: SynthesisData }) {
+function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; data?: SynthesisData; showAll?: boolean }) {
   const d = data ?? mockSynthesisData();
   const [energy, setEnergy] = useState<Record<string, number[]>>(() => Object.fromEntries(cohort.map((m) => [m.id, [...(d.skillEnergy[m.id] ?? SKILLS.map(() => 3))]])));
-  const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, ...Object.fromEntries(cohort.map((m) => [m.id, false])) }));
+  const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, ...Object.fromEntries(cohort.map((m) => [m.id, showAll])) }));
   const [editId, setEditId] = useState(cohort[0]?.id ?? YOU);
   const [roles, setRoles] = useState(d.roles.map((r) => ({ ...r })));
   const [industries, setIndustries] = useState<NetworkNode[]>(d.network.filter((n) => n.kind === "industry").map((n) => ({ ...n })));
