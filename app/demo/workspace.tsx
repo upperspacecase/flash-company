@@ -331,10 +331,10 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
 
   // Gating. Invite (0) is always open. Later steps open once you've accepted AND
   // reached them; Synthesis (2) additionally waits for the whole team's intake;
-  // Validation (5) stays locked on the free plan. Locked steps are navigable —
-  // they show the real content greyed out and non-interactive (LockedShell).
+  // Validation is fully click-through for everyone (the preview is built live from
+  // the venture); only the publish / go-live action inside it is gated on free.
   const unlocked = (i: number) =>
-    i === 0 || (accepted && i <= reached && !(isFree && i >= 5) && (i !== 2 || teamReady));
+    i === 0 || (accepted && i <= reached && (i !== 2 || teamReady));
   const advance = (i: number) => { setReached((r) => Math.max(r, i)); setPhase(i); };
 
   const accept = async () => {
@@ -399,9 +399,9 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
       case 3:
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} spaceId={spaceId} onSpace={setSpaceId} />;
       case 4:
-        return <VenturesPhase plan={plan} live={!!live} ventures={live ? (ventData ?? undefined) : undefined} error={live ? ventError : false} onRetry={retryVentures} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} onNext={() => advance(5)} />;
+        return <VenturesPhase plan={plan} live={!!live} ventures={live ? (ventData ?? undefined) : undefined} error={live ? ventError : false} onRetry={retryVentures} ventureId={ventureId} onSelect={setVentureId} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
-        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} />;
+        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} gated={isFree} />;
     }
   };
 
@@ -1678,7 +1678,7 @@ function ErrorState({ title, sub, onRetry }: { title: string; sub: string; onRet
   );
 }
 
-function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, ventureId, onSelect, name, onName, venture, onVenture, recorded, onRecord, onNext }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void }) {
+function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, ventureId, onSelect, name, onName, venture, onVenture, recorded, onRecord, onNext, cohort = [] }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; ventureId: string; onSelect: (id: string) => void; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; cohort?: Member[] }) {
   // Live: building the venture (or a failure with a retry).
   if (live && (!ventures || ventures.length === 0)) {
     return error
@@ -1731,7 +1731,7 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
             </div>
 
             {editable ? (
-              <RichVentureDetail venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} detail={v.detail} />
+              <RichVentureDetail venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} detail={v.detail} cohort={cohort} />
             ) : (
               <>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1798,13 +1798,17 @@ function LensCards({ lenses }: { lenses: NonNullable<Venture["lenses"]> }) {
   );
 }
 
-function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext, detail }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; detail?: VentureDetail }) {
+function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext, detail, cohort = [] }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; detail?: VentureDetail; cohort?: Member[] }) {
   const d = VENTURE_DETAILS;
   // Prefer the live, research-grounded content when the venture was generated.
   const origin = detail && detail.origin.length ? detail.origin : d.origin;
   const financials = detail && detail.financials.rows.length ? detail.financials : d.financials;
   const sprint = detail && detail.sprint.length ? detail.sprint : d.sprint;
   const risks = detail && detail.risks.length ? detail.risks : d.risks;
+  // Live: commitments are the real team, each owning their cap-table responsibility.
+  const commits: { member: Member; statement: string }[] = detail && cohort.length
+    ? cohort.map((m) => { const row = venture.capTable.rows.find((r) => r.memberId === m.id); return { member: m, statement: row?.responsibility || m.brings || "Owns their part of the build." }; })
+    : d.commitments.map((c) => ({ member: memberById(c.memberId), statement: c.statement }));
   const setRow = (i: number, patch: Partial<VentureDraft["capTable"]["rows"][number]>) =>
     onVenture((p) => ({ ...p, capTable: { ...p.capTable, rows: p.capTable.rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) } }));
   const setPool = (pool: number) => onVenture((p) => ({ ...p, capTable: { ...p.capTable, pool } }));
@@ -1835,11 +1839,11 @@ function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext, de
       </Section>
 
       <Section title="The commitment">
-        <div className="space-y-2">{d.commitments.map((c) => { const m = memberById(c.memberId); const rec = recorded[c.memberId]; return (
-          <div key={c.memberId} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+        <div className="space-y-2">{commits.map(({ member: m, statement }) => { const rec = recorded[m.id]; return (
+          <div key={m.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
             <Avatar m={m} size="h-9 w-9 text-xs" />
-            <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{m.name}</p><p className="truncate text-xs text-slate-500">{c.statement}</p></div>
-            <button onClick={() => onRecord(c.memberId)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${rec ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={rec ? "check" : "play"} className="h-3.5 w-3.5" />{rec ? "Recorded" : "Record"}</button>
+            <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{m.name}</p><p className="truncate text-xs text-slate-500">{statement}</p></div>
+            <button onClick={() => onRecord(m.id)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${rec ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={rec ? "check" : "play"} className="h-3.5 w-3.5" />{rec ? "Recorded" : "Record"}</button>
           </div>
         ); })}</div>
       </Section>
@@ -1857,7 +1861,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const CHANNELS = [{ key: "linkedin", label: "LinkedIn" }, { key: "dm", label: "DM" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }] as const;
 
-function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void }) {
+function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean }) {
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
   const v = VALIDATION;
   const deck = buildDeck(venture, name);
@@ -1899,7 +1903,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
 
           <div className="mt-6"><Section title="Landing page">
             <p className="-mt-1 mb-3 text-xs text-slate-400">The proven 5-part formula — value, how, visual, social proof, next step.</p>
-            <PublishBar published={published} onPublish={onPublish} url={v.liveUrl} />
+            <PublishBar published={published} onPublish={onPublish} url={v.liveUrl} gated={gated} />
             <LandingHero name={name} landing={landing} />
           </Section></div>
 
@@ -2122,7 +2126,7 @@ function DotScore({ value, onChange, label }: { value: number; onChange?: (v: nu
   );
 }
 
-function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, detail }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; detail?: VentureDetail }) {
+function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, detail, cohort = [] }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; detail?: VentureDetail; cohort?: Member[] }) {
   const set = <K extends keyof VentureDraft,>(key: K, val: VentureDraft[K]) => onVenture((p) => ({ ...p, [key]: val }));
   const setBasics = (patch: Partial<VentureDraft["basics"]>) => onVenture((p) => ({ ...p, basics: { ...p.basics, ...patch } }));
   const setAdvantage = (patch: Partial<VentureDraft["advantage"]>) => onVenture((p) => ({ ...p, advantage: { ...p.advantage, ...patch } }));
@@ -2175,7 +2179,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
 
       <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} />
 
-      <FullVentureDetails venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} detail={detail} />
+      <FullVentureDetails venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} detail={detail} cohort={cohort} />
     </div>
   );
 }
@@ -2469,7 +2473,7 @@ function CapTable({ capTable, setRow, setPool }: { capTable: VentureDraft["capTa
 
 /* ----------------------------------------- validation: publish + scorecard */
 
-function PublishBar({ published, onPublish, url }: { published: boolean; onPublish: (p: boolean) => void; url: string }) {
+function PublishBar({ published, onPublish, url, gated = false }: { published: boolean; onPublish: (p: boolean) => void; url: string; gated?: boolean }) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
       {published ? (
@@ -2479,6 +2483,11 @@ function PublishBar({ published, onPublish, url }: { published: boolean; onPubli
           <button className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"><Icon name="copy" className="h-3.5 w-3.5" /> Copy link</button>
           <span className="ml-auto hidden items-center gap-1.5 text-xs text-slate-400 sm:flex"><Icon name="shield" className="h-3.5 w-3.5" /> Hosted by Flash Company · collecting signups</span>
           <button onClick={() => onPublish(false)} className="text-xs font-semibold text-slate-400 hover:text-slate-600">Unpublish</button>
+        </>
+      ) : gated ? (
+        <>
+          <span className="text-sm text-slate-600">Preview the hosted page and dashboard — publishing for real is part of Seed.</span>
+          <span className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-orange/40 bg-orange-tint/30 px-4 text-sm font-bold text-orange-dark"><Icon name="lock" className="h-4 w-4" /> Publishing is part of Seed</span>
         </>
       ) : (
         <>
