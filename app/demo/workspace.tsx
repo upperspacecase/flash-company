@@ -549,48 +549,10 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
   };
   return (
     <div className="mx-auto max-w-3xl space-y-12 py-4">
-      {/* 1 · Hero */}
-      <section>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
-        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">Ever wonder what you and <span className="text-orange">two</span> <CyclingWord className="text-orange" /> could start?</h1>
-        <p className="mt-5 text-lg leading-relaxed text-slate-600">
-          Invite two people to a 48-hour structured ideation process that maps your combined skills, networks, and insights into an idea worth sharing.
-        </p>
-      </section>
-
-      {/* 2 · How it works */}
-      <section>
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">How it works</h2>
-        <div className="mt-4 grid gap-5 sm:grid-cols-3">
-          {HOW_STEPS.map((s) => (
-            <div key={s.title}>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-tint text-orange"><Icon name={s.icon} className="h-4 w-4" /></span>
-              <p className="mt-3 text-sm font-bold text-foreground">{s.title}</p>
-              <p className="mt-1 text-sm leading-relaxed text-slate-500">{s.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 3 · Invite your team */}
-      <section>
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Invite your team</h2>
-        <p className="mt-1 text-sm text-slate-500">Up to three people. Share a link — no app, no account.</p>
-        <div className="mt-4 rounded-xl border border-slate-200 p-4">
-          <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
-          <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-orange"><Icon name="link" className="h-4 w-4" /></span>
-            <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{inviteUrl}</code>
-            <button onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md bg-orange px-3 py-1.5 text-xs font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}</button>
-          </div>
-          <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
-        </div>
-      </section>
-
-      {/* 4 · Accept -> payment */}
-      <section>
+      {/* 1 · Action zone: accept invite + invite your team, inside the orange border */}
+      <section className="rounded-2xl border border-orange bg-white/5 p-6">
         {accepted ? (
-          <div className="rounded-2xl border border-orange/40 bg-orange-tint/20 p-6">
+          <div>
             <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-orange" /> You&rsquo;re in.</p>
             <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
             <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
@@ -603,7 +565,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
             )}
           </div>
         ) : (
-          <div className="rounded-2xl border border-slate-200 bg-white/5 p-6">
+          <div>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-foreground">Accept your invite</p>
@@ -618,6 +580,43 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
             </div>
           </div>
         )}
+
+        <div className="my-6 h-px bg-slate-200" />
+
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Invite your team</h2>
+        <p className="mt-1 text-sm text-slate-500">Up to three people. Share a link — no app, no account.</p>
+        <div className="mt-4 rounded-xl border border-slate-200 p-4">
+          <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
+          <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-orange"><Icon name="link" className="h-4 w-4" /></span>
+            <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{inviteUrl}</code>
+            <button onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md bg-orange px-3 py-1.5 text-xs font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}</button>
+          </div>
+          <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
+        </div>
+      </section>
+
+      {/* 3 · Hero */}
+      <section>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
+        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">Ever wonder what you and <span className="text-orange">two</span> <CyclingWord className="text-orange" /> could start?</h1>
+        <p className="mt-5 text-lg leading-relaxed text-slate-600">
+          Invite two people to a 48-hour structured ideation process that maps your combined skills, networks, and insights into an idea worth sharing.
+        </p>
+      </section>
+
+      {/* 4 · How it works */}
+      <section>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">How it works</h2>
+        <div className="mt-4 grid gap-5 sm:grid-cols-3">
+          {HOW_STEPS.map((s) => (
+            <div key={s.title}>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-tint text-orange"><Icon name={s.icon} className="h-4 w-4" /></span>
+              <p className="mt-3 text-sm font-bold text-foreground">{s.title}</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-500">{s.text}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* 5 · Who's accepted */}
@@ -801,6 +800,27 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   const curSi = cur ? cur.si : INTAKE.length - 1;
   const canSend = !!cur && (isAnswered(answers[cur.q.id]) || cur.q.field.kind === "slider");
   return (
+    <>
+      {/* Mobile: a simple 1-6 section stepper, and the input box (the important action) up top. */}
+      <div className="mb-6 space-y-4 lg:hidden">
+        <div className="flex items-center">
+          {INTAKE.map((s, i) => {
+            const complete = answeredIn(s) === s.questions.length && i < curSi;
+            const active = i === curSi;
+            return (
+              <Fragment key={s.id}>
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${active ? "bg-orange text-white" : complete ? "bg-orange/20 text-orange-dark" : "bg-slate-100 text-slate-400"}`}>{complete ? <Icon name="check" className="h-3 w-3" /> : i + 1}</span>
+                {i < INTAKE.length - 1 && <span className={`h-px flex-1 ${i < curSi ? "bg-orange/40" : "bg-slate-200"}`} />}
+              </Fragment>
+            );
+          })}
+        </div>
+        {cur && (
+          <div className="rounded-2xl border border-orange bg-white/5 p-4">
+            <Composer key={cur.q.id} q={cur.q} value={answers[cur.q.id]} onChange={(v) => update(cur.q.id, v)} voice={isVoice(cur.q.id)} onVoice={() => setVoiceMode((m) => ({ ...m, [cur.q.id]: !m[cur.q.id] }))} canSend={canSend} onSend={() => setStep((s) => s + 1)} />
+          </div>
+        )}
+      </div>
     <Columns
       left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />}
       center={
@@ -824,16 +844,18 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
             {done && <AgentBubble text="That's everything. Whenever you're ready, I'll synthesise all three of you." />}
           </div>
 
-          <div className="mt-5 border-t border-slate-100 pt-4">
-            {done ? (
+          {done ? (
+            <div className="mt-5 border-t border-slate-100 pt-4">
               <div className="flex items-center justify-between gap-4 rounded-xl bg-orange-tint/40 p-3">
                 <p className="text-sm font-semibold text-orange-dark">Submitted — private until the team synthesis runs.</p>
                 <PrimaryBtn label="Run synthesis" onClick={onNext} icon="sparkle" />
               </div>
-            ) : cur ? (
+            </div>
+          ) : cur ? (
+            <div className="mt-5 hidden border-t border-slate-100 pt-4 lg:block">
               <Composer key={cur.q.id} q={cur.q} value={answers[cur.q.id]} onChange={(v) => update(cur.q.id, v)} voice={isVoice(cur.q.id)} onVoice={() => setVoiceMode((m) => ({ ...m, [cur.q.id]: !m[cur.q.id] }))} canSend={canSend} onSend={() => setStep((s) => s + 1)} />
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </Card>
       }
       right={
@@ -846,6 +868,7 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
         </div>
       }
     />
+    </>
   );
 }
 
@@ -853,7 +876,7 @@ function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProg
   const youDone = INTAKE.reduce((n, s) => n + answeredIn(s), 0);
   const team = cohort.map((m) => ({ m, done: m.id === youId ? youDone : (othersProgress?.(m.id) ?? 0), you: m.id === youId }));
   return (
-    <div className="space-y-4 lg:sticky lg:top-4">
+    <div className="hidden space-y-4 lg:block lg:sticky lg:top-4">
       <RailTitle>Your intake</RailTitle>
       <p className="px-1 text-xs text-slate-400">Six sections, conversational. Anonymous until synthesis.</p>
       <div className="space-y-1.5">
