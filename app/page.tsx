@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { CyclingWord } from "@/app/cycling-word";
 
 const SECTIONS = [
   { id: "hero", label: "Start" },
@@ -88,33 +89,6 @@ function Section({ id, children }: { id: string; children: React.ReactNode }) {
 
 function H({ children }: { children: React.ReactNode }) {
   return <h2 className="text-5xl font-extrabold leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">{children}</h2>;
-}
-
-const ROLES = ["friends", "colleagues", "classmates", "mentors", "siblings", "grandmas", "entrepreneurs"];
-const LONGEST = ROLES.reduce((a, b) => (b.length > a.length ? b : a));
-
-function CyclingWord() {
-  const [i, setI] = useState(0);
-  const ref = useRef<HTMLSpanElement | null>(null);
-  useEffect(() => {
-    const id = setInterval(() => setI((n) => (n + 1) % ROLES.length), 2000);
-    return () => clearInterval(id);
-  }, []);
-  useEffect(() => {
-    ref.current?.animate(
-      [
-        { opacity: 0, transform: "translateY(0.35em)" },
-        { opacity: 1, transform: "translateY(0)" },
-      ],
-      { duration: 380, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
-    );
-  }, [i]);
-  return (
-    <span className="relative inline-block text-accent">
-      <span aria-hidden="true" className="invisible">{LONGEST}</span>
-      <span ref={ref} className="absolute inset-x-0 top-0 text-left">{ROLES[i]}</span>
-    </span>
-  );
 }
 
 function FlowArrow({ logo }: { logo?: boolean }) {

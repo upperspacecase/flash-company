@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
+import { CyclingWord } from "@/app/cycling-word";
 import {
   APPROACH_OPTIONS,
   CHOSEN_ID,
@@ -168,7 +169,7 @@ function Chip({ children }: { children: React.ReactNode }) {
 function CheckRow({ label, done = true }: { label: string; done?: boolean }) {
   return (
     <li className="flex items-center gap-2 text-sm">
-      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${done ? "bg-sage text-white" : "border border-slate-300 text-transparent"}`}>
+      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${done ? "bg-orange text-white" : "border border-slate-300 text-transparent"}`}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m5 12 5 5L20 7" /></svg>
       </span>
       <span className={done ? "text-slate-700" : "text-slate-400"}>{label}</span>
@@ -194,7 +195,7 @@ function CenterHead({ title, sub, right }: { title: string; sub: string; right?:
 }
 function PrimaryBtn({ label, onClick, icon = "send" }: { label: string; onClick: () => void; icon?: IconName }) {
   return (
-    <button onClick={onClick} className="inline-flex h-12 items-center gap-2 rounded-xl bg-sage px-6 text-sm font-bold text-white transition-colors hover:bg-sage-dark">
+    <button onClick={onClick} className="inline-flex h-12 items-center gap-2 rounded-xl bg-orange px-6 text-sm font-bold text-white transition-colors hover:bg-orange-dark">
       {label}<Icon name={icon} className="h-4 w-4" />
     </button>
   );
@@ -205,19 +206,19 @@ function RailTitle({ children }: { children: React.ReactNode }) {
 function Bars({ value, label }: { value: number; label: string }) {
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-500">{label}</span><span className="font-semibold text-sage-dark">{value}/5</span></div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-sage" style={{ width: `${(value / 5) * 100}%` }} /></div>
+      <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-500">{label}</span><span className="font-semibold text-orange-dark">{value}/5</span></div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange" style={{ width: `${(value / 5) * 100}%` }} /></div>
     </div>
   );
 }
 function Upsell({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-xl border border-sage/30 bg-sage-tint/30 p-4">
-      <p className="flex items-center gap-2 font-semibold text-foreground"><Icon name="lock" className="h-4 w-4 text-sage" /> {title}</p>
+    <div className="rounded-xl border border-orange/30 bg-orange-tint/30 p-4">
+      <p className="flex items-center gap-2 font-semibold text-foreground"><Icon name="lock" className="h-4 w-4 text-orange" /> {title}</p>
       <p className="mt-1 text-sm text-slate-600">{text}</p>
       <div className="mt-3 flex flex-wrap items-center gap-4">
-        <a href="/demo" className="inline-flex h-11 items-center gap-2 rounded-xl bg-sage px-5 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="bolt" className="h-4 w-4" /> Unlock the Seed protocol</a>
-        <a href="/#pricing" className="text-sm font-semibold text-sage-dark hover:underline">See pricing</a>
+        <a href="/demo" className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="bolt" className="h-4 w-4" /> Unlock the Seed protocol</a>
+        <a href="/#pricing" className="text-sm font-semibold text-orange-dark hover:underline">See pricing</a>
       </div>
     </div>
   );
@@ -413,9 +414,9 @@ export function DemoWorkspace({ plan, live }: { plan: "free" | "full"; live?: Li
         </div>
       )}
       {canForceSynthesis && (
-        <div className="flex flex-wrap items-center justify-center gap-3 border-b border-sage/30 bg-sage-tint/30 px-5 py-2.5 text-center text-xs">
-          <span className="font-semibold text-sage-dark">{completedCount} of {acceptedCount} have finished their input.</span>
-          <button onClick={forceSynthesis} className="inline-flex items-center gap-1.5 rounded-full bg-sage px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-sage-dark">Start synthesis without the rest <Icon name="sparkle" className="h-3.5 w-3.5" /></button>
+        <div className="flex flex-wrap items-center justify-center gap-3 border-b border-orange/30 bg-orange-tint/30 px-5 py-2.5 text-center text-xs">
+          <span className="font-semibold text-orange-dark">{completedCount} of {acceptedCount} have finished their input.</span>
+          <button onClick={forceSynthesis} className="inline-flex items-center gap-1.5 rounded-full bg-orange px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-orange-dark">Start synthesis without the rest <Icon name="sparkle" className="h-3.5 w-3.5" /></button>
         </div>
       )}
       <main className="mx-auto w-full max-w-[1500px] flex-1 px-5 py-6">
@@ -464,7 +465,7 @@ function Countdown({ endsAt }: { endsAt: string }) {
     label = "Window closed";
   }
   return (
-    <span className={`hidden items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold sm:flex ${expired ? "bg-amber-100 text-amber-700" : "bg-sage-tint text-sage-dark"}`}>
+    <span className={`hidden items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold sm:flex ${expired ? "bg-amber-100 text-amber-700" : "bg-orange-tint text-orange-dark"}`}>
       <Icon name="clock" className="h-3.5 w-3.5" /> {label}
     </span>
   );
@@ -476,13 +477,13 @@ function Header({ plan, cohort = COHORT, windowEndsAt }: { plan: "free" | "full"
     <header className="border-b border-slate-200 bg-white/5">
       <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-4 px-5 py-3">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-sage"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-orange"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
           <span className="text-lg font-bold tracking-tight text-foreground">Flash Company</span>
-          <span className="hidden text-sm font-medium italic text-sage md:inline">{TAGLINE}</span>
+          <span className="hidden text-sm font-medium italic text-orange md:inline">{TAGLINE}</span>
         </Link>
         <div className="flex shrink-0 items-center gap-3">
           {windowEndsAt ? <Countdown endsAt={windowEndsAt} /> : (
-            <span className="hidden items-center gap-2 rounded-full bg-sage-tint px-3 py-1.5 text-xs font-semibold text-sage-dark sm:flex">
+            <span className="hidden items-center gap-2 rounded-full bg-orange-tint px-3 py-1.5 text-xs font-semibold text-orange-dark sm:flex">
               <Icon name="clock" className="h-3.5 w-3.5" /> {isFree ? `Free · ${SPRINT.freeHours}h` : `${SPRINT.windowHours}h sprint`}
             </span>
           )}
@@ -504,12 +505,12 @@ function Timeline({ phase, onJump, unlocked, reached }: { phase: number; onJump:
           const done = !locked && i < reached;
           return (
             <li key={p.id} className="flex flex-1 items-center gap-2">
-              <button onClick={() => onJump(i)} className={`flex flex-1 items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${active ? "border-sage bg-sage-tint/40" : locked ? "border-transparent opacity-50 hover:opacity-80" : "border-transparent hover:bg-slate-50"}`}>
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${active ? "bg-sage text-white" : done ? "bg-sage/20 text-sage-dark" : "bg-slate-100 text-slate-400"}`}>
+              <button onClick={() => onJump(i)} className={`flex flex-1 items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${active ? "border-orange bg-orange-tint/40" : locked ? "border-transparent opacity-50 hover:opacity-80" : "border-transparent hover:bg-slate-50"}`}>
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${active ? "bg-orange text-white" : done ? "bg-orange/20 text-orange-dark" : "bg-slate-100 text-slate-400"}`}>
                   {locked ? <Icon name="lock" className="h-3 w-3" /> : i + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className={`block whitespace-nowrap text-sm font-semibold ${active ? "text-sage-dark" : "text-slate-600"}`}>{p.label}</span>
+                  <span className={`block whitespace-nowrap text-sm font-semibold ${active ? "text-orange-dark" : "text-slate-600"}`}>{p.label}</span>
                 </span>
               </button>
               {i < PHASES.length - 1 && <span className="hidden text-slate-300 lg:block">›</span>}
@@ -528,9 +529,9 @@ function Timeline({ phase, onJump, unlocked, reached }: { phase: number; onJump:
 // accepted you can start your input and preview the later (locked) steps.
 
 const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
-  { icon: "group", title: "Bring your three worlds together", text: "Invite up to two others. Each of you adds what you bring — your skills, your networks, and the problems you can't stop noticing — privately, by text or voice." },
-  { icon: "sparkle", title: "Flash finds the overlap", text: "The agent reads all three of you at once and maps the connections no single person could see — the rare opportunities that only exist where your strengths, reach, and insight meet." },
-  { icon: "target", title: "The venture only you can build", text: "Narrow to the one idea the three of you are uniquely placed to build — with the team, the plan, and the assets to put it in front of real people." },
+  { icon: "group", title: "Bring your worlds together", text: "Invite up to two others. Each of you shares your skills, networks, insights and the problems you can't stop noticing by text or voice." },
+  { icon: "sparkle", title: "Flash finds the overlap", text: "Our AI agent maps the connections no single person could see. The rare opportunities that only exist where your strengths, networks, and insight meet." },
+  { icon: "target", title: "The venture only you can build", text: "Narrow to the one idea your team is uniquely placed to start, complete with the plan and the assets to share it openly with your network." },
 ];
 
 function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean }) {
@@ -550,10 +551,10 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
     <div className="mx-auto max-w-3xl space-y-12 py-4">
       {/* 1 · Hero */}
       <section>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Kick-off</p>
-        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">Ever wonder what you and 2 <span className="text-sage">friends</span> could build?</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
+        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">Ever wonder what you and <span className="text-orange">two</span> <CyclingWord className="text-orange" /> could start?</h1>
         <p className="mt-5 text-lg leading-relaxed text-slate-600">
-          Invite two people into a guided ideation process that maps your combined skills, networks, and insights into an idea <span className="text-sage">worth sharing</span>.
+          Invite two people to a 48-hour structured ideation process that maps your combined skills, networks, and insights into an idea worth sharing.
         </p>
       </section>
 
@@ -563,7 +564,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
         <div className="mt-4 grid gap-5 sm:grid-cols-3">
           {HOW_STEPS.map((s) => (
             <div key={s.title}>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sage-tint text-sage"><Icon name={s.icon} className="h-4 w-4" /></span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-tint text-orange"><Icon name={s.icon} className="h-4 w-4" /></span>
               <p className="mt-3 text-sm font-bold text-foreground">{s.title}</p>
               <p className="mt-1 text-sm leading-relaxed text-slate-500">{s.text}</p>
             </div>
@@ -578,9 +579,9 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
         <div className="mt-4 rounded-xl border border-slate-200 p-4">
           <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
           <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-sage"><Icon name="link" className="h-4 w-4" /></span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-orange"><Icon name="link" className="h-4 w-4" /></span>
             <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{inviteUrl}</code>
-            <button onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md bg-sage px-3 py-1.5 text-xs font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}</button>
+            <button onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md bg-orange px-3 py-1.5 text-xs font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}</button>
           </div>
           <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
         </div>
@@ -589,8 +590,8 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
       {/* 4 · Accept -> payment */}
       <section>
         {accepted ? (
-          <div className="rounded-2xl border border-sage/40 bg-sage-tint/20 p-6">
-            <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-sage" /> You&rsquo;re in.</p>
+          <div className="rounded-2xl border border-orange/40 bg-orange-tint/20 p-6">
+            <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-orange" /> You&rsquo;re in.</p>
             <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
             <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
             {resumeUrl && (
@@ -666,7 +667,7 @@ function PaymentModal({ onClose, onPaid, payment }: { onClose: () => void; onPai
 
         <div className="mt-5 space-y-2 rounded-xl border border-slate-200 p-4">
           <div className="flex items-center justify-between text-sm"><span className="text-slate-500">The buy-in</span><span className="font-bold text-foreground">{amount}</span></div>
-          <p className="flex items-start gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500"><Icon name="shield" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" /> Charged now to lock in your spot on the team.</p>
+          <p className="flex items-start gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500"><Icon name="shield" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange" /> Charged now to lock in your spot on the team.</p>
         </div>
 
         {payment ? (
@@ -682,7 +683,7 @@ function PaymentModal({ onClose, onPaid, payment }: { onClose: () => void; onPai
               <span className="ml-auto text-xs text-slate-300">•••• 4242</span>
             </div>
             <div className="mt-5 flex items-center gap-3">
-              <button onClick={onPaid} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-sage text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="check" className="h-4 w-4" /> Pay {amount} &amp; accept</button>
+              <button onClick={onPaid} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-orange text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="check" className="h-4 w-4" /> Pay {amount} &amp; accept</button>
               <button onClick={onClose} className="h-12 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
             </div>
             <p className="mt-3 text-center text-[11px] text-slate-400">Prototype — no real payment is taken.</p>
@@ -731,18 +732,18 @@ function LockedShell({ i, reason, cta, onGoInvite, children }: { i: number; reas
   const p = PHASES[i];
   return (
     <div className="mx-auto w-full max-w-[1500px]">
-      <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-sage/30 bg-sage-tint/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-orange/30 bg-orange-tint/20 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sage-tint text-sage"><Icon name="lock" className="h-4 w-4" /></span>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-tint text-orange"><Icon name="lock" className="h-4 w-4" /></span>
           <div>
             <p className="text-sm font-bold text-foreground">{p.label} is locked <span className="font-normal text-slate-400">· preview</span></p>
             <p className="mt-0.5 text-sm text-slate-600">{reason}</p>
           </div>
         </div>
         {cta === "invite" ? (
-          <button onClick={onGoInvite} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="bolt" className="h-4 w-4" /> Accept your invite</button>
+          <button onClick={onGoInvite} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-orange px-4 text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="bolt" className="h-4 w-4" /> Accept your invite</button>
         ) : cta === "seed" ? (
-          <a href="/demo" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="bolt" className="h-4 w-4" /> Unlock the Seed protocol</a>
+          <a href="/demo" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-orange px-4 text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="bolt" className="h-4 w-4" /> Unlock the Seed protocol</a>
         ) : null}
       </div>
       <div inert className="select-none opacity-60 grayscale">
@@ -806,10 +807,10 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
         <Card className="flex h-full flex-col p-6">
           <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sage text-white"><FlashMark className="h-4 w-4" /></span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange text-white"><FlashMark className="h-4 w-4" /></span>
               <div><p className="text-sm font-bold text-foreground">Flash</p><p className="text-xs text-slate-400">Tell me about yourself — type, talk, or tap.</p></div>
             </div>
-            <span className="rounded-full bg-sage-tint px-3 py-1 text-xs font-semibold text-sage-dark">{Math.min(step, INTAKE_FLOW.length)}/{INTAKE_TOTAL}</span>
+            <span className="rounded-full bg-orange-tint px-3 py-1 text-xs font-semibold text-orange-dark">{Math.min(step, INTAKE_FLOW.length)}/{INTAKE_TOTAL}</span>
           </div>
 
           <div className="flex-1 space-y-4">
@@ -825,8 +826,8 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
 
           <div className="mt-5 border-t border-slate-100 pt-4">
             {done ? (
-              <div className="flex items-center justify-between gap-4 rounded-xl bg-sage-tint/40 p-3">
-                <p className="text-sm font-semibold text-sage-dark">Submitted — private until the team synthesis runs.</p>
+              <div className="flex items-center justify-between gap-4 rounded-xl bg-orange-tint/40 p-3">
+                <p className="text-sm font-semibold text-orange-dark">Submitted — private until the team synthesis runs.</p>
                 <PrimaryBtn label="Run synthesis" onClick={onNext} icon="sparkle" />
               </div>
             ) : cur ? (
@@ -841,7 +842,7 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
           <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Just dump it.</span> No wrong answers — get it down, refine later.</p></Card>
           <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Type, talk, or tap.</span> Each question picks the easiest way to answer.</p></Card>
           <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Private.</span> Your answers stay yours until the team synthesis runs.</p></Card>
-          <Card className="bg-sage-tint/30"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="clock" className="h-4 w-4 text-sage" /> Deadline</p><p className="mt-1 text-sm text-slate-600">12 hours from team formation.</p></Card>
+          <Card className="bg-orange-tint/30"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="clock" className="h-4 w-4 text-orange" /> Deadline</p><p className="mt-1 text-sm text-slate-600">12 hours from team formation.</p></Card>
         </div>
       }
     />
@@ -861,10 +862,10 @@ function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProg
           const complete = a === s.questions.length && i < curSi;
           const active = i === curSi;
           return (
-            <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${active ? "border-sage bg-sage-tint/30" : "border-transparent"}`}>
-              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${complete ? "bg-sage text-white" : active ? "bg-sage/20 text-sage-dark" : "bg-slate-100 text-slate-400"}`}>{complete ? <Icon name="check" className="h-3 w-3" /> : i + 1}</span>
+            <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${active ? "border-orange bg-orange-tint/30" : "border-transparent"}`}>
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${complete ? "bg-orange text-white" : active ? "bg-orange/20 text-orange-dark" : "bg-slate-100 text-slate-400"}`}>{complete ? <Icon name="check" className="h-3 w-3" /> : i + 1}</span>
               <span className="min-w-0 flex-1">
-                <span className={`block truncate text-sm font-semibold ${active ? "text-sage-dark" : "text-slate-600"}`}>{s.title}</span>
+                <span className={`block truncate text-sm font-semibold ${active ? "text-orange-dark" : "text-slate-600"}`}>{s.title}</span>
                 <span className="block text-[11px] text-slate-400">{a}/{s.questions.length}</span>
               </span>
             </div>
@@ -884,7 +885,7 @@ function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProg
                   <span className="font-semibold text-foreground">{m.name}{t.you && <span className="font-normal text-slate-400"> (you)</span>}</span>
                   <span className="tabular-nums text-slate-400">{t.done}/{INTAKE_TOTAL}</span>
                 </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-sage" style={{ width: `${pct}%` }} /></div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange" style={{ width: `${pct}%` }} /></div>
               </div>
             </div>
           );
@@ -910,11 +911,11 @@ function SectionIntro({ index, title, blurb }: { index: number; title: string; b
 function AgentBubble({ q, text }: { q?: IntakeQuestion; text?: string }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage text-white"><FlashMark className="h-3.5 w-3.5" /></span>
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange text-white"><FlashMark className="h-3.5 w-3.5" /></span>
       <div className="max-w-lg rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5">
         <p className="text-sm text-slate-700">{q ? q.q : text}</p>
         {q?.help && <p className="mt-1 text-xs text-slate-400">{q.help}</p>}
-        {q && isVoiceable(q.field) && <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-sage-dark"><Icon name="mic" className="h-3 w-3" /> Voice or text</p>}
+        {q && isVoiceable(q.field) && <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-orange-dark"><Icon name="mic" className="h-3 w-3" /> Voice or text</p>}
       </div>
     </div>
   );
@@ -924,7 +925,7 @@ function UserAnswer({ field, value, voice }: { field: IntakeField; value: unknow
   const text = formatAnswer(field, value);
   return (
     <div className="flex justify-end">
-      <div className="max-w-lg rounded-2xl rounded-tr-sm bg-sage px-4 py-2.5 text-sm text-white">
+      <div className="max-w-lg rounded-2xl rounded-tr-sm bg-orange px-4 py-2.5 text-sm text-white">
         {voice && <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-white/80"><Icon name="mic" className="h-3.5 w-3.5" /> voice memo</span>}
         <span className="whitespace-pre-line">{text || "—"}</span>
       </div>
@@ -968,7 +969,7 @@ function Composer({ q, value, onChange, voice, onVoice, canSend, onSend }: { q: 
         {f.kind === "ranked" && <RankedControl value={asRanked(value)} onChange={onChange} options={f.options} />}
       </div>
       <div className="flex items-center justify-end">
-        <button onClick={onSend} disabled={!canSend && !q.optional} className="inline-flex h-11 items-center gap-2 rounded-xl bg-sage px-5 text-sm font-bold text-white transition-colors hover:bg-sage-dark disabled:opacity-40">{label} <Icon name="send" className="h-4 w-4" /></button>
+        <button onClick={onSend} disabled={!canSend && !q.optional} className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:opacity-40">{label} <Icon name="send" className="h-4 w-4" /></button>
       </div>
     </div>
   );
@@ -1074,8 +1075,8 @@ function TextControl({ value, onChange, max, placeholder, multiline, voiceable, 
     const ss = String(elapsed % 60).padStart(2, "0");
     const blocked = error === "not-allowed" || error === "service-not-allowed";
     return (
-      <div className="flex items-start gap-3 rounded-xl border border-sage bg-sage-tint/20 p-3">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage text-white ${listening ? "animate-pulse" : ""}`}><Icon name="mic" className="h-4 w-4" /></span>
+      <div className="flex items-start gap-3 rounded-xl border border-orange bg-orange-tint/20 p-3">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange text-white ${listening ? "animate-pulse" : ""}`}><Icon name="mic" className="h-4 w-4" /></span>
         <div className="min-w-0 flex-1">
           <div ref={previewRef} className="max-h-20 overflow-y-auto whitespace-pre-line text-sm text-foreground">{value || (blocked ? "" : "Listening… start speaking.")}</div>
           <p className="mt-1 text-xs text-slate-500">
@@ -1088,7 +1089,7 @@ function TextControl({ value, onChange, max, placeholder, multiline, voiceable, 
                   : "Starting… allow microphone access."}
           </p>
         </div>
-        <button onClick={onVoice} className="shrink-0 text-xs font-semibold text-sage-dark hover:underline">Type instead</button>
+        <button onClick={onVoice} className="shrink-0 text-xs font-semibold text-orange-dark hover:underline">Type instead</button>
       </div>
     );
   }
@@ -1096,9 +1097,9 @@ function TextControl({ value, onChange, max, placeholder, multiline, voiceable, 
     <div>
       <div className="relative">
         {multiline
-          ? <textarea value={value} onChange={(e) => onChange(e.target.value)} maxLength={max} rows={3} placeholder={placeholder} className="w-full resize-y rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-sage focus:outline-none" />
-          : <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onEnter?.(); } }} maxLength={max} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-sage focus:outline-none" />}
-        {canVoice && <button onClick={onVoice} aria-label="Dictate your answer" className="absolute right-2 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-sage"><Icon name="mic" className="h-4 w-4" /></button>}
+          ? <textarea value={value} onChange={(e) => onChange(e.target.value)} maxLength={max} rows={3} placeholder={placeholder} className="w-full resize-y rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-orange focus:outline-none" />
+          : <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onEnter?.(); } }} maxLength={max} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 p-3 pr-10 text-sm text-foreground focus:border-orange focus:outline-none" />}
+        {canVoice && <button onClick={onVoice} aria-label="Dictate your answer" className="absolute right-2 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-orange"><Icon name="mic" className="h-4 w-4" /></button>}
       </div>
       {max && <p className="mt-1 text-right text-[11px] text-slate-400">{value.length}/{max}</p>}
     </div>
@@ -1109,7 +1110,7 @@ function SliderControl({ value, onChange, min, max, step, unit }: { value: numbe
   return (
     <div>
       <div className="mb-2 flex items-baseline gap-1.5"><span className="text-2xl font-bold tabular-nums text-foreground">{value}{value === max && "+"}</span>{unit && <span className="text-sm text-slate-500">{unit}</span>}</div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-sage" />
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-orange" />
       <div className="mt-1 flex justify-between text-[11px] text-slate-400"><span>{min}</span><span>{max}+</span></div>
     </div>
   );
@@ -1117,7 +1118,7 @@ function SliderControl({ value, onChange, min, max, step, unit }: { value: numbe
 
 function LocationControl({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 focus-within:border-sage">
+    <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 focus-within:border-orange">
       <Icon name="target" className="h-4 w-4 shrink-0 text-slate-400" />
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="min-w-0 flex-1 text-sm text-foreground focus:outline-none" />
       {value && <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">timezone auto</span>}
@@ -1131,9 +1132,9 @@ function MultiSelectControl({ value, onChange, options, allowOther }: { value: M
   return (
     <div>
       <div className="flex flex-wrap gap-2">
-        {items.map((o) => { const on = value.sel.includes(o); return <button key={o} onClick={() => toggle(o)} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>{o}</button>; })}
+        {items.map((o) => { const on = value.sel.includes(o); return <button key={o} onClick={() => toggle(o)} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-orange bg-orange text-white" : "border-slate-200 text-slate-600 hover:border-orange/50"}`}>{o}</button>; })}
       </div>
-      {allowOther && value.sel.includes("Other") && <input value={value.other} onChange={(e) => onChange({ ...value, other: e.target.value })} placeholder="Tell us more" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-sage focus:outline-none" />}
+      {allowOther && value.sel.includes("Other") && <input value={value.other} onChange={(e) => onChange({ ...value, other: e.target.value })} placeholder="Tell us more" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-orange focus:outline-none" />}
     </div>
   );
 }
@@ -1144,12 +1145,12 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
     <div>
       <div className="flex flex-wrap gap-2">
         {options.map((o) => { const idx = value.ranked.indexOf(o); const on = idx >= 0; return (
-          <button key={o} onClick={() => toggle(o)} className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-sage bg-sage text-white" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>
-            {on && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/5 text-[10px] text-sage-dark">{idx + 1}</span>}{o}
+          <button key={o} onClick={() => toggle(o)} className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-orange bg-orange text-white" : "border-slate-200 text-slate-600 hover:border-orange/50"}`}>
+            {on && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/5 text-[10px] text-orange-dark">{idx + 1}</span>}{o}
           </button>
         ); })}
       </div>
-      <input value={value.note} onChange={(e) => onChange({ ...value, note: e.target.value })} placeholder="Anything to add" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-sage focus:outline-none" />
+      <input value={value.note} onChange={(e) => onChange({ ...value, note: e.target.value })} placeholder="Anything to add" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-orange focus:outline-none" />
     </div>
   );
 }
@@ -1196,7 +1197,7 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data }: { onConfirm: (data
           ].map((s) => (
             <Card key={s.t}>
               <div className="flex items-center gap-3">
-                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${s.done ? "bg-sage text-white" : "bg-slate-100 text-slate-400"}`}>{s.done ? <Icon name="check" className="h-3 w-3" /> : ""}</span>
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${s.done ? "bg-orange text-white" : "bg-slate-100 text-slate-400"}`}>{s.done ? <Icon name="check" className="h-3 w-3" /> : ""}</span>
                 <div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div>
               </div>
             </Card>
@@ -1215,7 +1216,7 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data }: { onConfirm: (data
             <p className="mt-1 text-slate-500">The agent read all three intakes. Confirm who you are, then narrow to a focus.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {d.convergence.map((s, i) => (
-                <span key={s.kind + i} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${s.tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-sage-tint/40 text-sage-dark"}`}><Icon name={s.icon} className="h-3.5 w-3.5" />{s.kind}</span>
+                <span key={s.kind + i} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${s.tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-orange-tint/40 text-orange-dark"}`}><Icon name={s.icon} className="h-3.5 w-3.5" />{s.kind}</span>
               ))}
             </div>
           </Card>
@@ -1262,7 +1263,7 @@ function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, childr
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white/5">
       <div className="flex items-center gap-2 p-3">
         <button onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${confirmed ? "bg-sage text-white" : "bg-slate-100 text-slate-400"}`}>{confirmed ? <Icon name="check" className="h-3 w-3" /> : <Icon name="user" className="h-3 w-3" />}</span>
+          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${confirmed ? "bg-orange text-white" : "bg-slate-100 text-slate-400"}`}>{confirmed ? <Icon name="check" className="h-3 w-3" /> : <Icon name="user" className="h-3 w-3" />}</span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-bold text-foreground">{title}</span>
             {hint && <span className="block truncate text-xs text-slate-400">{hint}</span>}
@@ -1270,7 +1271,7 @@ function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, childr
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 shrink-0 text-slate-300 transition-transform ${open ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
         </button>
         {onConfirm && (
-          <button onClick={onConfirm} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${confirmed ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={confirmed ? "check" : "thumb"} className="h-3.5 w-3.5" />{confirmed ? "Confirmed" : "Confirm"}</button>
+          <button onClick={onConfirm} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${confirmed ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={confirmed ? "check" : "thumb"} className="h-3.5 w-3.5" />{confirmed ? "Confirmed" : "Confirm"}</button>
         )}
       </div>
       {open && <div className="border-t border-slate-100 p-4">{children}</div>}
@@ -1286,14 +1287,14 @@ function NetworkList({ cohort = COHORT, nodes, onNodes, kind, icon, addLabel }: 
       {nodes.map((node, idx) => (
         <div key={idx} className="rounded-xl border border-slate-200 p-3">
           <div className="flex items-center gap-2">
-            <Icon name={icon} className="h-4 w-4 shrink-0 text-sage" />
-            <input value={node.name} onChange={(e) => setNode(idx, { name: e.target.value })} placeholder={`Add ${addLabel}…`} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
+            <Icon name={icon} className="h-4 w-4 shrink-0 text-orange" />
+            <input value={node.name} onChange={(e) => setNode(idx, { name: e.target.value })} placeholder={`Add ${addLabel}…`} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
             {node.members.length > 0 && <div className="ml-auto flex -space-x-1.5">{node.members.map((id) => { const m = cohort.find((x) => x.id === id); return m ? <Avatar key={id} m={m} size="h-6 w-6 text-[9px]" /> : null; })}</div>}
           </div>
-          <input value={node.opportunity} onChange={(e) => setNode(idx, { opportunity: e.target.value })} placeholder="What's the opportunity here?" className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
+          <input value={node.opportunity} onChange={(e) => setNode(idx, { opportunity: e.target.value })} placeholder="What's the opportunity here?" className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-600 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
         </div>
       ))}
-      <button onClick={() => onNodes([...nodes, { name: "", kind, members: [], opportunity: "" }])} className="text-sm font-semibold text-sage-dark hover:underline">+ Add {addLabel}</button>
+      <button onClick={() => onNodes([...nodes, { name: "", kind, members: [], opportunity: "" }])} className="text-sm font-semibold text-orange-dark hover:underline">+ Add {addLabel}</button>
     </div>
   );
 }
@@ -1364,10 +1365,10 @@ function SkillRadar({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, 
         </div>
         <p className="mt-2 text-[11px] text-slate-400">Outer = energises (create), inner = drains. Team is the outer envelope — the best of everyone on each skill.</p>
 
-        <div className="mt-4 rounded-xl border border-sage/30 bg-sage-tint/15 p-3">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-sage-dark">
+        <div className="mt-4 rounded-xl border border-orange/30 bg-orange-tint/15 p-3">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-dark">
             <Icon name="bolt" className="h-3.5 w-3.5" /> Adjust energy
-            <span className="ml-auto rounded-full bg-sage-tint px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-sage-dark">Editable</span>
+            <span className="ml-auto rounded-full bg-orange-tint px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-orange-dark">Editable</span>
           </p>
           <p className="mt-1 text-[11px] text-slate-500">Pick a person, then tap the dots to set each skill 0–5.</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1397,10 +1398,10 @@ function RolesTasks({ cohort = COHORT, roles, onRoles, confirmed, onConfirm }: {
           <div key={r.memberId} className="rounded-xl border border-slate-200 p-3">
             <div className="flex items-center gap-2">
               <Avatar m={m} size="h-8 w-8 text-[10px]" />
-              <input value={r.role} onChange={(e) => setRole(r.memberId, { role: e.target.value })} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
-              <button onClick={() => onConfirm(r.memberId)} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${ok ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={ok ? "check" : "thumb"} className="h-3.5 w-3.5" />{ok ? "Confirmed" : "Confirm"}</button>
+              <input value={r.role} onChange={(e) => setRole(r.memberId, { role: e.target.value })} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
+              <button onClick={() => onConfirm(r.memberId)} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${ok ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={ok ? "check" : "thumb"} className="h-3.5 w-3.5" />{ok ? "Confirmed" : "Confirm"}</button>
             </div>
-            <input value={r.tasks} onChange={(e) => setRole(r.memberId, { tasks: e.target.value })} className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-xs text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
+            <input value={r.tasks} onChange={(e) => setRole(r.memberId, { tasks: e.target.value })} className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-xs text-slate-600 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
           </div>
         );
       })}
@@ -1417,12 +1418,12 @@ function VotableList({ items, onItems, addLabel }: { items: Votable[]; onItems: 
       <div className="space-y-2">
         {items.map((item) => (
           <div key={item.id} className="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5">
-            <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`Add a ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" />
+            <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`Add a ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
             <button onClick={() => onItems(items.filter((i) => i.id !== item.id))} aria-label={`Veto ${addLabel}`} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-400 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600"><Icon name="minus" className="h-3.5 w-3.5" />Veto</button>
           </div>
         ))}
       </div>
-      <button onClick={() => { onItems([...items, { id: `c${seq}`, text: "", votes: 0 }]); setSeq(seq + 1); }} className="mt-2 text-sm font-semibold text-sage-dark hover:underline">+ Add a {addLabel}</button>
+      <button onClick={() => { onItems([...items, { id: `c${seq}`, text: "", votes: 0 }]); setSeq(seq + 1); }} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add a {addLabel}</button>
     </div>
   );
 }
@@ -1434,8 +1435,8 @@ function FiveWhys({ value, onChange }: { value: string[]; onChange: (v: string[]
       <p className="text-[11px] font-semibold text-slate-400">5 Whys — private to you. Keep asking &ldquo;why?&rdquo; to the root cause.</p>
       {v.map((w, i) => (
         <div key={i} className="flex items-center gap-2">
-          <span className="w-11 shrink-0 text-[11px] font-bold text-sage-dark">Why {i + 1}</span>
-          <input value={w} onChange={(e) => onChange(v.map((x, idx) => (idx === i ? e.target.value : x)))} placeholder={i === 0 ? "Why is this a problem?" : "…and why is that?"} className="flex-1 rounded-md border border-slate-200 px-2 py-1 text-sm focus:border-sage focus:outline-none" />
+          <span className="w-11 shrink-0 text-[11px] font-bold text-orange-dark">Why {i + 1}</span>
+          <input value={w} onChange={(e) => onChange(v.map((x, idx) => (idx === i ? e.target.value : x)))} placeholder={i === 0 ? "Why is this a problem?" : "…and why is that?"} className="flex-1 rounded-md border border-slate-200 px-2 py-1 text-sm focus:border-orange focus:outline-none" />
         </div>
       ))}
     </div>
@@ -1462,9 +1463,9 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
             { t: "Market research", d: "PESTLE's six dimensions.", n: "2" },
             { t: "Angles", d: "Lenses on the opportunity.", n: "3" },
           ].map((s) => (
-            <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage-tint text-xs font-bold text-sage-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
+            <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
           ))}
-          <Card className="bg-sage-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Fed by synthesis.</span> Your top problems, obsessions, and markets shaped these spaces.</p></Card>
+          <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Fed by synthesis.</span> Your top problems, obsessions, and markets shaped these spaces.</p></Card>
         </div>
       }
       center={
@@ -1480,8 +1481,8 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
               {spaces.map((s) => {
                 const active = s.id === spaceId;
                 return (
-                  <button key={s.id} onClick={() => setSpaceId(s.id)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
-                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${active ? "bg-sage text-white" : "border border-slate-300"}`}>{active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}</span>
+                  <button key={s.id} onClick={() => setSpaceId(s.id)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${active ? "bg-orange text-white" : "border border-slate-300"}`}>{active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}</span>
                     <span className="flex-1 text-sm text-foreground">{s.text}</span>
                     <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-400"><Icon name="thumb" className="h-3.5 w-3.5" />{s.votes}</span>
                   </button>
@@ -1490,7 +1491,7 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
             </div>
             <div className="mt-3 rounded-xl border border-slate-200 p-3">
               <button onClick={() => setWhysOpen((o) => !o)} className="flex w-full items-center gap-2.5 text-left">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sage-tint text-[11px] font-bold text-sage-dark">?</span>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-tint text-[11px] font-bold text-orange-dark">?</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold text-foreground">5 Whys</span>
                   <span className="block truncate text-xs text-slate-400">Interrogate the root of {agreed.text}</span>
@@ -1502,11 +1503,11 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
           </Part>
 
           <Part label="Market research" hint="PESTLE's six dimensions, run against the agreed space.">
-            <p className="-mt-1 mb-2 text-xs text-slate-400">Researching: <span className="font-semibold text-sage-dark">{agreed.text}</span></p>
+            <p className="-mt-1 mb-2 text-xs text-slate-400">Researching: <span className="font-semibold text-orange-dark">{agreed.text}</span></p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {od.research.map((l) => (
                 <div key={l.key} className="rounded-xl border border-slate-200 p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-sage-dark">{l.label}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-orange-dark">{l.label}</p>
                   <p className="mt-1 text-sm text-slate-700">{l.finding}</p>
                 </div>
               ))}
@@ -1518,7 +1519,7 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
             <div className="grid gap-2 sm:grid-cols-2">
               {od.lenses.map((l) => (
                 <div key={l.id} className="rounded-xl border border-slate-200 p-3">
-                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-sage-dark"><Icon name={l.icon} className="h-3.5 w-3.5" />{l.name}</p>
+                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-dark"><Icon name={l.icon} className="h-3.5 w-3.5" />{l.name}</p>
                   <p className="text-[11px] italic text-slate-400">{l.question}</p>
                   <p className="mt-1 text-sm text-slate-700">{l.reframe}</p>
                 </div>
@@ -1526,10 +1527,10 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
             </div>
           </Part>
 
-          <div className="flex flex-col items-start gap-3 rounded-2xl border border-sage/40 bg-sage-tint/20 p-5 sm:flex-row sm:items-center">
+          <div className="flex flex-col items-start gap-3 rounded-2xl border border-orange/40 bg-orange-tint/20 p-5 sm:flex-row sm:items-center">
             <div className="flex-1">
               <p className="text-sm font-bold text-foreground">Agree the space — it births your ventures</p>
-              <p className="mt-0.5 text-xs text-slate-500">Once the team agrees on <span className="font-semibold text-sage-dark">{agreed.text}</span>, Flash births a handful of candidate ventures from it to take into formation.</p>
+              <p className="mt-0.5 text-xs text-slate-500">Once the team agrees on <span className="font-semibold text-orange-dark">{agreed.text}</span>, Flash births a handful of candidate ventures from it to take into formation.</p>
             </div>
             <PrimaryBtn label="Birth ventures" onClick={onNext} icon="sparkle" />
           </div>
@@ -1539,7 +1540,7 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
         <div className="space-y-4 lg:sticky lg:top-4">
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
             <RailTitle>Agreed space</RailTitle>
-            <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{agreed.text}</p></div>
+            <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{agreed.text}</p></div>
             <p className="text-xs text-slate-400">Researched and viewed through the lenses, then it births your candidate ventures.</p>
           </div>
         </div>
@@ -1554,10 +1555,10 @@ function OpportunityPhase({ onNext, data }: { onNext: () => void; data?: Opportu
 function GeneratingState({ title, sub }: { title: string; sub: string }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center justify-center py-20 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-tint text-sage"><Icon name="sparkle" className="h-6 w-6 animate-pulse" /></span>
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-tint text-orange"><Icon name="sparkle" className="h-6 w-6 animate-pulse" /></span>
       <h2 className="mt-5 text-xl font-bold tracking-tight text-foreground">{title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-500">{sub}</p>
-      <span className="mt-5 h-1 w-32 overflow-hidden rounded-full bg-slate-100"><span className="block h-full w-1/2 animate-pulse rounded-full bg-sage" /></span>
+      <span className="mt-5 h-1 w-32 overflow-hidden rounded-full bg-slate-100"><span className="block h-full w-1/2 animate-pulse rounded-full bg-orange" /></span>
     </div>
   );
 }
@@ -1602,10 +1603,10 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
           {list.map((x) => {
             const active = x.id === selId;
             return (
-              <button key={x.id} onClick={() => onSelect(x.id)} className={`flex w-56 shrink-0 flex-col rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+              <button key={x.id} onClick={() => onSelect(x.id)} className={`flex w-56 shrink-0 flex-col rounded-xl border p-3 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-foreground">{x.name}</span>
-                  {x.recommended && <span className="rounded-full bg-sage px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">Top</span>}
+                  {x.recommended && <span className="rounded-full bg-orange px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">Top</span>}
                   <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-slate-500"><Icon name="thumb" className="h-3.5 w-3.5" />{x.votes}</span>
                 </div>
                 <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{x.thesis}</p>
@@ -1619,10 +1620,10 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
         <section className="min-w-0 flex-1">
           <Card className="p-6">
             <CenterHead title={editable ? name : v.name} sub="One-sentence thesis, scored — what, for whom, why now." right={editable ? (
-              <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500"><Icon name="bolt" className="h-3.5 w-3.5 text-sage" /> rename<input value={name} onChange={(e) => onName(e.target.value)} className="ml-1 w-24 border-b border-slate-300 bg-transparent text-foreground focus:border-sage focus:outline-none" /></span>
+              <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500"><Icon name="bolt" className="h-3.5 w-3.5 text-orange" /> rename<input value={name} onChange={(e) => onName(e.target.value)} className="ml-1 w-24 border-b border-slate-300 bg-transparent text-foreground focus:border-orange focus:outline-none" /></span>
             ) : undefined} />
 
-            <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-4">
+            <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-4">
               {editable
                 ? <EditableArea value={venture.thesis} onChange={(val) => onVenture((p) => ({ ...p, thesis: val }))} className="text-foreground" />
                 : <p className="text-foreground">{v.thesis}</p>}
@@ -1659,7 +1660,7 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, v
               <RailTitle>Deliberation</RailTitle>
               <div className="grid gap-3"><Bars label="Spark" value={v.spark} /><Bars label="Conviction" value={v.conviction} /></div>
               <div className="flex gap-2">
-                <button className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-sage py-2.5 text-sm font-semibold text-white"><Icon name="thumb" className="h-4 w-4" /> Vote</button>
+                <button className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-orange py-2.5 text-sm font-semibold text-white"><Icon name="thumb" className="h-4 w-4" /> Vote</button>
                 <button className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-600"><Icon name="comment" className="h-4 w-4" /> Comment</button>
               </div>
               <p className="text-xs text-slate-400">All three vote independently within 12 hours. Votes reveal together.</p>
@@ -1694,14 +1695,14 @@ function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext }: 
       </Section>
 
       <Section title="7-day sprint plan">
-        <div className="space-y-2">{d.sprint.map((s) => <div key={s.days} className="flex gap-3 rounded-lg border border-slate-200 p-3"><span className="shrink-0 rounded-md bg-sage-tint px-2 py-1 text-xs font-bold text-sage-dark">{s.days}</span><p className="text-sm text-slate-700">{s.text}</p></div>)}</div>
+        <div className="space-y-2">{d.sprint.map((s) => <div key={s.days} className="flex gap-3 rounded-lg border border-slate-200 p-3"><span className="shrink-0 rounded-md bg-orange-tint px-2 py-1 text-xs font-bold text-orange-dark">{s.days}</span><p className="text-sm text-slate-700">{s.text}</p></div>)}</div>
       </Section>
 
       <Section title="Risk register">
         <div className="space-y-2">{d.risks.map((r) => (
           <div key={r.risk} className="rounded-lg border border-slate-200 p-3">
             <p className="flex items-start gap-2 text-sm font-semibold text-foreground"><Icon name="alert" className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />{r.risk}</p>
-            <p className="mt-1 pl-6 text-sm text-slate-600"><span className="font-semibold text-sage-dark">Mitigation:</span> {r.mitigation}</p>
+            <p className="mt-1 pl-6 text-sm text-slate-600"><span className="font-semibold text-orange-dark">Mitigation:</span> {r.mitigation}</p>
           </div>
         ))}</div>
       </Section>
@@ -1711,7 +1712,7 @@ function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext }: 
           <div key={c.memberId} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
             <Avatar m={m} size="h-9 w-9 text-xs" />
             <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{m.name}</p><p className="truncate text-xs text-slate-500">{c.statement}</p></div>
-            <button onClick={() => onRecord(c.memberId)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${rec ? "bg-sage text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={rec ? "check" : "play"} className="h-3.5 w-3.5" />{rec ? "Recorded" : "Record"}</button>
+            <button onClick={() => onRecord(c.memberId)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${rec ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={rec ? "check" : "play"} className="h-3.5 w-3.5" />{rec ? "Recorded" : "Record"}</button>
           </div>
         ); })}</div>
       </Section>
@@ -1743,10 +1744,10 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
           {v.checkins.map((c) => {
             const sel = c.day === checkin;
             return (
-              <button key={c.day} onClick={() => onCheckin(c.day)} className={`block w-full rounded-xl border p-3 text-left transition-colors ${sel ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+              <button key={c.day} onClick={() => onCheckin(c.day)} className={`block w-full rounded-xl border p-3 text-left transition-colors ${sel ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-foreground">{c.day}</span>
-                  <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${c.status === "active" ? "bg-sage text-white" : "bg-slate-100 text-slate-400"}`}>{c.status === "active" ? "Open now" : "Locked"}</span>
+                  <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${c.status === "active" ? "bg-orange text-white" : "bg-slate-100 text-slate-400"}`}>{c.status === "active" ? "Open now" : "Locked"}</span>
                 </div>
                 {sel && <p className="mt-2 text-sm text-slate-600">{c.text}</p>}
               </button>
@@ -1754,9 +1755,9 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
           })}
 
           <div className="pt-2"><RailTitle>What you walk away with</RailTitle></div>
-          <Card className="bg-sage-tint/20"><p className="font-bold text-foreground">{name}</p><p className="mt-0.5 text-sm text-slate-600">Venture locked. Validation assets generated.</p></Card>
+          <Card className="bg-orange-tint/20"><p className="font-bold text-foreground">{name}</p><p className="mt-0.5 text-sm text-slate-600">Venture locked. Validation assets generated.</p></Card>
           <Card><ul className="space-y-1.5">{["Venture details & roles", "Team alignment & cap table", "Hosted landing page", "Live signups dashboard", "Pitch deck", "Outreach copy"].map((x) => <CheckRow key={x} label={x} />)}</ul></Card>
-          <Card className="bg-slate-50"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="heart" className="h-4 w-4 text-sage" /> The Flash Fund</p><p className="mt-1 text-sm text-slate-600">Part of every buy-in seeds ventures that emerge here.</p></Card>
+          <Card className="bg-slate-50"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="heart" className="h-4 w-4 text-orange" /> The Flash Fund</p><p className="mt-1 text-sm text-slate-600">Part of every buy-in seeds ventures that emerge here.</p></Card>
         </div>
       }
       center={
@@ -1782,13 +1783,13 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
 
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
             <Section title="Outreach copy">
-              <div className="mb-3 flex flex-wrap gap-2">{CHANNELS.map((c) => <button key={c.key} onClick={() => setChannel(c.key)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${channel === c.key ? "bg-sage text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>{c.label}</button>)}</div>
+              <div className="mb-3 flex flex-wrap gap-2">{CHANNELS.map((c) => <button key={c.key} onClick={() => setChannel(c.key)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${channel === c.key ? "bg-orange text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>{c.label}</button>)}</div>
               <p className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{v.outreach[channel]}</p>
             </Section>
             <Section title="Feedback synthesis">
             <p className="mb-2 text-xs text-slate-400">{v.feedbackNote}</p>
             <p className="mb-2 text-sm text-slate-600">{v.sendTarget}</p>
-            <ul className="space-y-1.5">{v.feedbackEdits.map((e) => <li key={e} className="flex items-start gap-2 rounded-lg bg-slate-50 p-2.5 text-sm text-slate-700"><Icon name="refresh" className="mt-0.5 h-4 w-4 shrink-0 text-sage" />{e}</li>)}</ul>
+            <ul className="space-y-1.5">{v.feedbackEdits.map((e) => <li key={e} className="flex items-start gap-2 rounded-lg bg-slate-50 p-2.5 text-sm text-slate-700"><Icon name="refresh" className="mt-0.5 h-4 w-4 shrink-0 text-orange" />{e}</li>)}</ul>
           </Section></div>
         </Card>
       }
@@ -1798,7 +1799,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
 
 /* ------------------------------------------ validation assets: landing + deck */
 
-function FlashMark({ className = "h-5 w-5 text-sage" }: { className?: string }) {
+function FlashMark({ className = "h-5 w-5 text-orange" }: { className?: string }) {
   return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>;
 }
 
@@ -1813,7 +1814,7 @@ function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATI
       </div>
       <div className="p-6 sm:p-8">
         <div className="mb-7 flex items-center gap-2">
-          <FlashMark className="h-5 w-5 text-sage" />
+          <FlashMark className="h-5 w-5 text-orange" />
           <span className="font-bold tracking-tight text-foreground">{name}</span>
         </div>
         <div className="grid items-center gap-8 lg:grid-cols-2">
@@ -1823,7 +1824,7 @@ function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATI
             <p className="mt-4 text-lg leading-relaxed text-slate-600">{landing.subhead}</p>
 
             <div className="mt-6">
-              <span className="inline-flex h-12 items-center rounded-xl bg-sage px-6 text-sm font-bold text-white">{landing.cta}</span>
+              <span className="inline-flex h-12 items-center rounded-xl bg-orange px-6 text-sm font-bold text-white">{landing.cta}</span>
             </div>
 
             <div className="mt-7 flex items-center gap-3 border-t border-slate-100 pt-5">
@@ -1841,8 +1842,8 @@ function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATI
 
           {/* visual */}
           <div>
-            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-sage-tint to-slate-100 ring-1 ring-slate-200">
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-sage shadow-sm"><Icon name="play" className="h-7 w-7" /></span>
+            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-orange-tint to-slate-100 ring-1 ring-slate-200">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-orange shadow-sm"><Icon name="play" className="h-7 w-7" /></span>
             </div>
             <p className="mt-2 text-center text-sm text-slate-500">{landing.visualCaption}</p>
           </div>
@@ -1862,10 +1863,10 @@ function DeckViewer({ slides, name }: { slides: DeckSlide[]; name: string }) {
         <div className="aspect-[16/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white/5 shadow-sm">
           <SlideStage slide={slides[i]} index={i} total={total} name={name} />
         </div>
-        <button onClick={() => go(i - 1)} aria-label="Previous slide" className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-sage-dark">
+        <button onClick={() => go(i - 1)} aria-label="Previous slide" className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-orange-dark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <button onClick={() => go(i + 1)} aria-label="Next slide" className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-sage-dark">
+        <button onClick={() => go(i + 1)} aria-label="Next slide" className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-orange-dark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m9 18 6-6-6-6" /></svg>
         </button>
       </div>
@@ -1873,9 +1874,9 @@ function DeckViewer({ slides, name }: { slides: DeckSlide[]; name: string }) {
         {slides.map((s, n) => {
           const active = n === i;
           return (
-            <button key={s.label} onClick={() => setI(n)} className={`flex shrink-0 flex-col rounded-lg border px-3 py-2 text-left transition-colors ${active ? "border-sage bg-sage-tint/30 ring-1 ring-sage" : "border-slate-200 hover:border-sage/40"}`}>
+            <button key={s.label} onClick={() => setI(n)} className={`flex shrink-0 flex-col rounded-lg border px-3 py-2 text-left transition-colors ${active ? "border-orange bg-orange-tint/30 ring-1 ring-orange" : "border-slate-200 hover:border-orange/40"}`}>
               <span className="text-[10px] font-bold tabular-nums text-slate-400">{String(n + 1).padStart(2, "0")}</span>
-              <span className={`whitespace-nowrap text-xs font-semibold ${active ? "text-sage-dark" : "text-slate-600"}`}>{s.label}</span>
+              <span className={`whitespace-nowrap text-xs font-semibold ${active ? "text-orange-dark" : "text-slate-600"}`}>{s.label}</span>
             </button>
           );
         })}
@@ -1890,7 +1891,7 @@ function SlideStage({ slide, index, total, name }: { slide: DeckSlide; index: nu
     <div className="flex h-full flex-col p-6 sm:p-8">
       <div className="flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-2">
-          <FlashMark className="h-4 w-4 text-sage" />
+          <FlashMark className="h-4 w-4 text-orange" />
           <span className="text-sm font-bold tracking-tight text-foreground">{name}</span>
         </div>
         <span className="text-xs font-semibold tabular-nums text-slate-400">{pad(index + 1)} / {pad(total)}</span>
@@ -1904,7 +1905,7 @@ function SlideStage({ slide, index, total, name }: { slide: DeckSlide; index: nu
           </div>
         ) : (
           <>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sage-dark">{slide.label}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-dark">{slide.label}</p>
             <h3 className="mt-2 text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-[28px]">{slide.headline}</h3>
 
             {slide.kind === "team" ? (
@@ -1915,7 +1916,7 @@ function SlideStage({ slide, index, total, name }: { slide: DeckSlide; index: nu
                     <div key={r.memberId} className="rounded-xl border border-slate-200 p-3">
                       <div className="flex items-center gap-2">
                         <Avatar m={m} size="h-8 w-8 text-[10px]" />
-                        <span className="rounded-md bg-sage-tint px-1.5 py-0.5 text-xs font-bold text-sage-dark">{r.equity === "" ? "—" : `${r.equity}%`}</span>
+                        <span className="rounded-md bg-orange-tint px-1.5 py-0.5 text-xs font-bold text-orange-dark">{r.equity === "" ? "—" : `${r.equity}%`}</span>
                       </div>
                       <p className="mt-2 text-sm font-bold text-foreground">{m.name}</p>
                       <p className="text-xs text-slate-500">{r.role}</p>
@@ -1926,14 +1927,14 @@ function SlideStage({ slide, index, total, name }: { slide: DeckSlide; index: nu
             ) : slide.kind === "traction" ? (
               <div className="mt-4 grid gap-2 sm:grid-cols-3">
                 {slide.points?.map((p) => (
-                  <div key={p} className="rounded-xl border border-sage/30 bg-sage-tint/20 p-3 text-sm font-semibold text-foreground">{p}</div>
+                  <div key={p} className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3 text-sm font-semibold text-foreground">{p}</div>
                 ))}
               </div>
             ) : (
               <ul className="mt-4 space-y-2">
                 {slide.points?.map((p) => (
                   <li key={p} className="flex items-start gap-2.5 text-[15px] text-slate-700">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-sage" />
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-orange" />
                     {p}
                   </li>
                 ))}
@@ -1965,7 +1966,7 @@ function EditableArea({ value, onChange, className = "", rows = 2, placeholder }
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       placeholder={placeholder}
-      className={`-mx-1.5 w-full resize-y rounded-md border border-transparent bg-transparent px-1.5 py-1 leading-snug hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none ${className}`}
+      className={`-mx-1.5 w-full resize-y rounded-md border border-transparent bg-transparent px-1.5 py-1 leading-snug hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none ${className}`}
     />
   );
 }
@@ -1984,10 +1985,10 @@ function LabeledBox({ label, value, onChange, placeholder }: { label: string; va
 function DotScore({ value, onChange, label }: { value: number; onChange?: (v: number) => void; label?: string }) {
   return (
     <div>
-      {label && <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-500">{label}</span><span className="font-semibold tabular-nums text-sage-dark">{value}/5</span></div>}
+      {label && <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-500">{label}</span><span className="font-semibold tabular-nums text-orange-dark">{value}/5</span></div>}
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} type="button" disabled={!onChange} onClick={() => onChange?.(n)} aria-label={`${label ?? "score"}: ${n} of 5`} className={`h-2.5 flex-1 rounded-full transition-colors ${n <= value ? "bg-sage" : "bg-slate-200"} ${onChange ? "cursor-pointer hover:opacity-80" : ""}`} />
+          <button key={n} type="button" disabled={!onChange} onClick={() => onChange?.(n)} aria-label={`${label ?? "score"}: ${n} of 5`} className={`h-2.5 flex-1 rounded-full transition-colors ${n <= value ? "bg-orange" : "bg-slate-200"} ${onChange ? "cursor-pointer hover:opacity-80" : ""}`} />
         ))}
       </div>
     </div>
@@ -2004,7 +2005,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext }: {
   return (
     <div className="mt-5 space-y-5">
       <Section title="North star">
-        <div className="rounded-xl border border-sage/30 bg-sage-tint/20 p-4">
+        <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-4">
           <p className="text-xs italic text-slate-400">The clear why behind it all.</p>
           <EditableArea value={venture.purpose} onChange={(val) => set("purpose", val)} className="mt-1 text-foreground" />
         </div>
@@ -2057,7 +2058,7 @@ function Part({ label, hint, children }: { label: string; hint: string; children
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50/40 p-5">
       <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-slate-200 pb-3">
-        <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-sage-dark">{label}</h2>
+        <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-orange-dark">{label}</h2>
         <p className="text-xs text-slate-400">{hint}</p>
       </div>
       <div className="space-y-5">{children}</div>
@@ -2070,12 +2071,12 @@ function MarketReport() {
   const r = MARKET_REPORT;
   if (!run) {
     return (
-      <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-sage/50 bg-sage-tint/10 p-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-orange/50 bg-orange-tint/10 p-4 sm:flex-row sm:items-center">
         <div className="flex-1">
           <p className="text-sm font-semibold text-foreground">Run an in-depth market report</p>
           <p className="text-xs text-slate-500">Pulls the team&rsquo;s inputs and public data into sizing, trends, segments, and competition.</p>
         </div>
-        <button onClick={() => setRun(true)} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="chart" className="h-4 w-4" /> Run market report</button>
+        <button onClick={() => setRun(true)} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-orange px-4 text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="chart" className="h-4 w-4" /> Run market report</button>
       </div>
     );
   }
@@ -2087,16 +2088,16 @@ function MarketReport() {
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
         {r.stats.map((s) => (
-          <div key={s.label} className="rounded-lg border border-sage/30 bg-sage-tint/20 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-sage-dark">{s.label}</p>
+          <div key={s.label} className="rounded-lg border border-orange/30 bg-orange-tint/20 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-orange-dark">{s.label}</p>
             <p className="text-lg font-bold tabular-nums text-foreground">{s.value}</p>
             <p className="text-[11px] text-slate-500">{s.note}</p>
           </div>
         ))}
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div><p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Tailwinds</p><ul className="space-y-1.5">{r.trends.map((t) => <li key={t} className="flex items-start gap-2 text-sm text-slate-700"><Icon name="chart" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" />{t}</li>)}</ul></div>
-        <div><p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Segments</p><ul className="space-y-1.5">{r.segments.map((t) => <li key={t} className="flex items-start gap-2 text-sm text-slate-700"><Icon name="group" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sage" />{t}</li>)}</ul></div>
+        <div><p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Tailwinds</p><ul className="space-y-1.5">{r.trends.map((t) => <li key={t} className="flex items-start gap-2 text-sm text-slate-700"><Icon name="chart" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange" />{t}</li>)}</ul></div>
+        <div><p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Segments</p><ul className="space-y-1.5">{r.segments.map((t) => <li key={t} className="flex items-start gap-2 text-sm text-slate-700"><Icon name="group" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange" />{t}</li>)}</ul></div>
       </div>
       <div className="mt-4"><p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Competitive landscape</p><p className="text-sm text-slate-700">{r.competition}</p></div>
       <p className="mt-3 text-[11px] text-slate-400">Sources: {r.sources.join(" · ")}. Illustrative — generated from the team&rsquo;s inputs and public data.</p>
@@ -2112,13 +2113,13 @@ function PrinciplesEditor({ principles, onChange }: { principles: string[]; onCh
       <div className="space-y-2">
         {principles.map((p, i) => (
           <div key={i} className="flex items-start gap-2">
-            <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sage" />
-            <input value={p} onChange={(e) => setAt(i, e.target.value)} placeholder="A rule your team will live by" className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-foreground focus:border-sage focus:outline-none" />
+            <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-orange" />
+            <input value={p} onChange={(e) => setAt(i, e.target.value)} placeholder="A rule your team will live by" className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-foreground focus:border-orange focus:outline-none" />
             <button onClick={() => onChange(principles.filter((_, idx) => idx !== i))} aria-label="Remove principle" className="mt-1.5 shrink-0 text-slate-300 hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
           </div>
         ))}
       </div>
-      <button onClick={() => onChange([...principles, ""])} className="mt-3 text-sm font-semibold text-sage-dark hover:underline">+ Add a principle</button>
+      <button onClick={() => onChange([...principles, ""])} className="mt-3 text-sm font-semibold text-orange-dark hover:underline">+ Add a principle</button>
     </div>
   );
 }
@@ -2131,9 +2132,9 @@ function ApproachOptions({ chosen, onPick }: { chosen: string; onPick: (id: stri
         {APPROACH_OPTIONS.map((o) => {
           const active = o.id === chosen;
           return (
-            <button key={o.id} onClick={() => onPick(o.id)} className={`flex flex-col rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+            <button key={o.id} onClick={() => onPick(o.id)} className={`flex flex-col rounded-xl border p-3 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
               <div className="flex items-center gap-2">
-                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${active ? "bg-sage text-white" : "border border-slate-300"}`}>{active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}</span>
+                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${active ? "bg-orange text-white" : "border border-slate-300"}`}>{active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}</span>
                 <p className="text-sm font-bold text-foreground">{o.title}</p>
               </div>
               <p className="mt-1.5 text-xs text-slate-600">{o.why}</p>
@@ -2153,7 +2154,7 @@ function ProblemBreakdown({ problem, set }: { problem: VentureDraft["problem"]; 
       <div className="rounded-xl border border-slate-200 p-4">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm text-slate-500">How real is this problem?</p>
-          <span className="rounded-lg bg-sage px-2.5 py-1 text-sm font-bold tabular-nums text-white">{overall}/10</span>
+          <span className="rounded-lg bg-orange px-2.5 py-1 text-sm font-bold tabular-nums text-white">{overall}/10</span>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <DotScore label="How painful?" value={problem.painful} onChange={(n) => set({ painful: n })} />
@@ -2211,10 +2212,10 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
             const active = m.id === revenue.id;
             const y3 = revenueBuild(m.id, Object.fromEntries(m.drivers.map((d) => [d.key, d.value])), m.growth)[2];
             return (
-              <button key={m.id} onClick={() => onChange(revenueDefaults(m))} className={`rounded-xl border p-3 text-left transition-colors ${active ? "border-sage bg-sage-tint/20 ring-1 ring-sage" : "border-slate-200 hover:border-sage/50"}`}>
+              <button key={m.id} onClick={() => onChange(revenueDefaults(m))} className={`rounded-xl border p-3 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
                 <p className="text-sm font-bold text-foreground">{m.label}</p>
                 <p className="mt-0.5 text-[11px] uppercase tracking-wide text-slate-400">Y3 {m.unit}</p>
-                <p className="text-lg font-bold tabular-nums text-sage-dark">{money(y3)}</p>
+                <p className="text-lg font-bold tabular-nums text-orange-dark">{money(y3)}</p>
               </button>
             );
           })}
@@ -2233,7 +2234,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
                     <span className="text-sm text-slate-600">{d.label}</span>
                     <span className="flex items-center gap-0.5">
                       {d.prefix && <span className="text-sm text-slate-400">{d.prefix}</span>}
-                      <input inputMode="numeric" value={revenue.drivers[d.key] ?? 0} onChange={(e) => setDriver(d.key, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)} className="w-24 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-sage focus:outline-none" />
+                      <input inputMode="numeric" value={revenue.drivers[d.key] ?? 0} onChange={(e) => setDriver(d.key, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)} className="w-24 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-orange focus:outline-none" />
                       {d.suffix && <span className="text-sm text-slate-400">{d.suffix}</span>}
                     </span>
                   </div>
@@ -2241,7 +2242,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white/5 p-2.5">
                   <span className="text-sm text-slate-600">Annual growth</span>
                   <span className="flex items-center gap-0.5">
-                    <input inputMode="numeric" value={revenue.growth} onChange={(e) => onChange({ ...revenue, growth: Number(e.target.value.replace(/[^0-9]/g, "")) || 0 })} className="w-24 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-sage focus:outline-none" />
+                    <input inputMode="numeric" value={revenue.growth} onChange={(e) => onChange({ ...revenue, growth: Number(e.target.value.replace(/[^0-9]/g, "")) || 0 })} className="w-24 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-orange focus:outline-none" />
                     <span className="text-sm text-slate-400">%</span>
                   </span>
                 </div>
@@ -2255,7 +2256,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
                 {build.map((rev, i) => (
                   <div key={i} className="flex flex-1 flex-col items-center justify-end gap-1">
                     <span className="text-xs font-bold tabular-nums text-foreground">{money(rev)}</span>
-                    <div className="w-full rounded-t-md bg-sage" style={{ height: `${Math.max(6, (rev / max) * 100)}%` }} />
+                    <div className="w-full rounded-t-md bg-orange" style={{ height: `${Math.max(6, (rev / max) * 100)}%` }} />
                     <span className="text-[11px] font-semibold text-slate-400">Y{i + 1}</span>
                   </div>
                 ))}
@@ -2268,7 +2269,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <div className="rounded-lg border border-sage/30 bg-sage-tint/20 p-3"><p className="text-xs font-bold text-sage-dark">What fits</p><p className="mt-0.5 text-sm text-slate-700">{model.fits}</p></div>
+            <div className="rounded-lg border border-orange/30 bg-orange-tint/20 p-3"><p className="text-xs font-bold text-orange-dark">What fits</p><p className="mt-0.5 text-sm text-slate-700">{model.fits}</p></div>
             <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3"><p className="text-xs font-bold text-amber-700">What doesn&rsquo;t</p><p className="mt-0.5 text-sm text-slate-700">{model.doesnt}</p></div>
           </div>
           <p className="mt-3 text-[11px] text-slate-400">Illustrative founder model — assumptions, not results. Edit the drivers to pressure-test the story.</p>
@@ -2299,14 +2300,14 @@ function CapTable({ capTable, setRow, setPool }: { capTable: VentureDraft["capTa
               <tr key={r.memberId} className="border-t border-slate-100 align-middle">
                 <td className="p-3"><div className="flex items-center gap-2"><Avatar m={m} size="h-7 w-7 text-[10px]" /><div className="min-w-0"><p className="font-semibold text-foreground">{m.name}</p><p className="truncate text-xs text-slate-500">{r.role}</p></div></div></td>
                 <td className="p-3 text-slate-600">{r.responsibility}</td>
-                <td className="p-3"><div className="flex items-center gap-1"><input inputMode="numeric" value={r.equity} placeholder="—" onChange={(e) => setRow(i, { equity: e.target.value.replace(/[^0-9]/g, "").slice(0, 3) })} className="w-12 rounded-md border border-slate-200 px-2 py-1 text-right tabular-nums focus:border-sage focus:outline-none" /><span className="text-slate-400">%</span></div></td>
-                <td className="p-3"><input value={r.vesting} onChange={(e) => setRow(i, { vesting: e.target.value })} className="-mx-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-slate-600 hover:border-slate-200 focus:border-sage focus:bg-white/5 focus:outline-none" /></td>
+                <td className="p-3"><div className="flex items-center gap-1"><input inputMode="numeric" value={r.equity} placeholder="—" onChange={(e) => setRow(i, { equity: e.target.value.replace(/[^0-9]/g, "").slice(0, 3) })} className="w-12 rounded-md border border-slate-200 px-2 py-1 text-right tabular-nums focus:border-orange focus:outline-none" /><span className="text-slate-400">%</span></div></td>
+                <td className="p-3"><input value={r.vesting} onChange={(e) => setRow(i, { vesting: e.target.value })} className="-mx-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-slate-600 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" /></td>
               </tr>
             ); })}
             <tr className="border-t border-slate-100 bg-slate-50/40">
               <td className="p-3"><p className="font-semibold text-foreground">Option pool</p><p className="text-xs text-slate-500">Reserved</p></td>
               <td className="p-3 text-slate-500">Future hires</td>
-              <td className="p-3"><div className="flex items-center gap-1"><input inputMode="numeric" value={capTable.pool} onChange={(e) => setPool(Number(e.target.value.replace(/[^0-9]/g, "").slice(0, 3)) || 0)} className="w-12 rounded-md border border-slate-200 px-2 py-1 text-right tabular-nums focus:border-sage focus:outline-none" /><span className="text-slate-400">%</span></div></td>
+              <td className="p-3"><div className="flex items-center gap-1"><input inputMode="numeric" value={capTable.pool} onChange={(e) => setPool(Number(e.target.value.replace(/[^0-9]/g, "").slice(0, 3)) || 0)} className="w-12 rounded-md border border-slate-200 px-2 py-1 text-right tabular-nums focus:border-orange focus:outline-none" /><span className="text-slate-400">%</span></div></td>
               <td className="p-3 text-slate-400">—</td>
             </tr>
           </tbody>
@@ -2330,7 +2331,7 @@ function PublishBar({ published, onPublish, url }: { published: boolean; onPubli
     <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
       {published ? (
         <>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-sage/15 px-2.5 py-1 text-xs font-bold text-sage-dark"><span className="h-2 w-2 rounded-full bg-sage" /> Live</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange/15 px-2.5 py-1 text-xs font-bold text-orange-dark"><span className="h-2 w-2 rounded-full bg-orange" /> Live</span>
           <code className="text-sm text-slate-600">{url}</code>
           <button className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"><Icon name="copy" className="h-3.5 w-3.5" /> Copy link</button>
           <span className="ml-auto hidden items-center gap-1.5 text-xs text-slate-400 sm:flex"><Icon name="shield" className="h-3.5 w-3.5" /> Hosted by Flash Company · collecting signups</span>
@@ -2339,7 +2340,7 @@ function PublishBar({ published, onPublish, url }: { published: boolean; onPubli
       ) : (
         <>
           <span className="text-sm text-slate-600">Launch a hosted page and start collecting signups.</span>
-          <button onClick={() => onPublish(true)} className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg bg-sage px-4 text-sm font-bold text-white transition-colors hover:bg-sage-dark"><Icon name="bolt" className="h-4 w-4" /> Publish</button>
+          <button onClick={() => onPublish(true)} className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg bg-orange px-4 text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="bolt" className="h-4 w-4" /> Publish</button>
         </>
       )}
     </div>
@@ -2365,11 +2366,11 @@ function ValidationScorecard({ published }: { published: boolean }) {
           return (
             <div key={s.test} className="rounded-xl border border-slate-200 p-3">
               <div className="flex items-center gap-2">
-                <Icon name="target" className="h-4 w-4 shrink-0 text-sage" />
+                <Icon name="target" className="h-4 w-4 shrink-0 text-orange" />
                 <p className="text-sm font-semibold text-foreground">{s.test}</p>
-                <span className="ml-auto text-sm font-bold tabular-nums text-sage-dark">{value}/{s.target} <span className="text-xs font-normal text-slate-400">{s.metric}</span></span>
+                <span className="ml-auto text-sm font-bold tabular-nums text-orange-dark">{value}/{s.target} <span className="text-xs font-normal text-slate-400">{s.metric}</span></span>
               </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${hit ? "bg-sage" : "bg-sage/60"}`} style={{ width: `${pct}%` }} /></div>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${hit ? "bg-orange" : "bg-orange/60"}`} style={{ width: `${pct}%` }} /></div>
             </div>
           );
         })}
@@ -2429,8 +2430,8 @@ function HypothesisScorecard({ v, onToggle }: { v: VentureDraft; onToggle: (k: S
   const check = (key: ScorecardKey, question: string) => {
     const on = v.scorecard[key];
     return (
-      <button onClick={() => onToggle(key)} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-sm font-semibold transition-colors ${on ? "border-sage bg-sage-tint/30 text-foreground" : "border-slate-200 text-slate-600 hover:border-sage/50"}`}>
-        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${on ? "bg-sage text-white" : "border border-slate-300"}`}>{on && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m5 12 5 5L20 7" /></svg>}</span>
+      <button onClick={() => onToggle(key)} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-sm font-semibold transition-colors ${on ? "border-orange bg-orange-tint/30 text-foreground" : "border-slate-200 text-slate-600 hover:border-orange/50"}`}>
+        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${on ? "bg-orange text-white" : "border border-slate-300"}`}>{on && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m5 12 5 5L20 7" /></svg>}</span>
         {question}
       </button>
     );
@@ -2439,7 +2440,7 @@ function HypothesisScorecard({ v, onToggle }: { v: VentureDraft; onToggle: (k: S
     <div className="rounded-xl border border-slate-200 p-4 sm:p-5">
       <div className="mb-3 hidden items-center justify-between text-[11px] font-bold uppercase tracking-wide text-slate-400 lg:flex">
         <span className="flex-1">Founding hypothesis</span>
-        <span className="flex w-[13rem] items-center justify-between">Scorecard <span className="rounded bg-sage px-1.5 py-0.5 text-white tabular-nums">{done}/{SCORECARD.length}</span></span>
+        <span className="flex w-[13rem] items-center justify-between">Scorecard <span className="rounded bg-orange px-1.5 py-0.5 text-white tabular-nums">{done}/{SCORECARD.length}</span></span>
       </div>
       <div className="space-y-2.5">
         {rows.map((r) => (

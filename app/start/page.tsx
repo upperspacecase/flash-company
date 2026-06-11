@@ -11,7 +11,7 @@ export default function StartPage() {
       <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
       <div className="relative z-10 mx-auto max-w-xl">
         <Link href="/" className="mb-8 inline-flex items-center gap-2.5">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 text-sage"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 text-orange"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
           <span className="text-xl font-bold tracking-tight text-white">Flash Company</span>
         </Link>
         <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl">
@@ -23,13 +23,13 @@ export default function StartPage() {
         <form action={createTeam} className="mt-8">
           <button
             type="submit"
-            className="inline-flex h-12 items-center gap-2 rounded-xl bg-sage px-7 text-sm font-bold text-white transition-colors hover:bg-sage-dark"
+            className="inline-flex h-12 items-center gap-2 rounded-xl bg-orange px-7 text-sm font-bold text-white transition-colors hover:bg-orange-dark"
           >
             Start a Flash
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
           </button>
         </form>
-        <p className="mt-4 text-xs text-white/40">€10 buy-in per person, charged when each of you accepts. Want a walkthrough first? <Link href="/demo" className="font-semibold text-sage hover:underline">See the demo</Link>.</p>
+        <p className="mt-4 text-xs text-white/40">€10 buy-in per person, charged when each of you accepts. Want a walkthrough first? <Link href="/demo" className="font-semibold text-orange hover:underline">See the demo</Link>.</p>
       </div>
     </main>
   );

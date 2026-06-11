@@ -3,18 +3,18 @@
 :root {
   --background: #000000;
   --foreground: #ffffff;
-  --sage: #ff5500;
-  --sage-dark: #ff7a33;
-  --sage-tint: rgba(255, 85, 0, 0.14);
+  --orange: #ff5500;
+  --orange-dark: #ff7a33;
+  --orange-tint: rgba(255, 85, 0, 0.14);
   --accent: #ff5500;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-sage: var(--sage);
-  --color-sage-dark: var(--sage-dark);
-  --color-sage-tint: var(--sage-tint);
+  --color-orange: var(--orange);
+  --color-orange-dark: var(--orange-dark);
+  --color-orange-tint: var(--orange-tint);
   --color-accent: var(--accent);
   --color-slate-50: #0f0f10;
   --color-slate-100: #17171a;
