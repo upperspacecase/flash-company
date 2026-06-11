@@ -16,6 +16,9 @@ import { JoinGate } from "./join-gate";
 import { LiveWorkspace } from "./live-workspace";
 
 export const dynamic = "force-dynamic";
+// The live sprint runs the LLM pipeline (synthesis / opportunity / venture) as
+// server actions dispatched from this page — give them room past the default.
+export const maxDuration = 800;
 
 export default async function Page({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
