@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless";
-import { randomUUID } from "crypto";
+import { randomInt, randomUUID } from "crypto";
 
 // Lazy so a missing POSTGRES_URL only fails at request time, not at build/import.
 // POSTGRES_URL is the pooled connection string injected by the Vercel + Neon integration.
@@ -94,13 +94,30 @@ export type MemberRow = {
   email: string | null;
 };
 
+// Short, shareable invite token: 6 lowercase letters + digits (~2.2B combos).
+const TOKEN_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz";
+function makeToken(len = 6): string {
+  let out = "";
+  for (let i = 0; i < len; i++) out += TOKEN_CHARS[randomInt(TOKEN_CHARS.length)];
+  return out;
+}
+
 export async function createTeamRow(plan: string): Promise<TeamRow> {
   await ensureSchema();
   const sql = getSql();
   const id = randomUUID();
-  const token = randomUUID();
-  const rows = await sql`INSERT INTO teams (id, token, plan) VALUES (${id}, ${token}, ${plan}) RETURNING created_at`;
-  return { id, token, plan, created_at: String((rows[0] as { created_at: string }).created_at) };
+  // Retry on the rare unique-token collision so starting a Flash never 500s.
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const token = makeToken();
+    try {
+      const rows = await sql`INSERT INTO teams (id, token, plan) VALUES (${id}, ${token}, ${plan}) RETURNING created_at`;
+      return { id, token, plan, created_at: String((rows[0] as { created_at: string }).created_at) };
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
 }
 
 export async function getTeamByToken(token: string): Promise<TeamRow | null> {
