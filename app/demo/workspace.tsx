@@ -1038,7 +1038,12 @@ function Composer({ q, value, onChange, voice, onVoice, canSend, onSend }: { q: 
   const f = q.field;
   const label = canSend ? "Send" : q.optional ? "Skip" : "Send";
   const supported = useSpeechSupported();
-  const canVoice = (f.kind === "short" || f.kind === "long") && !!f.voice && supported;
+  const coarse = useCoarsePointer();
+  const isText = f.kind === "short" || f.kind === "long";
+  // Desktop (reliable Web Speech) gets the in-page Voice button; touch devices get
+  // a clear pointer to the keyboard's own mic instead.
+  const desktopVoice = isText && !!f.voice && supported && !coarse;
+  const keyboardMic = isText && !!f.voice && coarse;
   return (
     <div>
       <div className="mb-3">
@@ -1048,8 +1053,11 @@ function Composer({ q, value, onChange, voice, onVoice, canSend, onSend }: { q: 
         {f.kind === "multiSelect" && <MultiSelectControl value={asMulti(value)} onChange={onChange} options={f.options} allowOther={f.allowOther} />}
         {f.kind === "ranked" && <RankedControl value={asRanked(value)} onChange={onChange} options={f.options} />}
       </div>
+      {keyboardMic && !voice && (
+        <p className="-mt-1 mb-3 flex items-center gap-1.5 text-xs text-slate-400"><Icon name="mic" className="h-3.5 w-3.5 shrink-0 text-orange" /><span>Prefer to talk? Tap the <span className="font-semibold text-slate-600">mic on your keyboard</span> to dictate your answer.</span></p>
+      )}
       <div className="flex items-center justify-end gap-2">
-        {canVoice && !voice && (
+        {desktopVoice && !voice && (
           <button onClick={onVoice} aria-label="Dictate your answer" className="inline-flex h-11 items-center gap-2 rounded-xl border border-orange px-4 text-sm font-bold text-orange-dark transition-colors hover:bg-orange-tint"><Icon name="mic" className="h-4 w-4" /> Voice</button>
         )}
         <button onClick={onSend} disabled={!canSend && !q.optional} className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:opacity-40">{label} <Icon name="send" className="h-4 w-4" /></button>
@@ -1087,6 +1095,16 @@ function useSpeechSupported() {
   return supported;
 }
 
+// Touch / mobile devices: the OS keyboard's built-in dictation (the mic on the
+// keyboard) is far more reliable than the in-page Web Speech API there — so we
+// point people to it instead of running our own flaky recognition. Resolved
+// after mount to avoid a hydration mismatch.
+function useCoarsePointer() {
+  const [coarse, setCoarse] = useState(false);
+  useEffect(() => { setCoarse(typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)")?.matches); }, []);
+  return coarse;
+}
+
 // Live dictation via the browser Web Speech API. Interim + final transcript is
 // streamed into `onText`, so a voice answer becomes a normal text answer on the
 // same downstream path as typing. `supported` is resolved after mount to avoid a
@@ -1102,6 +1120,8 @@ function useDictation(onText: (text: string) => void) {
   const onTextRef = useRef(onText);
   onTextRef.current = onText;
   const beginRef = useRef<(base: string) => void>(() => {});
+  const restartsRef = useRef(0);
+  const lastStartRef = useRef(0);
 
   useEffect(() => () => { wantRef.current = false; recRef.current?.stop(); }, []);
 
@@ -1111,13 +1131,21 @@ function useDictation(onText: (text: string) => void) {
   beginRef.current = (base: string) => {
     const Ctor = speechCtor();
     if (!Ctor) return;
+    // Back off if recognition keeps ending the instant it starts (an unstable
+    // service) instead of spinning in a tight restart loop.
+    const now = Date.now();
+    restartsRef.current = now - lastStartRef.current < 1200 ? restartsRef.current + 1 : 0;
+    lastStartRef.current = now;
+    if (restartsRef.current > 5) { wantRef.current = false; setError("unstable"); setListening(false); return; }
+
     const rec = new Ctor();
     rec.continuous = true;
     rec.interimResults = true;
-    rec.lang = "en-US";
+    rec.lang = (typeof navigator !== "undefined" && navigator.language) || "en-US";
     baseRef.current = base.trim() ? base.trimEnd() + " " : "";
     finalRef.current = "";
     rec.onresult = (e) => {
+      restartsRef.current = 0; // real input arrived — we're stable
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const seg = e.results[i];
@@ -1133,8 +1161,10 @@ function useDictation(onText: (text: string) => void) {
     };
     rec.onerror = (e) => {
       const err = e.error ?? "error";
+      if (err === "aborted") return; // from our own stop() — not user-facing
       setError(err);
-      if (err === "not-allowed" || err === "service-not-allowed" || err === "audio-capture") {
+      // Unrecoverable → end the session; transient (e.g. no-speech) → onend retries.
+      if (err === "not-allowed" || err === "service-not-allowed" || err === "audio-capture" || err === "network") {
         wantRef.current = false;
         setListening(false);
       }
@@ -1155,7 +1185,10 @@ function useDictation(onText: (text: string) => void) {
 
 function TextControl({ value, onChange, max, placeholder, multiline, voiceable, voice, onVoice, onEnter }: { value: string; onChange: (v: string) => void; max?: number; placeholder?: string; multiline?: boolean; voiceable?: boolean; voice?: boolean; onVoice: () => void; onEnter?: () => void }) {
   const { supported, listening, error, start, stop } = useDictation((t) => onChange(max != null ? t.slice(0, max) : t));
-  const canVoice = !!voiceable && supported;
+  const coarse = useCoarsePointer();
+  // In-page dictation only where the Web Speech API is reliable (desktop Chrome/
+  // Edge). On touch devices we point to the keyboard mic instead (see Composer).
+  const canVoice = !!voiceable && supported && !coarse;
   const [elapsed, setElapsed] = useState(0);
   const previewRef = useRef<HTMLTextAreaElement>(null);
 
@@ -1183,21 +1216,24 @@ function TextControl({ value, onChange, max, placeholder, multiline, voiceable, 
   if (canVoice && voice) {
     const mm = Math.floor(elapsed / 60);
     const ss = String(elapsed % 60).padStart(2, "0");
-    const blocked = error === "not-allowed" || error === "service-not-allowed";
+    const blocked = error === "not-allowed" || error === "service-not-allowed" || error === "audio-capture";
+    const failed = error === "network" || error === "unstable";
     return (
       <div className="rounded-xl border border-orange bg-orange-tint/20 p-3">
         <div className="flex items-center gap-2">
           <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange text-white ${listening ? "animate-pulse" : ""}`}><Icon name="mic" className="h-4 w-4" /></span>
           <p className="min-w-0 flex-1 truncate text-xs text-slate-500">
             {blocked
-              ? "Microphone blocked — type your answer below."
-              : listening
-                ? `Recording · ${mm}:${ss} / 2:00`
-                : value
-                  ? "Paused — edit below, or resume talking."
-                  : "Starting… allow microphone access."}
+              ? "Microphone blocked — allow it in your browser, or type below."
+              : failed
+                ? "Voice isn't working here — just type your answer."
+                : listening
+                  ? `Recording · ${mm}:${ss} / 2:00`
+                  : value
+                    ? "Paused — edit below, or resume talking."
+                    : "Starting… allow microphone access."}
           </p>
-          {!blocked && <button onClick={() => { if (listening) stop(); else { setElapsed(0); start(value); } }} className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-orange-dark transition-colors hover:bg-orange-tint">{listening ? "Pause" : "Resume"}</button>}
+          {!blocked && !failed && <button onClick={() => { if (listening) stop(); else { setElapsed(0); start(value); } }} className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-orange-dark transition-colors hover:bg-orange-tint">{listening ? "Pause" : "Resume"}</button>}
           <button onClick={onVoice} className="shrink-0 text-xs font-semibold text-orange-dark hover:underline">Type instead</button>
         </div>
         <textarea
