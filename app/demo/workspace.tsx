@@ -418,7 +418,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 4:
         return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
-        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} gated={isFree} />;
+        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} gated={isFree} detail={ventData?.[0]?.detail} />;
     }
   };
 
@@ -1942,11 +1942,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const CHANNELS = [{ key: "linkedin", label: "LinkedIn" }, { key: "dm", label: "DM" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }] as const;
 
-function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean }) {
+function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail }) {
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
   const v = VALIDATION;
-  const deck = buildDeck(venture, name);
-  const landing = buildLanding(venture);
+  const deck = buildDeck(venture, name, detail);
+  const landing = buildLanding(venture, detail);
+  const outreach = buildOutreach(venture, name);
+  const liveUrl = `flashco.app/v/${(name || "venture").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "venture"}`;
   return (
     <Columns
       left={
@@ -1984,7 +1986,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
 
           <div className="mt-6"><Section title="Landing page">
             <p className="-mt-1 mb-3 text-xs text-slate-400">The proven 5-part formula — value, how, visual, social proof, next step.</p>
-            <PublishBar published={published} onPublish={onPublish} url={v.liveUrl} gated={gated} />
+            <PublishBar published={published} onPublish={onPublish} url={liveUrl} gated={gated} />
             <LandingHero name={name} landing={landing} />
           </Section></div>
 
@@ -1996,7 +1998,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
             <Section title="Outreach copy">
               <div className="mb-3 flex flex-wrap gap-2">{CHANNELS.map((c) => <button key={c.key} onClick={() => setChannel(c.key)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${channel === c.key ? "bg-orange text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>{c.label}</button>)}</div>
-              <p className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{v.outreach[channel]}</p>
+              <p className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{outreach[channel]}</p>
             </Section>
             <Section title="Feedback synthesis">
             <p className="mb-2 text-xs text-slate-400">{v.feedbackNote}</p>
@@ -2621,29 +2623,51 @@ function approachOf(v: VentureDraft) {
   return APPROACH_OPTIONS.find((o) => o.id === v.approachId) ?? APPROACH_OPTIONS[0];
 }
 
-function buildDeck(v: VentureDraft, name: string): DeckSlide[] {
+// Everything below flows live from the venture (+ its generated research detail),
+// so the landing, deck, and outreach reflect THIS venture, not a template.
+function buildDeck(v: VentureDraft, name: string, detail?: VentureDetail): DeckSlide[] {
   const model = REVENUE_MODELS.find((m) => m.id === v.revenue.id) ?? REVENUE_MODELS[0];
   const build = revenueBuild(v.revenue.id, v.revenue.drivers, v.revenue.growth);
-  const founders = v.capTable.rows.map((r) => memberById(r.memberId).name).join(" · ");
+  const nameOf = (id: string) => memberById(id)?.name ?? "Founder";
+  const founders = v.capTable.rows.map((r) => nameOf(r.memberId)).join(" · ");
   const team = v.capTable.rows.map((r) => ({ memberId: r.memberId, role: r.role, equity: r.equity }));
   const approach = approachOf(v);
+  const market = detail && detail.market.length ? detail.market : null;
+  const fin = detail && detail.financials.rows.length ? detail.financials : null;
   return [
     { kind: "title", label: "Title", headline: name, points: [v.thesis], footnote: `${founders} — founding team` },
-    { label: "Problem", headline: "Parents who pause their careers face a cold, confidence-eroding path back.", points: ["Job boards screen people out the moment they see a two-year gap.", "No trusted, supportive route back — only a cold search box.", v.problem.payNow] },
-    { label: "Approach", headline: approach.title, points: [approach.why] },
-    { label: "Why now", headline: "Returnships are going mainstream.", points: ["The motherhood penalty is finally in the spotlight.", "Flexible and returner hiring is becoming the default ask."] },
-    { kind: "market", label: "Market", headline: MARKET_REPORT.summary, points: MARKET_REPORT.stats.map((s) => `${s.label}: ${s.value}`), footnote: `${money(build[2])} Y3 ${model.unit} (illustrative)` },
-    { label: "Product", headline: "Recruit → 8-week programme → employer intros → measured outcomes.", points: ["A waitlist opens to the community.", "The cohort runs the guided 8-week programme.", "Warm employer intros, with outcomes tracked."] },
+    { label: "Problem", headline: v.basics.problem || "The problem", points: [`Who: ${v.basics.customer}`, `Today they pay: ${v.problem.payNow}`] },
+    { label: "Why now", headline: "Why now", points: market ? market.slice(0, 3).map((m) => m.finding) : ["The signals that make this urgent right now."] },
+    { kind: "market", label: "Market", headline: market ? market[0].finding : MARKET_REPORT.summary, points: market ? market.map((m) => `${m.label}: ${m.finding}`) : MARKET_REPORT.stats.map((s) => `${s.label}: ${s.value}`), footnote: fin ? fin.note : `${money(build[2])} Y3 ${model.unit} (illustrative)` },
+    { label: "Approach", headline: approach.title, points: [approach.why, ...v.principles.slice(0, 2)] },
     { label: "Business model", headline: `${model.label}: ${model.pitch}`, points: [`Year 1: ${money(build[0])}`, `Year 3: ${money(build[2])} ${model.unit}`, `Growing ${v.revenue.growth}% a year`] },
-    { kind: "traction", label: "Traction", headline: "Distribution and proof before a line of code.", points: ["4,000-member parent community", "Sold-out course — 80 parents, twice", "Validation waitlist live"] },
-    { label: "Why us", headline: v.differentiation.statement, points: [v.unique] },
-    { kind: "team", label: "Team", headline: "Three founders, one problem they can't stop noticing.", team },
-    { kind: "ask", label: "The ask", headline: "Run the pilot, hit the day-30 gate, open cohort two.", points: ["First cohort: 12 parents.", "5 warm employer intros pre-lined.", "Day-30 go/no-go → a Series-A-ready traction story."] },
+    { label: "Why us", headline: v.differentiation.statement, points: [v.unique, v.advantage.capability].filter(Boolean) },
+    { kind: "team", label: "Team", headline: "The founding team", team },
+    { kind: "ask", label: "The ask", headline: "Run the pilot, hit the day-30 gate.", points: fin ? fin.rows.slice(0, 3).map((r) => `${r.label}: ${r.value}`) : ["First pilot cohort.", "Warm intros pre-lined.", "Day-30 go/no-go."] },
   ];
 }
 
-function buildLanding(v: VentureDraft): typeof VALIDATION.landing {
-  return { ...VALIDATION.landing, subhead: approachOf(v).why };
+function buildLanding(v: VentureDraft, detail?: VentureDetail): typeof VALIDATION.landing {
+  const approach = approachOf(v);
+  return {
+    headline: v.differentiation.statement || v.thesis,
+    subhead: approach.why,
+    visualCaption: `How ${approach.title} works`,
+    proof: detail && detail.market.length ? { stat: detail.market[0].label, detail: detail.market[0].finding } : VALIDATION.landing.proof,
+    cta: "Join the waitlist",
+  };
+}
+
+function buildOutreach(v: VentureDraft, name: string): typeof VALIDATION.outreach {
+  const approach = approachOf(v);
+  const lead = v.capTable.rows[0] ? (memberById(v.capTable.rows[0].memberId)?.name ?? "the team") : "the team";
+  const problem = v.basics.problem;
+  return {
+    linkedin: `${problem}\n\nWe're building ${name} — ${approach.why}\n\nIf that resonates, comment and I'll send details.`,
+    dm: `Hey {name} — we're building ${name} for exactly this: ${problem} Want an early look?`,
+    email: `Subject: an early look at ${name}\n\nHi {name},\n\n${problem}\n\n${name} is our answer — ${approach.why}\n\nWe're opening a small pilot. Want in?\n\n${lead} — ${name}`,
+    whatsapp: `Hi {name}! We're piloting ${name} — ${approach.why} A few early spots open. Keen?`,
+  };
 }
 
 /* ----------------------------------------- validation: Click hypothesis + scorecard */
