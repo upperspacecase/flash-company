@@ -235,7 +235,7 @@ function Upsell({ title, text }: { title: string; text: string }) {
 
 /* ------------------------------------------------------------ the page */
 
-type MemberStatus = { id: string; name: string | null; accepted: boolean; intakeComplete: boolean };
+type MemberStatus = { id: string; name: string | null; accepted: boolean; intakeComplete: boolean; ranked?: boolean };
 
 export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; live?: LiveCtx; seed?: DemoSeed | null }) {
   const isFree = plan === "free";
@@ -297,14 +297,16 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
     return () => { active = false; };
   }, [live, teamReady, synthData]);
 
-  // Live: once Synthesis is confirmed (reached Opportunity), generate (or fetch
-  // cached) the Opportunity page — spaces + lenses + web-searched PESTLE.
+  // Ventures unlock once EVERY accepted member has submitted their synthesis
+  // ranking — only then is the team consensus complete enough to generate from.
+  const rankedAccepted = (status ?? []).filter((s) => s.accepted);
+  const rankingsReady = rankedAccepted.length >= 2 && rankedAccepted.every((s) => s.ranked);
   useEffect(() => {
-    if (!live || reached < 3 || oppData) return;
+    if (!live || reached < 3 || oppData || !rankingsReady) return;
     let active = true;
     live.onRunOpportunity().then((d) => { if (active) setOppData(d); }).catch(() => {});
     return () => { active = false; };
-  }, [live, reached, oppData]);
+  }, [live, reached, oppData, rankingsReady]);
 
   // Live: once the opportunity is agreed (reached Ventures), build the venture in
   // steps (research -> core -> market & money -> lenses), one server call each,
@@ -417,6 +419,8 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 2:
         return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} data={synthesisData} showAll={!live} />;
       case 3:
+        if (live && !oppData)
+          return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} />;
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} spaceId={spaceId} onSpace={setSpaceId} />;
       case 4:
         return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;

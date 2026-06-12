@@ -21,9 +21,12 @@ import {
   saveVentureDraft,
   getVentureBuild,
   saveVentureBuild,
+  saveMemberRanking,
+  getTeamRankings,
   setMemberPayment,
   type MemberRow,
 } from "@/lib/db";
+import { consensusItems } from "@/lib/consensus";
 import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
 import { advanceVenture, type VentureBuildState } from "@/lib/ventures";
@@ -187,6 +190,26 @@ export async function confirmSynthesis(data: SynthesisData): Promise<void> {
   const m = await currentMember();
   if (!m) return;
   await saveSynthesis(m.team_id, data);
+  // This member's ranking = the order they left the lists in. Aggregated across
+  // the team in runOpportunity to drive venture generation.
+  await saveMemberRanking(m.team_id, m.id, {
+    problems: data.problems.map((p) => p.id),
+    obsessions: data.obsessions.map((o) => o.id),
+    markets: data.markets.map((k) => k.id),
+  });
+}
+
+// Reorder the synthesis lists by the team's consensus ranking (Borda) so the
+// generation works from what the team agreed matters most.
+function applyConsensus(s: SynthesisData, rankings: { memberId: string; data: unknown }[]): SynthesisData {
+  const orders = (cat: "problems" | "obsessions" | "markets") =>
+    rankings.map((r) => (r.data as Record<string, string[]> | null)?.[cat] ?? []).filter((a) => a.length > 0);
+  return {
+    ...s,
+    problems: consensusItems(s.problems, orders("problems")),
+    obsessions: consensusItems(s.obsessions, orders("obsessions")),
+    markets: consensusItems(s.markets, orders("markets")),
+  };
 }
 
 // Generate (or return cached) the Opportunity page from the confirmed synthesis:
@@ -201,7 +224,11 @@ export async function runOpportunity(): Promise<OpportunityData> {
   const synthesis = await getSynthesis(m.team_id);
   if (!synthesis) throw new Error("Confirm your synthesis first.");
 
-  const data = await generateOpportunity(synthesis as SynthesisData);
+  // Aggregate every member's ranking into the team consensus that drives generation.
+  const rankings = await getTeamRankings(m.team_id);
+  const consensus = applyConsensus(synthesis as SynthesisData, rankings);
+
+  const data = await generateOpportunity(consensus);
   await saveOpportunity(m.team_id, data);
   return data;
 }

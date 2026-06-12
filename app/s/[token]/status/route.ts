@@ -1,15 +1,17 @@
-import { getTeamByToken, getTeamMembers } from "@/lib/db";
+import { getTeamByToken, getTeamMembers, getTeamRankings } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-// Polled by the live workspace so teammates accepting / finishing flow in and
-// Synthesis unlocks once everyone's intake is complete.
+// Polled by the live workspace so teammates accepting / finishing flow in,
+// Synthesis unlocks once everyone's intake is complete, and Ventures unlocks once
+// everyone has submitted their synthesis ranking.
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const team = await getTeamByToken(token);
   if (!team) return Response.json({ members: [], allComplete: false }, { status: 404 });
 
-  const members = await getTeamMembers(team.id);
+  const [members, rankings] = await Promise.all([getTeamMembers(team.id), getTeamRankings(team.id)]);
+  const rankedIds = new Set(rankings.map((r) => r.memberId));
   const accepted = members.filter((m) => m.accepted);
   const allComplete = accepted.length >= 2 && accepted.every((m) => m.intake_complete);
 
@@ -19,6 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       name: m.name,
       accepted: m.accepted,
       intakeComplete: m.intake_complete,
+      ranked: rankedIds.has(m.id),
     })),
     allComplete,
   });

@@ -83,6 +83,24 @@ export function ensureSchema() {
         email TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      // Each member's synthesis ranking (ordered item ids per category) — aggregated
+      // into the team consensus that drives venture generation.
+      await sql`CREATE TABLE IF NOT EXISTS member_rankings (
+        team_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (team_id, member_id)
+      )`;
+      // Each member's conviction rating per candidate venture (1-10) — aggregated
+      // to pick the venture the team builds.
+      await sql`CREATE TABLE IF NOT EXISTS venture_ratings (
+        team_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (team_id, member_id)
+      )`;
       // Stripe payment fields on members (charged on accept, when keys are set).
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_session_id TEXT`;
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT`;
@@ -320,6 +338,40 @@ export async function getVentureSignupCount(teamId: string): Promise<number> {
   return (rows[0] as { n: number } | undefined)?.n ?? 0;
 }
 
+export async function saveMemberRanking(teamId: string, memberId: string, data: unknown): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  const json = JSON.stringify(data);
+  await sql`
+    INSERT INTO member_rankings (team_id, member_id, data, updated_at)
+    VALUES (${teamId}, ${memberId}, ${json}::jsonb, now())
+    ON CONFLICT (team_id, member_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
+}
+
+export async function getTeamRankings(teamId: string): Promise<{ memberId: string; data: unknown }[]> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT member_id, data FROM member_rankings WHERE team_id = ${teamId}`;
+  return (rows as { member_id: string; data: unknown }[]).map((r) => ({ memberId: r.member_id, data: r.data }));
+}
+
+export async function saveVentureRating(teamId: string, memberId: string, data: unknown): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  const json = JSON.stringify(data);
+  await sql`
+    INSERT INTO venture_ratings (team_id, member_id, data, updated_at)
+    VALUES (${teamId}, ${memberId}, ${json}::jsonb, now())
+    ON CONFLICT (team_id, member_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
+}
+
+export async function getTeamRatings(teamId: string): Promise<{ memberId: string; data: unknown }[]> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT member_id, data FROM venture_ratings WHERE team_id = ${teamId}`;
+  return (rows as { member_id: string; data: unknown }[]).map((r) => ({ memberId: r.member_id, data: r.data }));
+}
+
 // Clear the generated opportunity + venture so the demo can be re-seeded fresh
 // (keeps synthesis). Used by /api/seed-demo?reset=1.
 export async function resetVentureData(teamId: string): Promise<void> {
@@ -329,6 +381,7 @@ export async function resetVentureData(teamId: string): Promise<void> {
   await sql`DELETE FROM ventures WHERE team_id = ${teamId}`;
   await sql`DELETE FROM venture_build WHERE team_id = ${teamId}`;
   await sql`DELETE FROM venture_drafts WHERE team_id = ${teamId}`;
+  await sql`DELETE FROM venture_ratings WHERE team_id = ${teamId}`;
 }
 
 export async function setMemberPayment(memberId: string, sessionId: string, status: string): Promise<void> {
