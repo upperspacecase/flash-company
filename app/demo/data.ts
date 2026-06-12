@@ -49,6 +49,17 @@ export const PHASES = [
   { id: "validation", label: "Validation", blurb: "Assets to test, feedback synthesis, and the 7/14/21/30 check-ins." },
 ] as const;
 
+// The sprint, step by step — shown on the invite so the team knows the purpose of
+// each stage, what gets produced, and how each feeds the next.
+export const PROCESS: { label: string; text: string }[] = [
+  { label: "Invite", text: "Form the team. Everyone accepts the link, and the 48-hour window starts." },
+  { label: "Input", text: "Each person answers a short private intake — type or talk. Nothing's shared until everyone's in." },
+  { label: "Synthesis", text: "Flash maps the team — your overlaps, tensions, skills, and reach — and you confirm the areas of interest to focus on." },
+  { label: "Opportunity", text: "Flash turns that focus into a few researched mini-ventures (customer, market, why-now). The team votes on the one to pursue." },
+  { label: "Venture", text: "The chosen opportunity is built into one full venture — researched market, financials, approach, and strategy lenses — for you to see and edit together." },
+  { label: "Validation", text: "Everything to test it for real: a landing page, shareable link, pitch deck, and a live signups dashboard — plus a 7/14/21/30-day check-in plan." },
+];
+
 // ------------------------------------------------------------- Invite
 
 export const INVITE = {

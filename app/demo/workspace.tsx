@@ -14,6 +14,7 @@ import {
   MARKET_REPORT,
   NETWORK,
   PHASES,
+  PROCESS,
   PRICE,
   REVENUE_MODELS,
   SCORECARD,
@@ -655,6 +656,23 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
             </div>
           ))}
         </div>
+      </section>
+
+      {/* 4b · The process — purpose of each step and how it flows */}
+      <section>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">The process</h2>
+        <p className="mt-1 text-sm text-slate-500">Six steps over the 48 hours — each one feeds the next.</p>
+        <ol className="mt-4 space-y-3">
+          {PROCESS.map((s, i) => (
+            <li key={s.label} className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{i + 1}</span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground">{s.label}</p>
+                <p className="mt-0.5 text-sm leading-relaxed text-slate-500">{s.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </section>
 
       {/* 5 · Who's accepted */}
