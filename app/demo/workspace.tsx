@@ -44,6 +44,7 @@ import {
   type ScorecardKey,
   type SynthesisData,
   type Venture,
+  type LandingCopy,
   type VentureDetail,
   type VentureDraft,
   type Votable,
@@ -1946,9 +1947,13 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
   const v = VALIDATION;
   const deck = buildDeck(venture, name, detail);
-  const landing = buildLanding(venture, detail);
+  // Landing: editable + persisted (venture.landing), seeded from the venture.
+  const landing = venture.landing ?? buildLanding(venture, detail);
   const outreach = buildOutreach(venture, name);
-  const liveUrl = `flashco.app/v/${(name || "venture").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "venture"}`;
+  const slug = (name || "venture").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "venture";
+  const liveUrl = `flashco.app/v/${slug}`;
+  const landingEditable = !gated;
+  const setLanding = (patch: Partial<LandingCopy>) => onVenture((p) => ({ ...p, landing: { ...(p.landing ?? landing), ...patch } }));
   return (
     <Columns
       left={
@@ -1987,7 +1992,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
           <div className="mt-6"><Section title="Landing page">
             <p className="-mt-1 mb-3 text-xs text-slate-400">The proven 5-part formula — value, how, visual, social proof, next step.</p>
             <PublishBar published={published} onPublish={onPublish} url={liveUrl} gated={gated} />
-            <LandingHero name={name} landing={landing} />
+            <LandingHero name={name} landing={landing} editable={landingEditable} onChange={setLanding} url={liveUrl} />
           </Section></div>
 
           <div className="mt-6"><Section title="Pitch deck">
@@ -2017,14 +2022,15 @@ function FlashMark({ className = "h-5 w-5 text-orange" }: { className?: string }
   return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>;
 }
 
-function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATION.landing }) {
+function LandingHero({ name, landing, editable = false, onChange, url = "flashco.app" }: { name: string; landing: LandingCopy; editable?: boolean; onChange?: (patch: Partial<LandingCopy>) => void; url?: string }) {
+  const set = onChange ?? (() => {});
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/5 shadow-sm">
       <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-        <span className="ml-3 rounded-md bg-white/5 px-2 py-0.5 text-[11px] text-slate-400">relaunch.co</span>
+        <span className="ml-3 truncate rounded-md bg-white/5 px-2 py-0.5 text-[11px] text-slate-400">{url}</span>
       </div>
       <div className="p-6 sm:p-8">
         <div className="mb-7 flex items-center gap-2">
@@ -2034,11 +2040,17 @@ function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATI
         <div className="grid items-center gap-8 lg:grid-cols-2">
           {/* value, how, next step, social proof */}
           <div>
-            <h3 className="text-3xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl">{landing.headline}</h3>
-            <p className="mt-4 text-lg leading-relaxed text-slate-600">{landing.subhead}</p>
+            {editable
+              ? <EditableArea value={landing.headline} onChange={(t) => set({ headline: t })} className="text-3xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl" placeholder="Headline — the value" />
+              : <h3 className="text-3xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl">{landing.headline}</h3>}
+            {editable
+              ? <EditableArea value={landing.subhead} onChange={(t) => set({ subhead: t })} className="mt-4 text-lg leading-relaxed text-slate-600" placeholder="Subhead — how it works" />
+              : <p className="mt-4 text-lg leading-relaxed text-slate-600">{landing.subhead}</p>}
 
             <div className="mt-6">
-              <span className="inline-flex h-12 items-center rounded-xl bg-orange px-6 text-sm font-bold text-white">{landing.cta}</span>
+              {editable
+                ? <span className="inline-flex h-12 items-center rounded-xl bg-orange px-4 text-sm font-bold text-white"><input value={landing.cta} onChange={(e) => set({ cta: e.target.value })} placeholder="Call to action" className="w-44 bg-transparent text-white placeholder:text-white/60 focus:outline-none" /></span>
+                : <span className="inline-flex h-12 items-center rounded-xl bg-orange px-6 text-sm font-bold text-white">{landing.cta}</span>}
             </div>
 
             <div className="mt-7 flex items-center gap-3 border-t border-slate-100 pt-5">
@@ -2047,9 +2059,18 @@ function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATI
                   <span key={i} className={`h-8 w-8 rounded-full ring-2 ring-white ${c}`} />
                 ))}
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">{landing.proof.stat}</p>
-                <p className="text-xs text-slate-500">{landing.proof.detail}</p>
+              <div className="min-w-0 flex-1">
+                {editable ? (
+                  <>
+                    <EditableArea value={landing.proof.stat} onChange={(t) => set({ proof: { ...landing.proof, stat: t } })} className="text-sm font-semibold text-foreground" rows={1} placeholder="Social proof — the stat" />
+                    <EditableArea value={landing.proof.detail} onChange={(t) => set({ proof: { ...landing.proof, detail: t } })} className="text-xs text-slate-500" rows={1} placeholder="…the detail" />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-foreground">{landing.proof.stat}</p>
+                    <p className="text-xs text-slate-500">{landing.proof.detail}</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -2059,7 +2080,9 @@ function LandingHero({ name, landing }: { name: string; landing: typeof VALIDATI
             <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-orange-tint to-slate-100 ring-1 ring-slate-200">
               <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-orange shadow-sm"><Icon name="play" className="h-7 w-7" /></span>
             </div>
-            <p className="mt-2 text-center text-sm text-slate-500">{landing.visualCaption}</p>
+            {editable
+              ? <EditableArea value={landing.visualCaption} onChange={(t) => set({ visualCaption: t })} className="mt-2 text-center text-sm text-slate-500" rows={1} placeholder="Caption" />
+              : <p className="mt-2 text-center text-sm text-slate-500">{landing.visualCaption}</p>}
           </div>
         </div>
       </div>
@@ -2647,7 +2670,7 @@ function buildDeck(v: VentureDraft, name: string, detail?: VentureDetail): DeckS
   ];
 }
 
-function buildLanding(v: VentureDraft, detail?: VentureDetail): typeof VALIDATION.landing {
+function buildLanding(v: VentureDraft, detail?: VentureDetail): LandingCopy {
   const approach = approachOf(v);
   return {
     headline: v.differentiation.statement || v.thesis,

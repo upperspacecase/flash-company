@@ -682,6 +682,10 @@ export const MARKET_REPORT = {
   sources: ["Team intake — 3 founders", "Labour-force participation data", "Returnship programme directories", "Community survey signals"],
 };
 
+// The validation landing-page copy — editable and publishable. Seeded from the
+// venture when first edited; persisted with the draft.
+export type LandingCopy = { headline: string; subhead: string; visualCaption: string; proof: { stat: string; detail: string }; cta: string };
+
 export type VentureDraft = {
   thesis: string;
   // Click "Basics" — Customer, Advantage, Competition.
@@ -701,6 +705,8 @@ export type VentureDraft = {
   scorecard: Record<ScorecardKey, boolean>; // the Click validation scorecard
   capTable: { pool: number; rows: { memberId: string; role: string; responsibility: string; equity: string; vesting: string }[] };
   lenses: Lens[]; // Click "Approach" — Magic Lenses on the chosen venture
+  landing?: LandingCopy; // edited validation landing copy (else derived from the venture)
+  published?: boolean; // the landing has been published to its public URL
 };
 
 // A working draft of the chosen venture the cohort edits in the demo.
