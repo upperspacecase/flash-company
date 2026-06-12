@@ -6,7 +6,7 @@ import { advanceVenture, type VentureBuildState } from "@/lib/ventures";
 import {
   getSynthesis, getOpportunity, getVentures, getVentureDraft,
   saveSynthesis, saveOpportunity, saveVentures, saveVentureDraft,
-  getVentureBuild, saveVentureBuild,
+  getVentureBuild, saveVentureBuild, resetVentureData,
 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function GET() {
     getVentureBuild(DEMO_TEAM_ID).catch(() => null),
   ]);
   const bs = (b as VentureBuildState | null) ?? {};
-  return Response.json({ synthesis: !!s, opportunity: !!o, ventures: !!v, draft: !!d, build: { brief: !!bs.brief, core: !!bs.core, plan: !!bs.plan } });
+  return Response.json({ synthesis: !!s, opportunity: !!o, ventures: !!v, draft: !!d, build: { brief: !!bs.brief, briefLen: (bs.brief ?? "").trim().length, core: !!bs.core, plan: !!bs.plan } });
 }
 
 // POST: run the real sprint pipeline over the demo team's intakes and persist it
@@ -30,7 +30,13 @@ export async function GET() {
 // (so no single call exceeds the function limit). POST until { complete: true }.
 // POST ?force=1 to regenerate synthesis from scratch.
 export async function POST(req: Request) {
-  const force = new URL(req.url).searchParams.get("force") === "1";
+  const url = new URL(req.url);
+  // Clear the generated opportunity + venture (keep synthesis) for a fresh re-seed.
+  if (url.searchParams.get("reset") === "1") {
+    await resetVentureData(DEMO_TEAM_ID);
+    return Response.json({ reset: true });
+  }
+  const force = url.searchParams.get("force") === "1";
 
   const synthesis = force ? null : ((await getSynthesis(DEMO_TEAM_ID).catch(() => null)) as SynthesisData | null);
   if (!synthesis) {

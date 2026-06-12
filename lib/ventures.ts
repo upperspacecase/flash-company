@@ -65,34 +65,26 @@ async function callJson<T>(
 
 async function research(client: ReturnType<typeof getAnthropic>, space?: Space): Promise<string> {
   if (!space) return "";
-  const messages: { role: "user" | "assistant"; content: unknown }[] = [
-    { role: "user", content: `Opportunity:\nTitle: ${space.title}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nMarket: ${space.market}\n\nResearch it thoroughly.` },
-  ];
-  let text = "";
-  // Bounded and non-blocking: a hard per-request timeout with no retries so a slow
-  // or broken web_search can never hang the function — on failure we log and fall
-  // back to an empty brief (the venture still builds, just without live findings).
+  // Stream the web-search turn. A non-streamed web_search request hangs until the
+  // function is killed (the brief never saves) — streaming keeps the connection
+  // alive through the searches. Falls back to an empty brief on any failure.
   try {
-    for (let i = 0; i < 2; i++) {
-      const body = {
-        model: "claude-sonnet-4-6",
-        max_tokens: 3000,
-        thinking: { type: "disabled" },
-        output_config: { effort: "low" },
-        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
-        system: RESEARCH_SYSTEM,
-        messages,
-      };
-      const message = (await client.messages.create(body as never, { timeout: 90_000, maxRetries: 0 })) as { content: { type: string; text?: string }[]; stop_reason?: string };
-      text = extractText(message.content);
-      if (message.stop_reason !== "pause_turn") break;
-      messages.push({ role: "assistant", content: message.content });
-    }
+    const body = {
+      model: "claude-sonnet-4-6",
+      max_tokens: 6000,
+      thinking: { type: "disabled" },
+      output_config: { effort: "low" },
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+      system: RESEARCH_SYSTEM,
+      messages: [{ role: "user", content: `Opportunity:\nTitle: ${space.title}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nMarket: ${space.market}\n\nResearch it thoroughly.` }],
+    };
+    const stream = client.messages.stream(body as never) as unknown as { finalMessage: () => Promise<{ content: { type: string; text?: string }[] }> };
+    const final = await stream.finalMessage();
+    return extractText(final.content);
   } catch (e) {
     console.error("[venture] research/web_search failed:", e instanceof Error ? e.message : e);
     return "";
   }
-  return text;
 }
 
 /* ----------------------------------------- step 2: core (qualitative) */

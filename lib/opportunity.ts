@@ -97,29 +97,19 @@ function extractJson(text: string): unknown | null {
 }
 
 async function generatePestle(client: ReturnType<typeof getAnthropic>, theme: string): Promise<ResearchLens[]> {
-  const system = PESTLE_SYSTEM;
-  const messages: { role: "user" | "assistant"; content: unknown }[] = [
-    { role: "user", content: `Run a PESTLE scan for this opportunity: ${theme}` },
-  ];
-  let text = "";
-  for (let i = 0; i < 4; i++) {
-    const body = {
-      model: "claude-sonnet-4-6",
-      max_tokens: 6000,
-      thinking: { type: "disabled" },
-      output_config: { effort: "low" },
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
-      system,
-      messages,
-    };
-    const message = (await client.messages.create(body as never)) as {
-      content: { type: string; text?: string }[];
-      stop_reason?: string;
-    };
-    text = message.content.filter((b) => b.type === "text" && b.text).map((b) => b.text as string).join("\n");
-    if (message.stop_reason !== "pause_turn") break;
-    messages.push({ role: "assistant", content: message.content });
-  }
+  // Streamed so the web_search turn doesn't hang (see lib/ventures research()).
+  const body = {
+    model: "claude-sonnet-4-6",
+    max_tokens: 6000,
+    thinking: { type: "disabled" },
+    output_config: { effort: "low" },
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    system: PESTLE_SYSTEM,
+    messages: [{ role: "user", content: `Run a PESTLE scan for this opportunity: ${theme}` }],
+  };
+  const stream = client.messages.stream(body as never) as unknown as { finalMessage: () => Promise<{ content: { type: string; text?: string }[] }> };
+  const final = await stream.finalMessage();
+  const text = final.content.filter((b) => b.type === "text" && b.text).map((b) => b.text as string).join("\n");
   const obj = extractJson(text) as Record<string, string> | null;
   if (!obj) throw new Error("PESTLE: could not parse findings");
   return PESTLE.map(({ key, label }) => ({ key, label, finding: (obj[key] ?? "").trim() || "—" }));

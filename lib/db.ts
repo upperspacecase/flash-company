@@ -300,6 +300,17 @@ export async function saveVentureBuild(teamId: string, data: unknown): Promise<v
     ON CONFLICT (team_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
 }
 
+// Clear the generated opportunity + venture so the demo can be re-seeded fresh
+// (keeps synthesis). Used by /api/seed-demo?reset=1.
+export async function resetVentureData(teamId: string): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  await sql`DELETE FROM opportunity WHERE team_id = ${teamId}`;
+  await sql`DELETE FROM ventures WHERE team_id = ${teamId}`;
+  await sql`DELETE FROM venture_build WHERE team_id = ${teamId}`;
+  await sql`DELETE FROM venture_drafts WHERE team_id = ${teamId}`;
+}
+
 export async function setMemberPayment(memberId: string, sessionId: string, status: string): Promise<void> {
   await ensureSchema();
   const sql = getSql();
