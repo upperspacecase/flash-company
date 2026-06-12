@@ -258,7 +258,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
 
   const [spaceId, setSpaceId] = useState(""); // the opportunity space the team agreed on
-  const [name, setName] = useState(VENTURE_DETAILS.name);
+  const [name, setName] = useState<string>(() => seed?.ventures?.[0]?.name ?? VENTURE_DETAILS.name);
   const [recorded, setRecorded] = useState<Record<string, boolean>>(
     Object.fromEntries(VENTURE_DETAILS.commitments.map((c) => [c.memberId, c.recorded]))
   );
@@ -337,8 +337,8 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   liveRef.current = live;
   useEffect(() => {
     if (!live || seededRef.current) return;
-    if (live.initialDraft) { setVenture(live.initialDraft); seededRef.current = true; }
-    else if (ventData && ventData[0]) { setVenture(draftFromVenture(ventData[0], cohort)); seededRef.current = true; }
+    if (live.initialDraft) { setVenture(live.initialDraft); if (ventData?.[0]) setName(ventData[0].name); seededRef.current = true; }
+    else if (ventData && ventData[0]) { setVenture(draftFromVenture(ventData[0], cohort)); setName(ventData[0].name); seededRef.current = true; }
   }, [live, ventData, cohort]);
   useEffect(() => {
     if (!liveRef.current || !seededRef.current) return;
