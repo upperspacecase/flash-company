@@ -23,10 +23,12 @@ import {
   saveVentureBuild,
   saveMemberRanking,
   getTeamRankings,
+  saveVentureRating,
+  getTeamRatings,
   setMemberPayment,
   type MemberRow,
 } from "@/lib/db";
-import { consensusItems } from "@/lib/consensus";
+import { consensusItems, ratingOrder } from "@/lib/consensus";
 import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
 import { advanceVenture, type VentureBuildState } from "@/lib/ventures";
@@ -236,24 +238,38 @@ export async function runOpportunity(): Promise<OpportunityData> {
 // Birth the venture in small steps (research -> core -> market & money -> lenses),
 // one per call, so each fits a serverless invocation. The client calls this in a
 // loop until { done: true }, persisting the accumulating build state server-side.
-export async function runVentureStep(chosenSpaceId?: string): Promise<{ stage: string; done: boolean; ventures?: Venture[] }> {
+export async function runVentureStep(): Promise<{ stage: string; done: boolean; ventures?: Venture[] }> {
   const m = await currentMember();
   if (!m) throw new Error("Not in a team.");
 
   const cached = await getVentures(m.team_id);
   if (cached) return { stage: "done", done: true, ventures: cached as Venture[] };
 
-  const [synthesis, opportunity] = await Promise.all([getSynthesis(m.team_id), getOpportunity(m.team_id)]);
+  const [synthesis, opportunity, ratings] = await Promise.all([getSynthesis(m.team_id), getOpportunity(m.team_id), getTeamRatings(m.team_id)]);
   if (!synthesis || !opportunity) throw new Error("Agree your opportunity first.");
 
+  // The venture the team is most convicted on (summed 1-10 conviction) — that's
+  // the one we build. No separate "pick" step; the ratings decide it.
+  const spaces = (opportunity as OpportunityData).spaces;
+  const ratingMaps = ratings.map((r) => (r.data as Record<string, number> | null) ?? {});
+  const winnerId = ratingOrder(spaces.map((s) => s.id), ratingMaps)[0]?.id ?? spaces[0]?.id;
+
   const state = ((await getVentureBuild(m.team_id)) as VentureBuildState | null) ?? {};
-  const step = await advanceVenture(synthesis as SynthesisData, opportunity as OpportunityData, state, chosenSpaceId);
+  const step = await advanceVenture(synthesis as SynthesisData, opportunity as OpportunityData, state, winnerId);
   if (step.done && step.ventures) {
     await saveVentures(m.team_id, step.ventures);
     return { stage: step.stage, done: true, ventures: step.ventures };
   }
   await saveVentureBuild(m.team_id, step.state);
   return { stage: step.stage, done: false };
+}
+
+// Save this member's conviction ratings (venture id -> 1-10). Aggregated in
+// runVentureStep to pick the venture the team builds.
+export async function saveRatings(ratings: Record<string, number>): Promise<void> {
+  const m = await currentMember();
+  if (!m) return;
+  await saveVentureRating(m.team_id, m.id, ratings);
 }
 
 // Persist the team's edits to the working venture draft (the editable venture page).

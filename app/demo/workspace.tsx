@@ -88,7 +88,8 @@ export type LiveCtx = {
   onRunSynthesis: (force?: boolean) => Promise<SynthesisData>;
   onConfirmSynthesis: (data: SynthesisData) => Promise<void>;
   onRunOpportunity: () => Promise<OpportunityData>;
-  onRunVentureStep: (chosenSpaceId?: string) => Promise<{ stage: string; done: boolean; ventures?: Venture[] }>;
+  onRunVentureStep: () => Promise<{ stage: string; done: boolean; ventures?: Venture[] }>;
+  onSubmitRatings: (ratings: Record<string, number>) => void | Promise<void>;
   onSaveDraft: (draft: VentureDraft) => void | Promise<void>;
 };
 
@@ -235,7 +236,7 @@ function Upsell({ title, text }: { title: string; text: string }) {
 
 /* ------------------------------------------------------------ the page */
 
-type MemberStatus = { id: string; name: string | null; accepted: boolean; intakeComplete: boolean; ranked?: boolean };
+type MemberStatus = { id: string; name: string | null; accepted: boolean; intakeComplete: boolean; ranked?: boolean; rated?: boolean };
 
 export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; live?: LiveCtx; seed?: DemoSeed | null }) {
   const isFree = plan === "free";
@@ -258,7 +259,6 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
 
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
 
-  const [spaceId, setSpaceId] = useState(""); // the opportunity space the team agreed on
   const [name, setName] = useState<string>(() => seed?.ventures?.[0]?.name ?? VENTURE_DETAILS.name);
   const [recorded, setRecorded] = useState<Record<string, boolean>>(
     Object.fromEntries(VENTURE_DETAILS.commitments.map((c) => [c.memberId, c.recorded]))
@@ -315,20 +315,23 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
     if (!live) return;
     try {
       for (;;) {
-        const r = await live.onRunVentureStep(spaceId || undefined);
+        const r = await live.onRunVentureStep();
         if (!isActive()) return;
         if (r.done && r.ventures) { setVentData(r.ventures); return; }
         setVentStage(r.stage);
       }
     } catch { if (isActive()) setVentError(true); }
-  }, [live, spaceId]);
+  }, [live]);
 
+  // The build waits until every accepted member has rated their conviction — the
+  // team's consensus winner is what gets built.
+  const ratingsReady = rankedAccepted.length >= 2 && rankedAccepted.every((s) => s.rated);
   useEffect(() => {
-    if (!live || reached < 4 || ventData) return;
+    if (!live || reached < 4 || ventData || !ratingsReady) return;
     let active = true;
     buildVentureLoop(() => active);
     return () => { active = false; };
-  }, [live, reached, ventData, buildVentureLoop]);
+  }, [live, reached, ventData, ratingsReady, buildVentureLoop]);
 
   const retryVentures = () => {
     setVentError(false);
@@ -421,8 +424,10 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 3:
         if (live && !oppData)
           return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} />;
-        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} spaceId={spaceId} onSpace={setSpaceId} />;
+        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} />;
       case 4:
+        if (live && !ventData && !ratingsReady)
+          return <GeneratingState title="Choosing your venture" sub="Waiting for everyone to rate their conviction — then Flash builds the one the team is most excited to build." />;
         return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
         return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} />;
@@ -1655,15 +1660,15 @@ function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v:
 
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
-function OpportunityPhase({ onNext, data, spaceId, onSpace }: { onNext: () => void; data?: OpportunityData; spaceId: string; onSpace: (id: string) => void }) {
+function OpportunityPhase({ onNext, data, onSubmitRatings }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void }) {
   const od = data ?? mockOpportunityData();
   const spaces = [...od.spaces].sort((a, b) => b.votes - a.votes);
-  const topId = spaces[0]?.id;
-  // Seed the agreed space to the top-voted one until the team picks.
-  useEffect(() => { if (!spaceId && topId) onSpace(topId); }, [spaceId, topId, onSpace]);
-  const sel = spaceId || topId || "";
-  const agreed = od.spaces.find((s) => s.id === sel) ?? spaces[0];
-  const agreedTitle = agreed?.title ?? "—";
+  const [conviction, setConviction] = useState<Record<string, number>>({});
+  const setC = (id: string, n: number) => setConviction((c) => ({ ...c, [id]: n }));
+  const allRated = spaces.length > 0 && spaces.every((s) => (conviction[s.id] ?? 0) > 0);
+  const pick = [...spaces].sort((a, b) => (conviction[b.id] ?? 0) - (conviction[a.id] ?? 0))[0];
+  const pickTitle = pick && (conviction[pick.id] ?? 0) > 0 ? pick.title : "—";
+  const submit = () => { onSubmitRatings?.(conviction); onNext(); };
   return (
     <Columns
       left={
@@ -1671,72 +1676,86 @@ function OpportunityPhase({ onNext, data, spaceId, onSpace }: { onNext: () => vo
           <RailTitle>Stages</RailTitle>
           {[
             { t: "Five ventures", d: "Distinct, scored from your consensus.", n: "1" },
-            { t: "Pick one", d: "Narrow to the venture to build.", n: "2" },
+            { t: "Rate conviction", d: "How excited to build each — 1 to 10.", n: "2" },
           ].map((s) => (
             <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
           ))}
-          <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Fed by synthesis.</span> Built from the problems and markets your team ranked highest.</p></Card>
+          <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Decided by the team.</span> Each of you rates independently — Flash builds the one with the most conviction.</p></Card>
         </div>
       }
       center={
         <div className="space-y-5">
           <Card className="p-5">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Your ventures</h1>
-            <p className="mt-1 text-slate-500">Five distinct ventures you could build, scored from your team&rsquo;s consensus. Narrow to the one you&rsquo;re most excited to build.</p>
+            <p className="mt-1 text-slate-500">Five distinct ventures you could build, scored from your team&rsquo;s consensus. Rate how excited you&rsquo;d be to build each — the team&rsquo;s conviction picks the one.</p>
           </Card>
 
-          <Part label="Five ventures" hint="Distinct directions, each scored on problem, market, and team fit.">
-            <p className="-mt-1 mb-1 text-xs text-slate-400">Pick the one the team is taking forward.</p>
+          <Part label="Five ventures" hint="Rate each 1-10 — no sitting on the fence.">
             <div className="space-y-3">
-              {spaces.map((s) => {
-                const active = s.id === sel;
-                return (
-                  <button key={s.id} onClick={() => onSpace(s.id)} className={`block w-full rounded-xl border p-4 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
-                    <div className="flex items-center gap-2.5">
-                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${active ? "bg-orange text-white" : "border border-slate-300"}`}>{active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="m5 12 5 5L20 7" /></svg>}</span>
-                      <span className="flex-1 text-sm font-bold text-foreground">{s.title}</span>
-                      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-400"><Icon name="thumb" className="h-3.5 w-3.5" />{s.votes}</span>
+              {spaces.map((s) => (
+                <div key={s.id} className="rounded-xl border border-slate-200 p-4">
+                  <p className="text-sm font-bold text-foreground">{s.title}</p>
+                  <dl className="mt-3 grid gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
+                    <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Customer</dt><dd className="mt-0.5 text-slate-600">{s.customer}</dd></div>
+                    <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Problem</dt><dd className="mt-0.5 text-slate-600">{s.problem}</dd></div>
+                    <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Market</dt><dd className="mt-0.5 text-slate-600">{s.market}</dd></div>
+                    <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Advantage</dt><dd className="mt-0.5 text-slate-600">{s.advantage}</dd></div>
+                    <div className="sm:col-span-2"><dt className="font-semibold uppercase tracking-wide text-orange-dark">Why now</dt><dd className="mt-0.5 text-slate-600">{s.whyNow}</dd></div>
+                  </dl>
+                  {s.scores && (
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                      <span><span className="font-semibold uppercase tracking-wide text-slate-400">Problem</span> <span className="font-bold text-foreground">{s.scores.problem}</span>/10</span>
+                      <span><span className="font-semibold uppercase tracking-wide text-slate-400">Market</span> <span className="font-bold text-foreground">{s.scores.market}</span>/10</span>
+                      <span><span className="font-semibold uppercase tracking-wide text-slate-400">Fit</span> <span className="font-bold text-foreground">{s.scores.fit}</span>/10</span>
                     </div>
-                    <dl className="mt-3 grid gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
-                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Customer</dt><dd className="mt-0.5 text-slate-600">{s.customer}</dd></div>
-                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Problem</dt><dd className="mt-0.5 text-slate-600">{s.problem}</dd></div>
-                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Market</dt><dd className="mt-0.5 text-slate-600">{s.market}</dd></div>
-                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Advantage</dt><dd className="mt-0.5 text-slate-600">{s.advantage}</dd></div>
-                      <div className="sm:col-span-2"><dt className="font-semibold uppercase tracking-wide text-orange-dark">Why now</dt><dd className="mt-0.5 text-slate-600">{s.whyNow}</dd></div>
-                    </dl>
-                    {s.scores && (
-                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 pt-2.5 text-[11px] text-slate-500">
-                        <span><span className="font-semibold uppercase tracking-wide text-slate-400">Problem</span> <span className="font-bold text-foreground">{s.scores.problem}</span>/10</span>
-                        <span><span className="font-semibold uppercase tracking-wide text-slate-400">Market</span> <span className="font-bold text-foreground">{s.scores.market}</span>/10</span>
-                        <span><span className="font-semibold uppercase tracking-wide text-slate-400">Fit</span> <span className="font-bold text-foreground">{s.scores.fit}</span>/10</span>
-                      </div>
-                    )}
-                    {s.scoreNote && <p className="mt-1.5 text-xs italic text-slate-400">{s.scoreNote}</p>}
-                  </button>
-                );
-              })}
+                  )}
+                  {s.scoreNote && <p className="mt-1 text-xs italic text-slate-400">{s.scoreNote}</p>}
+                  <div className="mt-3 border-t border-slate-100 pt-3"><ConvictionScale value={conviction[s.id] ?? 0} onChange={(n) => setC(s.id, n)} /></div>
+                </div>
+              ))}
             </div>
           </Part>
 
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-orange/40 bg-orange-tint/20 p-5 sm:flex-row sm:items-center">
             <div className="flex-1">
-              <p className="text-sm font-bold text-foreground">Lock the venture the team picks</p>
-              <p className="mt-0.5 text-xs text-slate-500">Once the team agrees on <span className="font-semibold text-orange-dark">{agreedTitle}</span>, Flash builds the single full venture from it.</p>
+              <p className="text-sm font-bold text-foreground">Submit your conviction</p>
+              <p className="mt-0.5 text-xs text-slate-500">Everyone rates independently. Flash builds the venture the team is most convicted on{pickTitle !== "—" ? ` — your top pick is ${pickTitle}` : ""}.</p>
             </div>
-            <PrimaryBtn label="Build the venture" onClick={onNext} icon="sparkle" />
+            {allRated
+              ? <PrimaryBtn label="Submit my conviction" onClick={submit} icon="sparkle" />
+              : <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-orange/40 px-5 text-sm font-bold text-white">Rate all 5 to continue</span>}
           </div>
         </div>
       }
       right={
         <div className="space-y-4 lg:sticky lg:top-4">
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
-            <RailTitle>Your pick</RailTitle>
-            <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{agreedTitle}</p>{agreed && <p className="mt-1 text-xs text-slate-500">{agreed.customer}</p>}</div>
-            <p className="text-xs text-slate-400">Flash builds your single full venture from this.</p>
+            <RailTitle>Your top pick</RailTitle>
+            <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{pickTitle}</p>{pick && pickTitle !== "—" && <p className="mt-1 text-xs text-slate-500">{pick.customer}</p>}</div>
+            <p className="text-xs text-slate-400">The team&rsquo;s highest-conviction venture is the one Flash builds.</p>
           </div>
         </div>
       }
     />
+  );
+}
+
+// Conviction 1-10, no neutral middle: 1-5 leans "meh" (amber), 6-10 leans "yes"
+// (orange) — you're on one side or the other.
+function ConvictionScale({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">How excited to build this?</span>
+      <div className="flex gap-0.5">
+        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+          <button key={n} type="button" onClick={() => onChange(n)} aria-label={`Conviction ${n} of 10`}
+            className={`h-7 w-6 rounded-sm text-[10px] font-bold transition-colors ${value >= n ? (n >= 6 ? "bg-orange text-white" : "bg-amber-300 text-amber-900") : "bg-slate-100 text-slate-300 hover:bg-slate-200"}`}>
+            {n}
+          </button>
+        ))}
+      </div>
+      <span className="text-xs font-bold text-foreground">{value ? `${value}/10` : "rate"}</span>
+    </div>
   );
 }
 

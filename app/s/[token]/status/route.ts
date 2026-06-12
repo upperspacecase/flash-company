@@ -1,4 +1,4 @@
-import { getTeamByToken, getTeamMembers, getTeamRankings } from "@/lib/db";
+import { getTeamByToken, getTeamMembers, getTeamRankings, getTeamRatings } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +10,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   const team = await getTeamByToken(token);
   if (!team) return Response.json({ members: [], allComplete: false }, { status: 404 });
 
-  const [members, rankings] = await Promise.all([getTeamMembers(team.id), getTeamRankings(team.id)]);
+  const [members, rankings, ratings] = await Promise.all([getTeamMembers(team.id), getTeamRankings(team.id), getTeamRatings(team.id)]);
   const rankedIds = new Set(rankings.map((r) => r.memberId));
+  const ratedIds = new Set(ratings.map((r) => r.memberId));
   const accepted = members.filter((m) => m.accepted);
   const allComplete = accepted.length >= 2 && accepted.every((m) => m.intake_complete);
 
@@ -22,6 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       accepted: m.accepted,
       intakeComplete: m.intake_complete,
       ranked: rankedIds.has(m.id),
+      rated: ratedIds.has(m.id),
     })),
     allComplete,
   });
