@@ -1370,7 +1370,7 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false }: {
           {[
             { t: "Review input", d: "All three intakes read.", done: true },
             { t: "Team", d: "Confirm energy, network, roles." },
-            { t: "Focus", d: "Add, edit, veto problems & markets." },
+            { t: "Focus", d: "Rank the problems, obsessions & markets." },
           ].map((s) => (
             <Card key={s.t}>
               <div className="flex items-center gap-3">
@@ -1415,19 +1415,19 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false }: {
             </div>
           </Part>
 
-          <Part label="Focus" hint="Narrow the focus — add, edit, or veto. No voting yet; that happens at Opportunity Spaces.">
+          <Part label="Focus" hint="Rank what matters most — your order, and your teammates', sets the team's focus.">
             <Section title="Lived problems">
-              <VotableList items={problems} onItems={setProblems} addLabel="problem" />
+              <RankList items={problems} onItems={setProblems} addLabel="problem" />
             </Section>
             <Section title="Obsessions & moonshots">
-              <VotableList items={obsessions} onItems={setObsessions} addLabel="obsession" />
+              <RankList items={obsessions} onItems={setObsessions} addLabel="obsession" />
             </Section>
             <Section title="Potential target markets">
-              <VotableList items={markets} onItems={setMarkets} addLabel="market" />
+              <RankList items={markets} onItems={setMarkets} addLabel="market" />
             </Section>
           </Part>
 
-          <div className="flex justify-end"><PrimaryBtn label="Agree opportunity spaces" onClick={handleConfirm} icon="sparkle" /></div>
+          <div className="flex justify-end"><PrimaryBtn label="Lock it in — see your ventures" onClick={handleConfirm} icon="sparkle" /></div>
         </div>
       }
     />
@@ -1608,21 +1608,42 @@ function RolesTasks({ cohort = COHORT, roles, onRoles, confirmed, onConfirm }: {
   );
 }
 
-function VotableList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v: Votable[]) => void; addLabel: string }) {
-  const [seq, setSeq] = useState(0);
+// Rank the items — most important at the top. The order IS this member's
+// ranking; it's saved with the synthesis and aggregated across the team into the
+// consensus that drives venture generation. Drag to reorder, or use the arrows.
+function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v: Votable[]) => void; addLabel: string }) {
+  const dragId = useRef<string | null>(null);
   const setText = (id: string, text: string) => onItems(items.map((i) => (i.id === id ? { ...i, text } : i)));
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= items.length) return;
+    const next = [...items];
+    const [it] = next.splice(from, 1);
+    next.splice(to, 0, it);
+    onItems(next);
+  };
   return (
     <div>
-      <p className="-mt-1 mb-2 text-xs text-slate-400">Derived from your inputs — edit freely, or veto what doesn&rsquo;t fit. No voting yet; that&rsquo;s next.</p>
-      <div className="space-y-2">
-        {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5">
-            <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`Add a ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
-            <button onClick={() => onItems(items.filter((i) => i.id !== item.id))} aria-label={`Veto ${addLabel}`} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-400 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600"><Icon name="minus" className="h-3.5 w-3.5" />Veto</button>
-          </div>
+      <p className="-mt-1 mb-2 text-xs text-slate-400">Drag to rank — most important at the top. Your ranking and your teammates&rsquo; decide the focus.</p>
+      <ol className="space-y-2">
+        {items.map((item, i) => (
+          <li
+            key={item.id}
+            draggable
+            onDragStart={() => { dragId.current = item.id; }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => { const from = items.findIndex((x) => x.id === dragId.current); if (from >= 0 && from !== i) move(from, i); dragId.current = null; }}
+            className="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5"
+          >
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{i + 1}</span>
+            <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`A ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
+            <span className="flex shrink-0 flex-col -space-y-1">
+              <button onClick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up" className="text-slate-400 transition-colors hover:text-orange disabled:opacity-30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="m6 15 6-6 6 6" /></svg></button>
+              <button onClick={() => move(i, i + 1)} disabled={i === items.length - 1} aria-label="Move down" className="text-slate-400 transition-colors hover:text-orange disabled:opacity-30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="m6 9 6 6 6-6" /></svg></button>
+            </span>
+            <span className="shrink-0 cursor-grab text-slate-300" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></svg></span>
+          </li>
         ))}
-      </div>
-      <button onClick={() => { onItems([...items, { id: `c${seq}`, text: "", votes: 0 }]); setSeq(seq + 1); }} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add a {addLabel}</button>
+      </ol>
     </div>
   );
 }
