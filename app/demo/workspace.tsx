@@ -424,7 +424,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 3:
         if (live && !oppData)
           return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
-        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} />;
+        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} />;
       case 4:
         if (live && !ventData && !ratingsReady)
           return <GeneratingState title="Choosing your venture" sub="Waiting for everyone to rate their conviction — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
@@ -1360,14 +1360,31 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false, sta
   const toggleConfirm = (k: string) => setConfirmed((c) => ({ ...c, [k]: !c[k] }));
   const toggleOpen = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
   const rolesConfirmed = roles.every((r) => confirmed[r.memberId]);
-  // Stepped: confirming a section collapses it and opens the next (still openable
-  // manually to review/change).
-  const SECTIONS = ["skills", "network", "locations", "roles"];
+  // Worked one section at a time: confirming a section collapses it and opens the
+  // next (each stays openable to review/change). The Team group flows straight
+  // into the Focus rankings, so the whole screen is a single guided sequence.
+  const SECTIONS = ["skills", "network", "locations", "roles", "problems", "obsessions", "markets"];
   const confirmSection = (k: string) => {
     setConfirmed((c) => ({ ...c, [k]: true }));
     const next = SECTIONS[SECTIONS.indexOf(k) + 1];
     setOpen((o) => ({ ...o, [k]: false, ...(next ? { [next]: true } : {}) }));
   };
+  // Roles is confirmed per-member; once all are in, advance to the first Focus list
+  // (just once, so re-opening roles to review doesn't keep kicking you forward).
+  const rolesAdvanced = useRef(false);
+  useEffect(() => {
+    if (rolesConfirmed && open.roles && !rolesAdvanced.current) {
+      rolesAdvanced.current = true;
+      setOpen((o) => ({ ...o, roles: false, problems: true }));
+    }
+  }, [rolesConfirmed, open.roles]);
+
+  // Left-rail progress: Team (4 sub-steps) then Focus (3 rankings).
+  const teamSteps = [confirmed.skills, confirmed.network, confirmed.locations, rolesConfirmed];
+  const focusSteps = [confirmed.problems, confirmed.obsessions, confirmed.markets];
+  const teamDone = teamSteps.filter(Boolean).length;
+  const focusDone = focusSteps.filter(Boolean).length;
+  const allConfirmed = teamDone === teamSteps.length && focusDone === focusSteps.length;
 
   const handleConfirm = () => onConfirm({
     convergence: d.convergence,
@@ -1385,14 +1402,15 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false, sta
         <div className="space-y-4">
           <RailTitle>Steps</RailTitle>
           {[
-            { t: "Review input", d: "All three intakes read.", done: true },
-            { t: "Team", d: "Confirm energy, network, roles." },
-            { t: "Focus", d: "Rank the problems, obsessions & markets." },
+            { t: "Review input", d: "All three intakes read.", done: true, count: null as string | null },
+            { t: "Team", d: "Confirm energy, network, roles.", done: teamDone === teamSteps.length, count: `${teamDone}/${teamSteps.length}` },
+            { t: "Focus", d: "Rank the problems, obsessions & markets.", done: focusDone === focusSteps.length, count: `${focusDone}/${focusSteps.length}` },
           ].map((s) => (
             <Card key={s.t}>
               <div className="flex items-center gap-3">
                 <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${s.done ? "bg-orange text-white" : "bg-slate-100 text-slate-400"}`}>{s.done ? <Icon name="check" className="h-3 w-3" /> : ""}</span>
-                <div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div>
+                <div className="min-w-0 flex-1"><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div>
+                {s.count && <span className={`shrink-0 text-xs font-semibold ${s.done ? "text-orange-dark" : "text-slate-400"}`}>{s.count}</span>}
               </div>
             </Card>
           ))}
@@ -1444,18 +1462,25 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false, sta
           </Part>
 
           <Part label="Focus" hint="Rank what matters most — your order, and your teammates', sets the team's focus.">
-            <Section title="Lived problems">
-              <RankList items={problems} onItems={setProblems} addLabel="problem" />
-            </Section>
-            <Section title="Obsessions & moonshots">
-              <RankList items={obsessions} onItems={setObsessions} addLabel="obsession" />
-            </Section>
-            <Section title="Potential target markets">
-              <RankList items={markets} onItems={setMarkets} addLabel="market" />
-            </Section>
+            <div className="space-y-3">
+              <ConfirmItem title="Lived problems" hint="Drag to rank — most important first." open={open.problems} onToggle={() => toggleOpen("problems")} confirmed={confirmed.problems} onConfirm={() => confirmSection("problems")}>
+                <RankList items={problems} onItems={setProblems} addLabel="problem" />
+              </ConfirmItem>
+              <ConfirmItem title="Obsessions & moonshots" hint="Drag to rank — most important first." open={open.obsessions} onToggle={() => toggleOpen("obsessions")} confirmed={confirmed.obsessions} onConfirm={() => confirmSection("obsessions")}>
+                <RankList items={obsessions} onItems={setObsessions} addLabel="obsession" />
+              </ConfirmItem>
+              <ConfirmItem title="Potential target markets" hint="Drag to rank — most important first." open={open.markets} onToggle={() => toggleOpen("markets")} confirmed={confirmed.markets} onConfirm={() => confirmSection("markets")}>
+                <RankList items={markets} onItems={setMarkets} addLabel="market" />
+              </ConfirmItem>
+            </div>
           </Part>
 
-          <div className="flex justify-end"><PrimaryBtn label="Lock it in — see your ventures" onClick={handleConfirm} icon="sparkle" /></div>
+          <div className="flex flex-col items-end gap-2">
+            {!allConfirmed && <p className="text-xs text-slate-400">Confirm each section above to continue.</p>}
+            {allConfirmed
+              ? <PrimaryBtn label="Lock it in — see your ventures" onClick={handleConfirm} icon="sparkle" />
+              : <span className="inline-flex h-12 items-center gap-2 rounded-xl bg-orange/40 px-6 text-sm font-bold text-white">Lock it in — see your ventures</span>}
+          </div>
         </div>
       }
     />
@@ -1464,8 +1489,10 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false, sta
 
 // A confirmable, collapsible Team item: add / edit / confirm. No delete or veto.
 function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, children }: { title: string; hint?: string; open: boolean; onToggle: () => void; confirmed?: boolean; onConfirm?: () => void; children: React.ReactNode }) {
+  // The open, not-yet-confirmed section is "the action to take" — orange outline.
+  const active = open && !confirmed;
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white/5">
+    <div className={`overflow-hidden rounded-xl border bg-white/5 transition-colors ${active ? "border-orange ring-1 ring-orange/30" : "border-slate-200"}`}>
       <div className="flex items-center gap-2 p-3">
         <button onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
           <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${confirmed ? "bg-orange text-white" : "bg-slate-100 text-slate-400"}`}>{confirmed ? <Icon name="check" className="h-3 w-3" /> : <Icon name="user" className="h-3 w-3" />}</span>
@@ -1679,7 +1706,7 @@ function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v:
 
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
-function OpportunityPhase({ onNext, data, onSubmitRatings }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void }) {
+function OpportunityPhase({ onNext, data, onSubmitRatings, status }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null }) {
   const od = data ?? mockOpportunityData();
   const spaces = [...od.spaces].sort((a, b) => b.votes - a.votes);
   const [conviction, setConviction] = useState<Record<string, number>>({});
@@ -1700,6 +1727,17 @@ function OpportunityPhase({ onNext, data, onSubmitRatings }: { onNext: () => voi
             <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
           ))}
           <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Decided by the team.</span> Each of you rates independently — Flash builds the one with the most conviction.</p></Card>
+          {status && status.some((s) => s.accepted) && (
+            <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
+              {status.filter((s) => s.accepted).map((s) => (
+                <div key={s.id} className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground">{s.name ?? "Teammate"}</span>
+                  <span className={s.rated ? "font-semibold text-orange-dark" : "text-slate-400"}>{s.rated ? "Rated" : "Rating…"}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       }
       center={
@@ -1713,7 +1751,7 @@ function OpportunityPhase({ onNext, data, onSubmitRatings }: { onNext: () => voi
             <div className="space-y-3">
               {spaces.map((s) => (
                 <div key={s.id} className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-sm font-bold text-foreground">{s.title}</p>
+                  <p className="text-lg font-bold tracking-tight text-foreground">{s.title}</p>
                   <dl className="mt-3 grid gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
                     <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Customer</dt><dd className="mt-0.5 text-slate-600">{s.customer}</dd></div>
                     <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Problem</dt><dd className="mt-0.5 text-slate-600">{s.problem}</dd></div>

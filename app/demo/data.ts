@@ -55,7 +55,7 @@ export const PROCESS: { label: string; text: string }[] = [
   { label: "Invite", text: "Form the team. Everyone accepts the link, and the 48-hour window starts." },
   { label: "Input", text: "Each person answers a short private intake — type or talk. Nothing's shared until everyone's in." },
   { label: "Synthesis", text: "Flash maps the team — your overlaps, tensions, skills, and reach — and you confirm the areas of interest to focus on." },
-  { label: "Opportunity", text: "Flash turns that focus into a few researched mini-ventures (customer, market, why-now). The team votes on the one to pursue." },
+  { label: "Ventures", text: "Flash turns that focus into five distinct, scored ventures (customer, market, why-now). Each of you rates your conviction, and the team's highest-conviction venture is the one to build." },
   { label: "Venture", text: "The chosen opportunity is built into one full venture — researched market, financials, approach, and strategy lenses — for you to see and edit together." },
   { label: "Validation", text: "Everything to test it for real: a landing page, shareable link, pitch deck, and a live signups dashboard — plus a 7/14/21/30-day check-in plan." },
 ];
