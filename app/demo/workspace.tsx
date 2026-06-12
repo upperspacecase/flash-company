@@ -420,7 +420,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
       case 2:
-        return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} data={synthesisData} showAll={!live} />;
+        return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} data={synthesisData} showAll={!live} status={live ? status : null} />;
       case 3:
         if (live && !oppData)
           return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} />;
@@ -1343,7 +1343,7 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
 
 /* ----------------------------------------------------- 2. Synthesis */
 
-function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; data?: SynthesisData; showAll?: boolean }) {
+function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false, status }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; data?: SynthesisData; showAll?: boolean; status?: MemberStatus[] | null }) {
   const d = data ?? mockSynthesisData();
   const [energy, setEnergy] = useState<Record<string, number[]>>(() => Object.fromEntries(cohort.map((m) => [m.id, [...(d.skillEnergy[m.id] ?? SKILLS.map(() => 3))]])));
   const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, ...Object.fromEntries(cohort.map((m) => [m.id, showAll])) }));
@@ -1360,6 +1360,14 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false }: {
   const toggleConfirm = (k: string) => setConfirmed((c) => ({ ...c, [k]: !c[k] }));
   const toggleOpen = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
   const rolesConfirmed = roles.every((r) => confirmed[r.memberId]);
+  // Stepped: confirming a section collapses it and opens the next (still openable
+  // manually to review/change).
+  const SECTIONS = ["skills", "network", "locations", "roles"];
+  const confirmSection = (k: string) => {
+    setConfirmed((c) => ({ ...c, [k]: true }));
+    const next = SECTIONS[SECTIONS.indexOf(k) + 1];
+    setOpen((o) => ({ ...o, [k]: false, ...(next ? { [next]: true } : {}) }));
+  };
 
   const handleConfirm = () => onConfirm({
     convergence: d.convergence,
@@ -1388,6 +1396,17 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false }: {
               </div>
             </Card>
           ))}
+          {status && status.some((s) => s.accepted) && (
+            <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
+              {status.filter((s) => s.accepted).map((s) => (
+                <div key={s.id} className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground">{s.name ?? "Teammate"}</span>
+                  <span className={s.ranked ? "font-semibold text-orange-dark" : "text-slate-400"}>{s.ranked ? "Locked in" : "Ranking…"}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       }
       center={
@@ -1409,13 +1428,13 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false }: {
 
           <Part label="Team" hint="Confirm your profile — add, edit, confirm. Nothing's removed here.">
             <div className="space-y-3">
-              <ConfirmItem title="Skills & energy" hint="Tap a dot to adjust — outer energises, inner drains." open={open.skills} onToggle={() => toggleOpen("skills")} confirmed={confirmed.skills} onConfirm={() => toggleConfirm("skills")}>
+              <ConfirmItem title="Skills & energy" hint="Tap a dot to adjust — outer energises, inner drains." open={open.skills} onToggle={() => toggleOpen("skills")} confirmed={confirmed.skills} onConfirm={() => confirmSection("skills")}>
                 <SkillBloom cohort={cohort} energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} editId={editId} onEdit={(id) => { setEditId(id); setShown((s) => ({ ...s, [id]: true })); }} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
               </ConfirmItem>
-              <ConfirmItem title="Network" hint="Industries you can talk to." open={open.network} onToggle={() => toggleOpen("network")} confirmed={confirmed.network} onConfirm={() => toggleConfirm("network")}>
+              <ConfirmItem title="Network" hint="Industries you can talk to." open={open.network} onToggle={() => toggleOpen("network")} confirmed={confirmed.network} onConfirm={() => confirmSection("network")}>
                 <NetworkList cohort={cohort} nodes={industries} onNodes={setIndustries} kind="industry" icon="building" addLabel="industry" />
               </ConfirmItem>
-              <ConfirmItem title="Locations" hint="Where you can reach and meet." open={open.locations} onToggle={() => toggleOpen("locations")} confirmed={confirmed.locations} onConfirm={() => toggleConfirm("locations")}>
+              <ConfirmItem title="Locations" hint="Where you can reach and meet." open={open.locations} onToggle={() => toggleOpen("locations")} confirmed={confirmed.locations} onConfirm={() => confirmSection("locations")}>
                 <NetworkList cohort={cohort} nodes={locations} onNodes={setLocations} kind="location" icon="target" addLabel="location" />
               </ConfirmItem>
               <ConfirmItem title="Roles & tasks" hint="Confirm each person's role." open={open.roles} onToggle={() => toggleOpen("roles")} confirmed={rolesConfirmed}>

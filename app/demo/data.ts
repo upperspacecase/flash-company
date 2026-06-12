@@ -45,7 +45,7 @@ export const PHASES = [
   { id: "input", label: "Input", blurb: "Each person answers privately. Typed or voice." },
   { id: "synthesis", label: "Synthesis", blurb: "The agent maps the team and surfaces problems, obsessions, and markets to confirm and narrow into a focus." },
   { id: "opportunity", label: "Ventures", blurb: "Five ventures you could build, scored. Rate your conviction; the team narrows to one." },
-  { id: "ventures", label: "Ventures", blurb: "Pick a birthed venture and flesh it out." },
+  { id: "ventures", label: "Venture", blurb: "The one venture the team chose — flesh it out and carry it to validation." },
   { id: "validation", label: "Validation", blurb: "Assets to test, feedback synthesis, and the 7/14/21/30 check-ins." },
 ] as const;
 
