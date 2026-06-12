@@ -411,7 +411,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   const content = (i: number) => {
     switch (i) {
       case 0:
-        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} resumeUrl={resumeUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} />;
+        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} resumeUrl={resumeUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} isHost={live ? live.isHost : true} />;
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
       case 2:
@@ -576,7 +576,7 @@ const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "target", title: "The venture only you can build", text: "Narrow to the one idea your team is uniquely placed to start, complete with the plan and the assets to share it openly with your network." },
 ];
 
-function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean }) {
+function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false, isHost = false }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean; isHost?: boolean }) {
   const [payOpen, setPayOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const isFree = plan === "free";
@@ -610,15 +610,15 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
           <div>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground">Accept your invite</p>
-                <p className="mt-1 text-sm text-slate-500">{isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`}</p>
+                <p className="text-sm font-bold text-foreground">{isHost ? "You started this Flash" : "Accept your invite"}</p>
+                <p className="mt-1 text-sm text-slate-500">{isHost ? `Your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`)}</p>
               </div>
               {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
             </div>
             <div className="mt-5">
               {expired
                 ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
-                : <PrimaryBtn label="Accept invite to get started" onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
+                : <PrimaryBtn label={isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept invite to get started"} onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
             </div>
           </div>
         )}

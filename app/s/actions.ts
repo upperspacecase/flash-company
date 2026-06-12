@@ -69,6 +69,8 @@ export async function joinTeam(token: string): Promise<void> {
   if (!team) return;
   const existing = await currentMember();
   if (existing && existing.team_id === team.id) return;
+  const roster = await getTeamMembers(team.id);
+  if (roster.length >= 3) return; // Flash is full (capped at 3)
   const member = await createMemberRow(team.id, false);
   await setMemberCookie(member.id);
 }
