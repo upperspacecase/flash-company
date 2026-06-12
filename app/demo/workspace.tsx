@@ -423,11 +423,11 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
         return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} data={synthesisData} showAll={!live} status={live ? status : null} />;
       case 3:
         if (live && !oppData)
-          return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} />;
+          return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} />;
       case 4:
         if (live && !ventData && !ratingsReady)
-          return <GeneratingState title="Choosing your venture" sub="Waiting for everyone to rate their conviction — then Flash builds the one the team is most excited to build." />;
+          return <GeneratingState title="Choosing your venture" sub="Waiting for everyone to rate their conviction — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
         return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
         return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} />;
@@ -1781,13 +1781,23 @@ function ConvictionScale({ value, onChange }: { value: number; onChange: (n: num
 /* ------------------------------------------------------ 3. Ventures */
 
 // Shown while a live LLM step (synthesis / opportunity / ventures) is generating.
-function GeneratingState({ title, sub }: { title: string; sub: string }) {
+function GeneratingState({ title, sub, progress }: { title: string; sub: string; progress?: { name: string; done: boolean }[] }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center justify-center py-20 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-tint text-orange"><Icon name="sparkle" className="h-6 w-6 animate-pulse" /></span>
       <h2 className="mt-5 text-xl font-bold tracking-tight text-foreground">{title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-500">{sub}</p>
       <span className="mt-5 h-1 w-32 overflow-hidden rounded-full bg-slate-100"><span className="block h-full w-1/2 animate-pulse rounded-full bg-orange" /></span>
+      {progress && progress.length > 0 && (
+        <div className="mt-6 w-full max-w-xs space-y-2 text-left">
+          {progress.map((p, i) => (
+            <div key={i} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-xs">
+              <span className="font-semibold text-foreground">{p.name}</span>
+              <span className={p.done ? "font-semibold text-orange-dark" : "text-slate-400"}>{p.done ? "Done" : "Waiting…"}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
