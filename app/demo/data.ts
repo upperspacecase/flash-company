@@ -44,7 +44,7 @@ export const PHASES = [
   { id: "invite", label: "Invite", blurb: "Share a link. The team forms when everyone accepts." },
   { id: "input", label: "Input", blurb: "Each person answers privately. Typed or voice." },
   { id: "synthesis", label: "Synthesis", blurb: "The agent maps the team and surfaces problems, obsessions, and markets to confirm and narrow into a focus." },
-  { id: "opportunity", label: "Opportunity", blurb: "Agree broad opportunity spaces, research them, and birth candidate ventures." },
+  { id: "opportunity", label: "Ventures", blurb: "Five ventures you could build, scored. Rate your conviction; the team narrows to one." },
   { id: "ventures", label: "Ventures", blurb: "Pick a birthed venture and flesh it out." },
   { id: "validation", label: "Validation", blurb: "Assets to test, feedback synthesis, and the 7/14/21/30 check-ins." },
 ] as const;
@@ -264,27 +264,16 @@ export type OpportunitySpace = {
   market: string;
   advantage: string; // why this team
   whyNow: string;
+  scores: { problem: number; market: number; fit: number }; // 0-10, from inputs + broad market
+  scoreNote: string; // one-line rationale for the scores
   votes: number;
 };
 
 export const OPPORTUNITY_SPACES: OpportunitySpace[] = [
-  { id: "reentry", title: "Guided re-entry", customer: "Parents returning to work after a career break.", problem: "Going back is cold and confidence-eroding; job boards screen out the gap.", market: "Millions of returners a year; returnship demand is climbing.", advantage: "A trusted 4,000-parent community and a team that's lived the comeback.", whyNow: "Returnships are going mainstream and tight labour markets prize overlooked talent.", votes: 3 },
-  { id: "employer", title: "Employer returnships", customer: "Companies that want to hire from an overlooked talent pool.", problem: "They can't read a career gap and miss capable candidates.", market: "Enterprise talent + DEI budgets; returnship programmes scaling.", advantage: "Warm access to returners plus insight into what employers misread.", whyNow: "Returnship incentives and DEI pressure make this fundable now.", votes: 1 },
-  { id: "confidence", title: "Confidence & coaching", customer: "Returners whose self-belief eroded during time out.", problem: "The block isn't skills — it's confidence and a broken signal.", market: "Coaching and upskilling spend; large and fragmented.", advantage: "A brand that's lived the comeback and a community to coach within.", whyNow: "The motherhood penalty is in the spotlight; returning is being destigmatised.", votes: 1 },
-  { id: "community", title: "Returner community", customer: "Parents who need peers, leads, and accountability for the comeback.", problem: "Re-entry is isolating; there's no trusted place for warm intros and momentum.", market: "Community plus jobs; recurring-membership potential.", advantage: "An existing 4,000-member community to build the flywheel on.", whyNow: "Warm intros and word-of-mouth compound fastest right now.", votes: 2 },
-];
-
-// Stage 3 market research — PESTLE's six dimensions, run against the agreed
-// opportunity space. The generative reframes live in the Lenses (angles) below.
-// Illustrative for the demo.
-export type ResearchLens = { key: string; label: string; finding: string };
-export const RESEARCH_LENSES: ResearchLens[] = [
-  { key: "political", label: "Political", finding: "Government returnship incentives and parental-leave reform are active tailwinds." },
-  { key: "economic", label: "Economic", finding: "Tight labour markets make overlooked talent valuable; households need a second income." },
-  { key: "social", label: "Social", finding: "The motherhood penalty is in the spotlight; returning is being destigmatised." },
-  { key: "technological", label: "Technological", finding: "Remote / hybrid tooling makes flexible re-entry viable; AI screening can be reframed in your favour." },
-  { key: "environmental", label: "Environmental", finding: "Less commuting and local, flexible work align with rising sustainability expectations." },
-  { key: "legal", label: "Legal", finding: "Flexible-work and anti-discrimination rights are strengthening; gap-based screening is a growing legal risk." },
+  { id: "reentry", title: "Guided re-entry", customer: "Parents returning to work after a career break.", problem: "Going back is cold and confidence-eroding; job boards screen out the gap.", market: "Millions of returners a year; returnship demand is climbing.", advantage: "A trusted 4,000-parent community and a team that's lived the comeback.", whyNow: "Returnships are going mainstream and tight labour markets prize overlooked talent.", scores: { problem: 9, market: 7, fit: 9 }, scoreNote: "Sharpest, most-felt problem with the team's strongest unfair advantage.", votes: 3 },
+  { id: "employer", title: "Employer returnships", customer: "Companies that want to hire from an overlooked talent pool.", problem: "They can't read a career gap and miss capable candidates.", market: "Enterprise talent + DEI budgets; returnship programmes scaling.", advantage: "Warm access to returners plus insight into what employers misread.", whyNow: "Returnship incentives and DEI pressure make this fundable now.", scores: { problem: 7, market: 8, fit: 6 }, scoreNote: "Bigger budgets, but a slower B2B sale and weaker founder-market fit.", votes: 1 },
+  { id: "confidence", title: "Confidence & coaching", customer: "Returners whose self-belief eroded during time out.", problem: "The block isn't skills — it's confidence and a broken signal.", market: "Coaching and upskilling spend; large and fragmented.", advantage: "A brand that's lived the comeback and a community to coach within.", whyNow: "The motherhood penalty is in the spotlight; returning is being destigmatised.", scores: { problem: 7, market: 6, fit: 8 }, scoreNote: "Strong fit, but a fuzzier problem and a crowded coaching market.", votes: 1 },
+  { id: "community", title: "Returner community", customer: "Parents who need peers, leads, and accountability for the comeback.", problem: "Re-entry is isolating; there's no trusted place for warm intros and momentum.", market: "Community plus jobs; recurring-membership potential.", advantage: "An existing 4,000-member community to build the flywheel on.", whyNow: "Warm intros and word-of-mouth compound fastest right now.", scores: { problem: 6, market: 6, fit: 9 }, scoreNote: "Best distribution fit, but monetising community alone is hard.", votes: 2 },
 ];
 
 // ------------------------------------------------------------ Ventures
@@ -819,18 +808,15 @@ export const LENSES: Lens[] = [
   { id: "lean", name: "Lean", icon: "refresh", question: "What's the riskiest assumption, and the smallest test?", reframe: "Make it real this week: the riskiest belief is that parents pay before results — test it with a paid pilot of twelve." },
 ];
 
-// The full bundle the Opportunity phase renders. In the demo it's the authored
-// mock below; in the live flow it's generated by Claude from the *confirmed*
-// synthesis (spaces + lenses), with PESTLE findings grounded by live web search
-// — see lib/opportunity.ts. Same shapes the UI already renders.
+// The candidate ventures the team narrows down. In the demo it's the authored
+// mock below; in the live flow it's generated by Claude from the team's consensus
+// synthesis ranking — see lib/opportunity.ts.
 export type OpportunityData = {
   spaces: OpportunitySpace[];
-  research: ResearchLens[];
 };
 
 export function mockOpportunityData(): OpportunityData {
   return {
     spaces: OPPORTUNITY_SPACES.map((s) => ({ ...s })),
-    research: RESEARCH_LENSES.map((r) => ({ ...r })),
   };
 }

@@ -1652,21 +1652,6 @@ function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v:
   );
 }
 
-function FiveWhys({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const v = value.length === 5 ? value : ["", "", "", "", ""];
-  return (
-    <div className="mt-2 space-y-1.5 rounded-lg bg-slate-50 p-3">
-      <p className="text-[11px] font-semibold text-slate-400">5 Whys — private to you. Keep asking &ldquo;why?&rdquo; to the root cause.</p>
-      {v.map((w, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span className="w-11 shrink-0 text-[11px] font-bold text-orange-dark">Why {i + 1}</span>
-          <input value={w} onChange={(e) => onChange(v.map((x, idx) => (idx === i ? e.target.value : x)))} placeholder={i === 0 ? "Why is this a problem?" : "…and why is that?"} className="flex-1 rounded-md border border-slate-200 px-2 py-1 text-sm focus:border-orange focus:outline-none" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
@@ -1674,8 +1659,6 @@ function OpportunityPhase({ onNext, data, spaceId, onSpace }: { onNext: () => vo
   const od = data ?? mockOpportunityData();
   const spaces = [...od.spaces].sort((a, b) => b.votes - a.votes);
   const topId = spaces[0]?.id;
-  const [whys, setWhys] = useState<Record<string, string[]>>({});
-  const [whysOpen, setWhysOpen] = useState(false);
   // Seed the agreed space to the top-voted one until the team picks.
   useEffect(() => { if (!spaceId && topId) onSpace(topId); }, [spaceId, topId, onSpace]);
   const sel = spaceId || topId || "";
@@ -1687,23 +1670,23 @@ function OpportunityPhase({ onNext, data, spaceId, onSpace }: { onNext: () => vo
         <div className="space-y-4">
           <RailTitle>Stages</RailTitle>
           {[
-            { t: "Opportunity spaces", d: "Vote on the mini-ventures.", n: "1" },
-            { t: "Market research", d: "PESTLE's six dimensions.", n: "2" },
+            { t: "Five ventures", d: "Distinct, scored from your consensus.", n: "1" },
+            { t: "Pick one", d: "Narrow to the venture to build.", n: "2" },
           ].map((s) => (
             <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
           ))}
-          <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Fed by synthesis.</span> Your top problems, obsessions, and markets shaped these spaces.</p></Card>
+          <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Fed by synthesis.</span> Built from the problems and markets your team ranked highest.</p></Card>
         </div>
       }
       center={
         <div className="space-y-5">
           <Card className="p-5">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Opportunity</h1>
-            <p className="mt-1 text-slate-500">Before a venture, the group agrees a broad opportunity space — then researches it.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Your ventures</h1>
+            <p className="mt-1 text-slate-500">Five distinct ventures you could build, scored from your team&rsquo;s consensus. Narrow to the one you&rsquo;re most excited to build.</p>
           </Card>
 
-          <Part label="Opportunity spaces" hint="Researched mini-ventures — vote on the one to take forward.">
-            <p className="-mt-1 mb-1 text-xs text-slate-400">Select the space the team is agreeing on.</p>
+          <Part label="Five ventures" hint="Distinct directions, each scored on problem, market, and team fit.">
+            <p className="-mt-1 mb-1 text-xs text-slate-400">Pick the one the team is taking forward.</p>
             <div className="space-y-3">
               {spaces.map((s) => {
                 const active = s.id === sel;
@@ -1721,50 +1704,35 @@ function OpportunityPhase({ onNext, data, spaceId, onSpace }: { onNext: () => vo
                       <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Advantage</dt><dd className="mt-0.5 text-slate-600">{s.advantage}</dd></div>
                       <div className="sm:col-span-2"><dt className="font-semibold uppercase tracking-wide text-orange-dark">Why now</dt><dd className="mt-0.5 text-slate-600">{s.whyNow}</dd></div>
                     </dl>
+                    {s.scores && (
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 pt-2.5 text-[11px] text-slate-500">
+                        <span><span className="font-semibold uppercase tracking-wide text-slate-400">Problem</span> <span className="font-bold text-foreground">{s.scores.problem}</span>/10</span>
+                        <span><span className="font-semibold uppercase tracking-wide text-slate-400">Market</span> <span className="font-bold text-foreground">{s.scores.market}</span>/10</span>
+                        <span><span className="font-semibold uppercase tracking-wide text-slate-400">Fit</span> <span className="font-bold text-foreground">{s.scores.fit}</span>/10</span>
+                      </div>
+                    )}
+                    {s.scoreNote && <p className="mt-1.5 text-xs italic text-slate-400">{s.scoreNote}</p>}
                   </button>
                 );
               })}
-            </div>
-            <div className="mt-3 rounded-xl border border-slate-200 p-3">
-              <button onClick={() => setWhysOpen((o) => !o)} className="flex w-full items-center gap-2.5 text-left">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-tint text-[11px] font-bold text-orange-dark">?</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-foreground">5 Whys</span>
-                  <span className="block truncate text-xs text-slate-400">Interrogate the root of {agreedTitle}</span>
-                </span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 shrink-0 text-slate-300 transition-transform ${whysOpen ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
-              </button>
-              {whysOpen && <FiveWhys value={whys[sel] ?? ["", "", "", "", ""]} onChange={(arr) => setWhys((w) => ({ ...w, [sel]: arr }))} />}
-            </div>
-          </Part>
-
-          <Part label="Market research" hint="PESTLE's six dimensions, run against the agreed space.">
-            <p className="-mt-1 mb-2 text-xs text-slate-400">Researching: <span className="font-semibold text-orange-dark">{agreedTitle}</span></p>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {od.research.map((l) => (
-                <div key={l.key} className="rounded-xl border border-slate-200 p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-orange-dark">{l.label}</p>
-                  <p className="mt-1 text-sm text-slate-700">{l.finding}</p>
-                </div>
-              ))}
             </div>
           </Part>
 
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-orange/40 bg-orange-tint/20 p-5 sm:flex-row sm:items-center">
             <div className="flex-1">
-              <p className="text-sm font-bold text-foreground">Agree the space — it births your venture</p>
-              <p className="mt-0.5 text-xs text-slate-500">Once the team agrees on <span className="font-semibold text-orange-dark">{agreedTitle}</span>, Flash births the single venture you&rsquo;re best placed to build from it.</p>
+              <p className="text-sm font-bold text-foreground">Lock the venture the team picks</p>
+              <p className="mt-0.5 text-xs text-slate-500">Once the team agrees on <span className="font-semibold text-orange-dark">{agreedTitle}</span>, Flash builds the single full venture from it.</p>
             </div>
-            <PrimaryBtn label="Birth the venture" onClick={onNext} icon="sparkle" />
+            <PrimaryBtn label="Build the venture" onClick={onNext} icon="sparkle" />
           </div>
         </div>
       }
       right={
         <div className="space-y-4 lg:sticky lg:top-4">
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
-            <RailTitle>Agreed space</RailTitle>
+            <RailTitle>Your pick</RailTitle>
             <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{agreedTitle}</p>{agreed && <p className="mt-1 text-xs text-slate-500">{agreed.customer}</p>}</div>
-            <p className="text-xs text-slate-400">Researched, then it births your single venture.</p>
+            <p className="text-xs text-slate-400">Flash builds your single full venture from this.</p>
           </div>
         </div>
       }

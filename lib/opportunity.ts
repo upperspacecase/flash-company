@@ -1,37 +1,20 @@
-import {
-  RESEARCH_LENSES,
-  type OpportunityData,
-  type ResearchLens,
-  type SynthesisData,
-} from "@/app/demo/data";
+import { type OpportunityData, type SynthesisData } from "@/app/demo/data";
 import { getAnthropic } from "@/lib/synthesis";
-import { SPACES_SYSTEM, PESTLE_SYSTEM } from "@/lib/llm-spec";
-
-const PESTLE: { key: ResearchLens["key"]; label: string }[] = [
-  { key: "political", label: "Political" },
-  { key: "economic", label: "Economic" },
-  { key: "social", label: "Social" },
-  { key: "technological", label: "Technological" },
-  { key: "environmental", label: "Environmental" },
-  { key: "legal", label: "Legal" },
-];
+import { SPACES_SYSTEM } from "@/lib/llm-spec";
 
 function summarize(s: SynthesisData): string {
   const list = (xs: { text: string }[]) => xs.map((x) => `- ${x.text}`).join("\n");
   return [
-    `Lived problems:\n${list(s.problems)}`,
-    `Obsessions:\n${list(s.obsessions)}`,
-    `Target markets:\n${list(s.markets)}`,
+    `Lived problems (ranked by the team — most important first):\n${list(s.problems)}`,
+    `Obsessions (ranked):\n${list(s.obsessions)}`,
+    `Target markets (ranked):\n${list(s.markets)}`,
     `Roles: ${s.roles.map((r) => r.role).join(", ")}`,
     `Network: ${s.network.map((n) => n.name).join(", ")}`,
   ].join("\n\n");
 }
 
-/* ----------------------------------- opportunity spaces (mini-ventures) */
+/* ----------------------------------- candidate ventures (scored, distinct) */
 
-// Each space is a small, comparable mini-venture — framed with the Click basics
-// the venture step uses — so the team can vote between them. The chosen one is
-// what the venture step births a single full venture from.
 const SPACES_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -48,15 +31,27 @@ const SPACES_SCHEMA = {
           market: { type: "string" },
           advantage: { type: "string" },
           whyNow: { type: "string" },
+          scores: {
+            type: "object",
+            additionalProperties: false,
+            properties: { problem: { type: "integer" }, market: { type: "integer" }, fit: { type: "integer" } },
+            required: ["problem", "market", "fit"],
+          },
+          scoreNote: { type: "string" },
         },
-        required: ["title", "customer", "problem", "market", "advantage", "whyNow"],
+        required: ["title", "customer", "problem", "market", "advantage", "whyNow", "scores", "scoreNote"],
       },
     },
   },
   required: ["spaces"],
 } as const;
 
-type RawSpace = { title: string; customer: string; problem: string; market: string; advantage: string; whyNow: string };
+type RawSpace = {
+  title: string; customer: string; problem: string; market: string; advantage: string; whyNow: string;
+  scores: { problem: number; market: number; fit: number }; scoreNote: string;
+};
+
+const clamp10 = (n: number) => Math.max(0, Math.min(10, Math.round(Number.isFinite(n) ? n : 5)));
 
 async function generateSpaces(client: ReturnType<typeof getAnthropic>, ctx: string): Promise<OpportunityData["spaces"]> {
   const body = {
@@ -65,7 +60,7 @@ async function generateSpaces(client: ReturnType<typeof getAnthropic>, ctx: stri
     thinking: { type: "adaptive" },
     output_config: { effort: "low", format: { type: "json_schema", schema: SPACES_SCHEMA } },
     system: SPACES_SYSTEM,
-    messages: [{ role: "user", content: `The confirmed synthesis:\n\n${ctx}\n\nProduce 4-6 opportunity spaces as mini-ventures.` }],
+    messages: [{ role: "user", content: `The team's confirmed, consensus-ranked synthesis:\n\n${ctx}\n\nProduce 5 genuinely DISTINCT candidate ventures, scored.` }],
   };
   const message = (await client.messages.create(body as never)) as { content: { type: string; text?: string }[] };
   const raw = message.content.filter((b) => b.type === "text" && b.text).map((b) => b.text as string).join("");
@@ -80,54 +75,15 @@ async function generateSpaces(client: ReturnType<typeof getAnthropic>, ctx: stri
       market: s.market,
       advantage: s.advantage,
       whyNow: s.whyNow,
+      scores: { problem: clamp10(s.scores?.problem), market: clamp10(s.scores?.market), fit: clamp10(s.scores?.fit) },
+      scoreNote: s.scoreNote ?? "",
       votes: 0,
     }));
 }
 
-/* ------------------------------------- PESTLE: live web search + LLM grounding */
-
-function extractJson(text: string): unknown | null {
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = fence ? fence[1] : text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    return null;
-  }
-}
-
-async function generatePestle(client: ReturnType<typeof getAnthropic>, theme: string): Promise<ResearchLens[]> {
-  // Streamed so the web_search turn doesn't hang (see lib/ventures research()).
-  const body = {
-    model: "claude-sonnet-4-6",
-    max_tokens: 6000,
-    thinking: { type: "disabled" },
-    output_config: { effort: "low" },
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
-    system: PESTLE_SYSTEM,
-    messages: [{ role: "user", content: `Run a PESTLE scan for this opportunity: ${theme}` }],
-  };
-  const stream = client.messages.stream(body as never) as unknown as { finalMessage: () => Promise<{ content: { type: string; text?: string }[] }> };
-  const final = await stream.finalMessage();
-  const text = final.content.filter((b) => b.type === "text" && b.text).map((b) => b.text as string).join("\n");
-  const obj = extractJson(text) as Record<string, string> | null;
-  if (!obj) throw new Error("PESTLE: could not parse findings");
-  return PESTLE.map(({ key, label }) => ({ key, label, finding: (obj[key] ?? "").trim() || "—" }));
-}
-
-/* ----------------------------------------------------------------- combine */
-
 export async function generateOpportunity(synthesis: SynthesisData): Promise<OpportunityData> {
   const client = getAnthropic();
   const ctx = summarize(synthesis);
-  const theme = [synthesis.markets[0]?.text, synthesis.problems[0]?.text].filter(Boolean).join(" — ") || "this founding team's opportunity";
-
-  const [spaces, research] = await Promise.all([
-    generateSpaces(client, ctx),
-    // Live web search powers PESTLE for the chosen direction; fall back to the
-    // authored scan only on a hard error.
-    generatePestle(client, theme).catch(() => RESEARCH_LENSES.map((r) => ({ ...r }))),
-  ]);
-
-  return { spaces, research };
+  const spaces = await generateSpaces(client, ctx);
+  return { spaces };
 }

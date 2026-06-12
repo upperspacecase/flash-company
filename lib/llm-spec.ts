@@ -12,10 +12,7 @@ export const SYNTHESIS_SYSTEM = `You are Flash, an agent that synthesises a smal
 Be specific and grounded in what they actually wrote. No generic startup platitudes. Name real things from their answers. The convergence signals are the most important output: surface genuine overlaps (the same theme appearing independently across members), real tensions, gaps, and hidden complementarity.`;
 
 export const SPACES_SYSTEM =
-  "You are Flash. From a founding team's confirmed synthesis, birth 4-6 OPPORTUNITY SPACES they're uniquely placed to pursue. Frame each as a small, comparable mini-venture using the Click framework's basics, so the team can vote between them: a short title, the specific customer, the problem they face, the market, why THIS team has an unfair advantage, and a concrete why-now signal. Be specific to THIS team — no generic startup talk.";
-
-export const PESTLE_SYSTEM =
-  "You are a market analyst. Use the web_search tool to find CURRENT (2026) real-world signals, then write a PESTLE scan. Ground each finding in what you actually found — concrete trends, policies, numbers. After researching, output ONLY a JSON object (no prose around it) with exactly these keys: political, economic, social, technological, environmental, legal. Each value is one or two sentences.";
+  "You are Flash. From a founding team's confirmed, consensus-ranked synthesis, produce exactly 5 candidate ventures the team could build — and make them GENUINELY DISTINCT from each other: different customers, problems, and markets, not five flavours of the same idea. Weight them toward the problems and markets the team ranked highest. Frame each with the Click basics so they're comparable: a short venture title, the specific customer, the problem, the market, why THIS team has an unfair advantage, and a concrete why-now signal. Then SCORE each venture 0-10 on three dimensions — problem (how real/painful), market (size + pull), and fit (this team's unfair advantage) — and give a one-line scoreNote explaining the scores. Be specific to THIS team; no generic startup talk.";
 
 // ----- Venture build — staged so each step is small, fast, and reliable -----
 
@@ -59,27 +56,15 @@ export const LLM_STEPS: LlmStep[] = [
   },
   {
     id: "spaces",
-    title: "Opportunity spaces",
-    when: "After synthesis is confirmed (lib/opportunity.ts → generateSpaces).",
+    title: "Candidate ventures",
+    when: "After synthesis is confirmed — generated from the team's consensus ranking (lib/opportunity.ts → generateSpaces).",
     model: "claude-sonnet-4-6",
     thinking: "adaptive",
     effort: "low",
     tools: "none",
-    inputs: "A summary of the confirmed synthesis: lived problems, obsessions, target markets, roles, network.",
-    outputs: "Structured JSON: 4-6 opportunity spaces, each a mini-venture (title, customer, problem, market, advantage, why-now).",
+    inputs: "The consensus-ranked synthesis (problems / obsessions / markets, ranked), roles, network.",
+    outputs: "Structured JSON: 5 distinct candidate ventures (title, customer, problem, market, advantage, why-now) each scored 0-10 on problem / market / fit + a scoreNote.",
     system: SPACES_SYSTEM,
-  },
-  {
-    id: "pestle",
-    title: "PESTLE market scan",
-    when: "Alongside opportunity spaces (lib/opportunity.ts → generatePestle). Falls back to authored scan on failure.",
-    model: "claude-sonnet-4-6",
-    thinking: "disabled",
-    effort: "low",
-    tools: "web_search (max 2 uses)",
-    inputs: "A theme derived from the top market + top problem.",
-    outputs: "JSON object with political/economic/social/technological/environmental/legal findings (parsed from prose).",
-    system: PESTLE_SYSTEM,
   },
   {
     id: "venture-research",
