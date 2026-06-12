@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
-import { CyclingWord } from "@/app/cycling-word";
 import {
   APPROACH_OPTIONS,
   CHOSEN_ID,
@@ -638,7 +637,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
       {/* 3 · Hero */}
       <section>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
-        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">Ever wonder what you and <span className="text-orange">two</span> <CyclingWord className="text-orange" /> could start?</h1>
+        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">Ever wonder what you and <span className="text-orange">two</span> <span className="text-orange">friends</span> could start?</h1>
         <p className="mt-5 text-lg leading-relaxed text-slate-600">
           Invite two people to a 48-hour structured ideation process that maps your combined skills, networks, and insights into an idea worth sharing.
         </p>
