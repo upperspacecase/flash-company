@@ -785,6 +785,13 @@ export function draftFromVenture(v: Venture, cohort: Member[]): VentureDraft {
         ? cohort.map((m) => ({ memberId: m.id, role: m.role ?? "", responsibility: m.brings ?? "", equity: "", vesting: CAP_TABLE.vestingDefault }))
         : base.capTable.rows,
     },
+    landing: {
+      headline: v.differentiation || v.thesis,
+      subhead: (d && d.approaches[0]?.why) || v.thesis,
+      visualCaption: "See how it works",
+      proof: d && d.market.length ? { stat: d.market[0].label, detail: d.market[0].finding } : { stat: "Be an early believer", detail: "Join the first cohort." },
+      cta: "Join the waitlist",
+    },
   };
 }
 

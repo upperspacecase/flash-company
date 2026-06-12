@@ -1,4 +1,4 @@
-import { COHORT, draftFromVenture, type SynthesisData, type OpportunityData } from "@/app/demo/data";
+import { COHORT, draftFromVenture, type SynthesisData, type OpportunityData, type Venture } from "@/app/demo/data";
 import { DEMO_TEAM_ID, DEMO_INTAKES } from "@/lib/demo-seed";
 import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
@@ -35,6 +35,12 @@ export async function POST(req: Request) {
   if (url.searchParams.get("reset") === "1") {
     await resetVentureData(DEMO_TEAM_ID);
     return Response.json({ reset: true });
+  }
+  // Publish the demo landing so /v/demo is live (re-derives the draft with landing + published).
+  if (url.searchParams.get("publish") === "1") {
+    const vents = (await getVentures(DEMO_TEAM_ID).catch(() => null)) as Venture[] | null;
+    if (vents && vents[0]) await saveVentureDraft(DEMO_TEAM_ID, { ...draftFromVenture(vents[0], COHORT), published: true });
+    return Response.json({ published: !!(vents && vents[0]) });
   }
   const force = url.searchParams.get("force") === "1";
 

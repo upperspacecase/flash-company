@@ -76,6 +76,13 @@ export function ensureSchema() {
         data JSONB NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      // Emails captured on a published venture landing page.
+      await sql`CREATE TABLE IF NOT EXISTS venture_signups (
+        id BIGSERIAL PRIMARY KEY,
+        team_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
       // Stripe payment fields on members (charged on accept, when keys are set).
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_session_id TEXT`;
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT`;
@@ -298,6 +305,19 @@ export async function saveVentureBuild(teamId: string, data: unknown): Promise<v
     INSERT INTO venture_build (team_id, data, updated_at)
     VALUES (${teamId}, ${json}::jsonb, now())
     ON CONFLICT (team_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
+}
+
+export async function saveVentureSignup(teamId: string, email: string): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  await sql`INSERT INTO venture_signups (team_id, email, created_at) VALUES (${teamId}, ${email}, now())`;
+}
+
+export async function getVentureSignupCount(teamId: string): Promise<number> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT count(*)::int AS n FROM venture_signups WHERE team_id = ${teamId}`;
+  return (rows[0] as { n: number } | undefined)?.n ?? 0;
 }
 
 // Clear the generated opportunity + venture so the demo can be re-seeded fresh

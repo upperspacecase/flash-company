@@ -265,7 +265,9 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   );
   const [checkin, setCheckin] = useState("Day 7");
   const [venture, setVenture] = useState<VentureDraft>(() => (!live && seed?.draft) ? seed.draft : makeVentureDraft());
-  const [published, setPublished] = useState(false);
+  // Publish state lives on the draft so it persists and the public /v page can read it.
+  const published = !!venture.published;
+  const publicUrl = live ? `flashco.org/v/${live.token}` : "flashco.org/v/demo";
 
   // Live: poll team status so teammates accepting / finishing on their own
   // devices flow in, and Synthesis unlocks once everyone's intake is in.
@@ -419,7 +421,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 4:
         return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
-        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={setPublished} gated={isFree} detail={ventData?.[0]?.detail} />;
+        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} />;
     }
   };
 
@@ -1943,15 +1945,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const CHANNELS = [{ key: "linkedin", label: "LinkedIn" }, { key: "dm", label: "DM" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }] as const;
 
-function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail }) {
+function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail, publicUrl }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail; publicUrl?: string }) {
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
   const v = VALIDATION;
   const deck = buildDeck(venture, name, detail);
   // Landing: editable + persisted (venture.landing), seeded from the venture.
   const landing = venture.landing ?? buildLanding(venture, detail);
   const outreach = buildOutreach(venture, name);
-  const slug = (name || "venture").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "venture";
-  const liveUrl = `flashco.app/v/${slug}`;
+  const liveUrl = publicUrl ?? "flashco.app";
   const landingEditable = !gated;
   const setLanding = (patch: Partial<LandingCopy>) => onVenture((p) => ({ ...p, landing: { ...(p.landing ?? landing), ...patch } }));
   return (
