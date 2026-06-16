@@ -5,7 +5,7 @@ import {
   type IntakeField,
   type SynthesisData,
 } from "@/app/demo/data";
-import { SYNTHESIS_SYSTEM } from "@/lib/llm-spec";
+import { getPrompt } from "@/lib/prompts";
 
 // Lazy so a missing ANTHROPIC_API_KEY only fails when a generation actually
 // runs, not at build/import. The SDK reads ANTHROPIC_API_KEY from the env.
@@ -175,7 +175,7 @@ export async function synthesizeTeam(intakes: IntakeRecord[]): Promise<Synthesis
       effort: "low",
       format: { type: "json_schema", schema: SYNTH_SCHEMA },
     },
-    system: SYNTHESIS_SYSTEM,
+    system: await getPrompt("synthesis"),
     messages: [{ role: "user", content: userContent }],
   };
 

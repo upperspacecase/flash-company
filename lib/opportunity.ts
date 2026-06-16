@@ -1,6 +1,6 @@
 import { type OpportunityData, type SynthesisData } from "@/app/demo/data";
 import { getAnthropic } from "@/lib/synthesis";
-import { SPACES_SYSTEM } from "@/lib/llm-spec";
+import { getPrompt } from "@/lib/prompts";
 
 function summarize(s: SynthesisData): string {
   const list = (xs: { text: string }[]) => xs.map((x) => `- ${x.text}`).join("\n");
@@ -67,7 +67,7 @@ async function generateSpaces(client: ReturnType<typeof getAnthropic>, ctx: stri
     max_tokens: 16000,
     thinking: { type: "adaptive" },
     output_config: { effort: "low", format: { type: "json_schema", schema: SPACES_SCHEMA } },
-    system: SPACES_SYSTEM,
+    system: await getPrompt("spaces"),
     messages: [{ role: "user", content: `The team's confirmed, consensus-ranked synthesis:\n\n${ctx}\n\nProduce 5 genuinely DISTINCT opportunities, each scored on the five weighted criteria with a one-line rationale per criterion.` }],
   };
   const message = (await client.messages.create(body as never)) as { content: { type: string; text?: string }[] };

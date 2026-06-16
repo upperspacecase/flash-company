@@ -5,7 +5,7 @@ import {
   type Venture,
 } from "@/app/demo/data";
 import { getAnthropic } from "@/lib/synthesis";
-import { RESEARCH_SYSTEM, VENTURE_CORE_SYSTEM, VENTURE_PLAN_SYSTEM, VENTURE_LENSES_SYSTEM } from "@/lib/llm-spec";
+import { getPrompt } from "@/lib/prompts";
 
 // Birth the single venture from the chosen opportunity — in small, sequential
 // agent steps that build on each other, so each one is fast and reliable and
@@ -75,7 +75,7 @@ async function research(client: ReturnType<typeof getAnthropic>, space?: Space):
       thinking: { type: "disabled" },
       output_config: { effort: "low" },
       tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
-      system: RESEARCH_SYSTEM,
+      system: await getPrompt("venture-research"),
       messages: [{ role: "user", content: `Opportunity:\nTitle: ${space.title}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nMarket: ${space.market}\n\nResearch it thoroughly.` }],
     };
     const stream = client.messages.stream(body as never) as unknown as { finalMessage: () => Promise<{ content: { type: string; text?: string }[] }> };
@@ -125,9 +125,9 @@ type RawCore = {
   approaches: { title: string; why: string }[];
 };
 
-function buildCore(client: ReturnType<typeof getAnthropic>, synthesis: SynthesisData, space: Space | undefined, brief: string): Promise<RawCore> {
+async function buildCore(client: ReturnType<typeof getAnthropic>, synthesis: SynthesisData, space: Space | undefined, brief: string): Promise<RawCore> {
   const user = `Synthesis and chosen opportunity:\n\n${teamContext(synthesis, space)}\n\nResearch brief:\n${brief || "(no external findings — reason from the opportunity and team)"}\n\nDefine the venture's core.`;
-  return callJson<RawCore>(client, VENTURE_CORE_SYSTEM, user, CORE_SCHEMA, "medium");
+  return callJson<RawCore>(client, await getPrompt("venture-core"), user, CORE_SCHEMA, "medium");
 }
 
 /* ----------------------------------------- step 3: market & money */
@@ -159,9 +159,9 @@ type RawPlan = {
   risks: { risk: string; mitigation: string }[];
 };
 
-function buildPlan(client: ReturnType<typeof getAnthropic>, space: Space | undefined, brief: string, core: RawCore): Promise<RawPlan> {
+async function buildPlan(client: ReturnType<typeof getAnthropic>, space: Space | undefined, brief: string, core: RawCore): Promise<RawPlan> {
   const user = `Venture core:\nName: ${core.name}\nThesis: ${core.thesis}\nCustomer: ${core.customer}\nProblem: ${core.problem}\nAdvantage: ${core.advantage.capability}\nChosen market: ${space?.market ?? ""}\n\nResearch brief:\n${brief || "(no external findings)"}\n\nProduce the market read and the numbers, grounded in the research.`;
-  return callJson<RawPlan>(client, VENTURE_PLAN_SYSTEM, user, PLAN_SCHEMA, "medium");
+  return callJson<RawPlan>(client, await getPrompt("venture-plan"), user, PLAN_SCHEMA, "medium");
 }
 
 /* ----------------------------------------- step 4: lenses */
@@ -173,9 +173,9 @@ const LENSES_SCHEMA = {
   required: ["lenses"],
 };
 
-function buildLenses(client: ReturnType<typeof getAnthropic>, core: RawCore, plan: RawPlan): Promise<{ lenses: { name: string; reframe: string }[] }> {
+async function buildLenses(client: ReturnType<typeof getAnthropic>, core: RawCore, plan: RawPlan): Promise<{ lenses: { name: string; reframe: string }[] }> {
   const user = `The venture:\nName: ${core.name}\nThesis: ${core.thesis}\nCustomer: ${core.customer}\nProblem: ${core.problem}\nDifferentiation: ${core.differentiation.statement}\nApproaches: ${core.approaches.map((a) => a.title).join("; ")}\nMarket: ${plan.marketSummary}\nRevenue model: ${plan.revenue.modelId}\n\nWrite a one-paragraph reframe for each Magic Lens.`;
-  return callJson(client, VENTURE_LENSES_SYSTEM, user, LENSES_SCHEMA, "medium");
+  return callJson(client, await getPrompt("venture-lenses"), user, LENSES_SCHEMA, "medium");
 }
 
 /* ----------------------------------------- assemble */

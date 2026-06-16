@@ -905,7 +905,6 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
               <div className={cur.first ? "mt-6" : "mt-3"}>
                 <h2 className="text-xl font-bold leading-snug tracking-tight text-foreground sm:text-2xl">{cur.q.q}</h2>
                 {cur.q.help && <p className="mt-2 text-sm leading-relaxed text-slate-500">{cur.q.help}</p>}
-                {isVoiceable(cur.q.field) && <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-orange-dark"><Icon name="mic" className="h-3 w-3" /> Voice or text</p>}
                 <div className="mt-5">
                   <Composer key={cur.q.id} q={cur.q} value={answers[cur.q.id]} onChange={(v) => update(cur.q.id, v)} voice={isVoice(cur.q.id)} onVoice={() => setVoiceMode((m) => ({ ...m, [cur.q.id]: !m[cur.q.id] }))} canSend={canSend} onSend={() => setStep((s) => s + 1)} onBack={step > 0 ? () => setStep((s) => Math.max(0, s - 1)) : undefined} />
                 </div>
@@ -1006,35 +1005,20 @@ function SectionIntro({ index, title, blurb }: { index: number; title: string; b
 function Composer({ q, value, onChange, voice, onVoice, canSend, onSend, onBack }: { q: IntakeQuestion; value: unknown; onChange: (v: unknown) => void; voice: boolean; onVoice: () => void; canSend: boolean; onSend: () => void; onBack?: () => void }) {
   const f = q.field;
   const label = canSend ? "Send" : q.optional ? "Skip" : "Send";
-  const supported = useSpeechSupported();
-  const coarse = useCoarsePointer();
-  const isText = f.kind === "short" || f.kind === "long";
-  // Desktop (reliable Web Speech) gets the in-page Voice button; touch devices get
-  // a clear pointer to the keyboard's own mic instead.
-  const desktopVoice = isText && !!f.voice && supported && !coarse;
-  const keyboardMic = isText && !!f.voice && coarse;
   return (
     <div>
       <div className="mb-3">
-        {(f.kind === "short" || f.kind === "long") && <TextControl value={asStr(value)} onChange={onChange} max={f.max} placeholder={f.placeholder} multiline={f.kind === "long"} voiceable={f.voice} voice={voice} onVoice={onVoice} onEnter={canSend ? onSend : undefined} />}
+        {(f.kind === "short" || f.kind === "long") && <TextControl value={asStr(value)} onChange={onChange} max={f.max} placeholder={f.placeholder} multiline={f.kind === "long"} voiceable={false} voice={voice} onVoice={onVoice} onEnter={canSend ? onSend : undefined} />}
         {f.kind === "slider" && <SliderControl value={typeof value === "number" ? value : f.min} onChange={onChange} min={f.min} max={f.max} step={f.step} unit={f.unit} />}
         {f.kind === "location" && <LocationControl value={asStr(value)} onChange={onChange} placeholder={f.placeholder} />}
         {f.kind === "multiSelect" && <MultiSelectControl value={asMulti(value)} onChange={onChange} options={f.options} allowOther={f.allowOther} />}
         {f.kind === "ranked" && <RankedControl value={asRanked(value)} onChange={onChange} options={f.options} />}
       </div>
-      {keyboardMic && !voice && (
-        <p className="-mt-1 mb-3 flex items-center gap-1.5 text-xs text-slate-400"><Icon name="mic" className="h-3.5 w-3.5 shrink-0 text-orange" /><span>Prefer to talk? Tap the <span className="font-semibold text-slate-600">mic on your keyboard</span> to dictate your answer.</span></p>
-      )}
       <div className="flex items-center justify-between gap-2">
         {onBack ? (
           <button onClick={onBack} aria-label="Previous question" className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m15 18-6-6 6-6" /></svg> Back</button>
         ) : <span />}
-        <div className="flex items-center gap-2">
-          {desktopVoice && !voice && (
-            <button onClick={onVoice} aria-label="Dictate your answer" className="inline-flex h-11 items-center gap-2 rounded-xl border border-orange px-4 text-sm font-bold text-orange-dark transition-colors hover:bg-orange-tint"><Icon name="mic" className="h-4 w-4" /> Voice</button>
-          )}
-          <button onClick={onSend} disabled={!canSend && !q.optional} className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:opacity-40">{label} <Icon name="send" className="h-4 w-4" /></button>
-        </div>
+        <button onClick={onSend} disabled={!canSend && !q.optional} className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:opacity-40">{label} <Icon name="send" className="h-4 w-4" /></button>
       </div>
     </div>
   );

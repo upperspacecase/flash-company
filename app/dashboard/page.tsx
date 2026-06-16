@@ -1,5 +1,6 @@
 import { UserButton } from "@clerk/nextjs";
 import { ensureSchema, getSql } from "@/lib/db";
+import { getAllPrompts } from "@/lib/prompts";
 import { DashboardTabs } from "./tabs";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export default async function Dashboard() {
     dbError = true;
   }
   const rate = visits > 0 ? ((signups / visits) * 100).toFixed(1) : "0.0";
+  const prompts = await getAllPrompts();
 
   return (
     <main className="relative min-h-screen bg-black text-white">
@@ -57,6 +59,7 @@ export default async function Dashboard() {
         )}
 
         <DashboardTabs
+          prompts={prompts}
           analytics={
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

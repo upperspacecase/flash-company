@@ -101,6 +101,13 @@ export function ensureSchema() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (team_id, member_id)
       )`;
+      // Editable system-prompt overrides — edit the AI behind the scenes without
+      // a code change. key = the LLM step id; system = the override text.
+      await sql`CREATE TABLE IF NOT EXISTS prompts (
+        key TEXT PRIMARY KEY,
+        system TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
       // Stripe payment fields on members (charged on accept, when keys are set).
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_session_id TEXT`;
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT`;
@@ -388,4 +395,35 @@ export async function setMemberPayment(memberId: string, sessionId: string, stat
   await ensureSchema();
   const sql = getSql();
   await sql`UPDATE members SET payment_session_id = ${sessionId}, payment_status = ${status} WHERE id = ${memberId}`;
+}
+
+/* ---------------------------------------------- editable LLM system prompts */
+
+export async function getPromptOverrides(): Promise<Record<string, string>> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT key, system FROM prompts`;
+  return Object.fromEntries((rows as { key: string; system: string }[]).map((r) => [r.key, r.system]));
+}
+
+export async function getPromptOverride(key: string): Promise<string | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT system FROM prompts WHERE key = ${key}`;
+  return rows[0] ? (rows[0] as { system: string }).system : null;
+}
+
+export async function savePromptOverride(key: string, system: string): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  await sql`
+    INSERT INTO prompts (key, system, updated_at)
+    VALUES (${key}, ${system}, now())
+    ON CONFLICT (key) DO UPDATE SET system = EXCLUDED.system, updated_at = now()`;
+}
+
+export async function deletePromptOverride(key: string): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  await sql`DELETE FROM prompts WHERE key = ${key}`;
 }
