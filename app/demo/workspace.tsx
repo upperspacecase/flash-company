@@ -189,7 +189,7 @@ function CheckRow({ label, done = true }: { label: string; done?: boolean }) {
 function Columns({ left, center, right }: { left: React.ReactNode; center: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
-      <aside className="lg:w-72 lg:shrink-0">{left}</aside>
+      <aside className="lg:sticky lg:top-[72px] lg:w-72 lg:shrink-0 lg:self-start">{left}</aside>
       <section className="min-w-0 flex-1">{center}</section>
       {right && <aside className="lg:w-80 lg:shrink-0">{right}</aside>}
     </div>
@@ -424,7 +424,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 3:
         if (live && !oppData)
           return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
-        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} />;
+        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} />;
       case 4:
         if (live && !ventData && !ratingsReady)
           return <GeneratingState title="Choosing your venture" sub="Waiting for everyone to rate their conviction — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
@@ -525,7 +525,7 @@ function Countdown({ endsAt }: { endsAt: string }) {
 function Header({ plan, cohort = COHORT, windowEndsAt }: { plan: "free" | "full"; cohort?: Member[]; windowEndsAt?: string }) {
   const isFree = plan === "free";
   return (
-    <header className="border-b border-slate-200 bg-white/5">
+    <header className="sticky top-0 z-30 border-b border-slate-200 bg-black/85 backdrop-blur">
       <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-4 px-5 py-3">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-orange"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
@@ -940,14 +940,21 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   // on top and tips below; desktop: the usual three-column workspace.
   return (
     <Columns
-      left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />}
-      center={
-        <div className="flex h-[calc(100svh-11rem)] flex-col rounded-2xl border border-orange bg-white/5 p-4 lg:h-[32rem] lg:border-slate-200 lg:p-6">
-          {stepper}
-          {chat}
+      left={
+        <div className="space-y-4">
+          <IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />
+          <div className="hidden space-y-4 lg:block">{tips}</div>
         </div>
       }
-      right={<div className="space-y-4">{tips}</div>}
+      center={
+        <>
+          <div className="flex h-[calc(100svh-11rem)] flex-col rounded-2xl border border-orange bg-white/5 p-4 lg:h-[32rem] lg:border-slate-200 lg:p-6">
+            {stepper}
+            {chat}
+          </div>
+          <div className="mt-4 space-y-4 lg:hidden">{tips}</div>
+        </>
+      }
     />
   );
 }
@@ -956,7 +963,7 @@ function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProg
   const youDone = INTAKE.reduce((n, s) => n + answeredIn(s), 0);
   const team = cohort.map((m) => ({ m, done: m.id === youId ? youDone : (othersProgress?.(m.id) ?? 0), you: m.id === youId }));
   return (
-    <div className="hidden space-y-4 lg:block lg:sticky lg:top-4">
+    <div className="hidden space-y-4 lg:block">
       <RailTitle>Your intake</RailTitle>
       <p className="px-1 text-xs text-slate-400">Six sections, conversational. Anonymous until synthesis.</p>
       <div className="space-y-1.5">
@@ -1370,12 +1377,13 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
           {status && status.some((s) => s.accepted) && (
             <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
               <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
-              {status.filter((s) => s.accepted).map((s) => (
-                <div key={s.id} className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">{s.name ?? "Teammate"}</span>
+              {status.filter((s) => s.accepted).map((s) => { const m = cohort.find((x) => x.id === s.id); return (
+                <div key={s.id} className="flex items-center gap-2.5 text-xs">
+                  {m && <Avatar m={m} size="h-7 w-7 text-[10px]" />}
+                  <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{s.name ?? m?.name ?? "Teammate"}</span>
                   <span className={s.ranked ? "font-semibold text-orange-dark" : "text-slate-400"}>{s.ranked ? "Locked in" : "Ranking…"}</span>
                 </div>
-              ))}
+              ); })}
             </div>
           )}
         </div>
@@ -1663,7 +1671,7 @@ function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v:
 
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
-function OpportunityPhase({ onNext, data, onSubmitRatings, status }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null }) {
+function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[] }) {
   const od = data ?? mockOpportunityData();
   const spaces = [...od.spaces].sort((a, b) => b.votes - a.votes);
   const [conviction, setConviction] = useState<Record<string, number>>({});
@@ -1684,15 +1692,21 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status }: { onNext: (
             <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
           ))}
           <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Decided by the team.</span> Each of you rates independently — Flash builds the one with the most conviction.</p></Card>
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
+            <RailTitle>Your top pick</RailTitle>
+            <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{pickTitle}</p>{pick && pickTitle !== "—" && <p className="mt-1 text-xs text-slate-500">{pick.customer}</p>}</div>
+            <p className="text-xs text-slate-400">The team&rsquo;s highest-conviction venture is the one Flash builds.</p>
+          </div>
           {status && status.some((s) => s.accepted) && (
             <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
               <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
-              {status.filter((s) => s.accepted).map((s) => (
-                <div key={s.id} className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">{s.name ?? "Teammate"}</span>
+              {status.filter((s) => s.accepted).map((s) => { const m = cohort.find((x) => x.id === s.id); return (
+                <div key={s.id} className="flex items-center gap-2.5 text-xs">
+                  {m && <Avatar m={m} size="h-7 w-7 text-[10px]" />}
+                  <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{s.name ?? m?.name ?? "Teammate"}</span>
                   <span className={s.rated ? "font-semibold text-orange-dark" : "text-slate-400"}>{s.rated ? "Rated" : "Rating…"}</span>
                 </div>
-              ))}
+              ); })}
             </div>
           )}
         </div>
@@ -1738,15 +1752,6 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status }: { onNext: (
             {allRated
               ? <PrimaryBtn label="Submit my conviction" onClick={submit} icon="sparkle" />
               : <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-orange/40 px-5 text-sm font-bold text-white">Rate all 5 to continue</span>}
-          </div>
-        </div>
-      }
-      right={
-        <div className="space-y-4 lg:sticky lg:top-4">
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
-            <RailTitle>Your top pick</RailTitle>
-            <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{pickTitle}</p>{pick && pickTitle !== "—" && <p className="mt-1 text-xs text-slate-500">{pick.customer}</p>}</div>
-            <p className="text-xs text-slate-400">The team&rsquo;s highest-conviction venture is the one Flash builds.</p>
           </div>
         </div>
       }
@@ -1882,7 +1887,7 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, s
           </Card>
         </section>
         <aside className="lg:w-80 lg:shrink-0">
-          <div className="lg:sticky lg:top-4 lg:self-start">
+          <div className="lg:sticky lg:top-[72px] lg:self-start">
             <div className="space-y-4 rounded-2xl border border-slate-200 bg-white/5 p-5">
               <RailTitle>Deliberation</RailTitle>
               <div className="grid gap-3"><Bars label="Spark" value={v.spark} /><Bars label="Conviction" value={v.conviction} /></div>
@@ -1918,35 +1923,16 @@ function LensCards({ lenses }: { lenses: NonNullable<Venture["lenses"]> }) {
   );
 }
 
-function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext, detail, cohort = [] }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; detail?: VentureDetail; cohort?: Member[] }) {
+function FullVentureDetails({ onNext, detail }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; detail?: VentureDetail; cohort?: Member[] }) {
   const d = VENTURE_DETAILS;
   // Prefer the live, research-grounded content when the venture was generated.
-  const origin = detail && detail.origin.length ? detail.origin : d.origin;
   const financials = detail && detail.financials.rows.length ? detail.financials : d.financials;
-  const sprint = detail && detail.sprint.length ? detail.sprint : d.sprint;
   const risks = detail && detail.risks.length ? detail.risks : d.risks;
-  // Live: commitments are the real team, each owning their cap-table responsibility.
-  const commits: { member: Member; statement: string }[] = detail && cohort.length
-    ? cohort.map((m) => { const row = venture.capTable.rows.find((r) => r.memberId === m.id); return { member: m, statement: row?.responsibility || m.brings || "Owns their part of the build." }; })
-    : d.commitments.map((c) => ({ member: memberById(c.memberId), statement: c.statement }));
-  const setRow = (i: number, patch: Partial<VentureDraft["capTable"]["rows"][number]>) =>
-    onVenture((p) => ({ ...p, capTable: { ...p.capTable, rows: p.capTable.rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) } }));
-  const setPool = (pool: number) => onVenture((p) => ({ ...p, capTable: { ...p.capTable, pool } }));
   return (
     <div className="space-y-6 border-t border-slate-100 pt-6">
-      <Section title="The origin story">
-        <div className="space-y-2 text-sm text-slate-700">{origin.map((p, i) => <p key={i}>{p}</p>)}</div>
-      </Section>
-
-      <CapTable capTable={venture.capTable} setRow={setRow} setPool={setPool} />
-
       <Section title="Financials">
         <p className="mb-2 text-xs text-slate-400">{financials.note}</p>
         <dl className="space-y-2">{financials.rows.map((r) => <div key={r.label} className="flex gap-3 rounded-lg border border-slate-200 p-3 text-sm"><dt className="w-28 shrink-0 font-semibold text-slate-400">{r.label}</dt><dd className="text-foreground">{r.value}</dd></div>)}</dl>
-      </Section>
-
-      <Section title="7-day sprint plan">
-        <div className="space-y-2">{sprint.map((s) => <div key={s.days} className="flex gap-3 rounded-lg border border-slate-200 p-3"><span className="shrink-0 rounded-md bg-orange-tint px-2 py-1 text-xs font-bold text-orange-dark">{s.days}</span><p className="text-sm text-slate-700">{s.text}</p></div>)}</div>
       </Section>
 
       <Section title="Risk register">
@@ -1956,16 +1942,6 @@ function FullVentureDetails({ venture, onVenture, recorded, onRecord, onNext, de
             <p className="mt-1 pl-6 text-sm text-slate-600"><span className="font-semibold text-orange-dark">Mitigation:</span> {r.mitigation}</p>
           </div>
         ))}</div>
-      </Section>
-
-      <Section title="The commitment">
-        <div className="space-y-2">{commits.map(({ member: m, statement }) => { const rec = recorded[m.id]; return (
-          <div key={m.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-            <Avatar m={m} size="h-9 w-9 text-xs" />
-            <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{m.name}</p><p className="truncate text-xs text-slate-500">{statement}</p></div>
-            <button onClick={() => onRecord(m.id)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${rec ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={rec ? "check" : "play"} className="h-3.5 w-3.5" />{rec ? "Recorded" : "Record"}</button>
-          </div>
-        ); })}</div>
       </Section>
 
       <div className="flex justify-end"><PrimaryBtn label="Lock it & validate" onClick={onNext} icon="target" /></div>
@@ -2315,11 +2291,6 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
       <Part label="Differentiation" hint="Differentiation makes products click.">
         <DifferentiationBlock diff={venture.differentiation} set={setDiff} />
         <Section title="Principles"><PrinciplesEditor principles={venture.principles} onChange={(p) => set("principles", p)} /></Section>
-      </Part>
-
-      <Part label="Approach" hint="How you'll solve it — never commit to your first idea.">
-        <Section title="Options"><ApproachOptions chosen={venture.approachId} onPick={(id) => set("approachId", id)} options={venture.approaches} /></Section>
-        <Section title="Magic Lenses"><LensCards lenses={venture.lenses} /></Section>
       </Part>
 
       <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} />
