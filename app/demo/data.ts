@@ -45,7 +45,7 @@ export const PHASES = [
   { id: "input", label: "Input", blurb: "Each person answers privately. Typed or voice." },
   { id: "synthesis", label: "Synthesis", blurb: "The agent maps the team and surfaces problems, obsessions, and markets to confirm and narrow into a focus." },
   { id: "opportunity", label: "Opportunities", blurb: "Distinct opportunities you could build, scored and ranked. Rate how excited you are to build each; the team's excitement narrows to one." },
-  { id: "ventures", label: "Venture", blurb: "The one venture the team chose — flesh it out and carry it to validation." },
+  { id: "ventures", label: "Idea", blurb: "The one idea the team chose — flesh it out and carry it to validation." },
   { id: "validation", label: "Validation", blurb: "Assets to test, feedback synthesis, and the 7/14/21/30 check-ins." },
 ] as const;
 
@@ -56,7 +56,7 @@ export const PROCESS: { label: string; text: string }[] = [
   { label: "Input", text: "Each person answers a short private intake — type or talk. Nothing's shared until everyone's in." },
   { label: "Synthesis", text: "Flash maps the team — your overlaps, tensions, skills, and reach — and you confirm the areas of interest to focus on." },
   { label: "Opportunities", text: "Flash turns that focus into distinct, scored opportunities — each with a hook, problem, solution, market, and a weighted evaluation. Each of you rates how excited you are to build it, and the team's excitement narrows to one." },
-  { label: "Venture", text: "The chosen opportunity is built into one full venture — researched market, financials, approach, and strategy lenses — for you to see and edit together." },
+  { label: "Idea", text: "The chosen opportunity is built into one full idea — researched market, financials, approach, and strategy lenses — for you to see and edit together." },
   { label: "Validation", text: "Everything to test it for real: a landing page, shareable link, pitch deck, and a live signups dashboard — plus a 7/14/21/30-day check-in plan." },
 ];
 

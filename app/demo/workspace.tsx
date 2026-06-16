@@ -426,18 +426,18 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   const content = (i: number) => {
     switch (i) {
       case 0:
-        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} resumeUrl={resumeUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} isHost={live ? live.isHost : true} />;
+        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} resumeUrl={resumeUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} isHost={live ? live.isHost : true} windowEndsAt={live?.windowEndsAt} />;
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
       case 2:
         return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} youId={youId} data={synthesisData} status={live ? status : null} />;
       case 3:
         if (live && !oppData)
-          return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
+          return <GeneratingState title="Finding your opportunities" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into opportunities to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
         return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} youId={youId} />;
       case 4:
         if (live && !ventData && !ratingsReady)
-          return <GeneratingState title="Choosing your venture" sub="Waiting for everyone to rate their conviction — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
+          return <GeneratingState title="Choosing your idea" sub="Waiting for everyone to rate their excitement — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
         return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
         return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} />;
@@ -542,7 +542,7 @@ function Header({ phase, onJump, unlocked }: { phase: number; onJump: (n: number
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-orange"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
           <span className="text-lg font-bold tracking-tight text-foreground">Flash Company</span>
         </Link>
-        <ol className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+        <ol className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto">
           {PHASES.map((p, i) => {
             const active = i === phase;
             const done = i < phase;
@@ -577,7 +577,7 @@ const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "target", title: "The venture only you can build", text: "Narrow to the one idea your team is uniquely placed to start, complete with the plan and the assets to share it openly with your network." },
 ];
 
-function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false, isHost = false }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean; isHost?: boolean }) {
+function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false, isHost = false, windowEndsAt }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean; isHost?: boolean; windowEndsAt?: string }) {
   const [payOpen, setPayOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const isFree = plan === "free";
@@ -665,7 +665,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
           <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
         </div>
         <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700">
-          <Icon name="clock" className="h-4 w-4" /> <InviteCountdown /> left for invitations to be accepted
+          <Icon name="clock" className="h-4 w-4" /> <InviteCountdown endsAt={windowEndsAt} /> left for invitations to be accepted
         </div>
       </section>
 
@@ -1446,14 +1446,38 @@ function NetworkList({ cohort = COHORT, nodes, onNodes, kind, icon, addLabel }: 
   );
 }
 
-// Self-contained 48-hour accept-window countdown (prototype display).
-function InviteCountdown() {
-  const [s, setS] = useState(48 * 3600);
+// A real, persistent countdown. Anchors to `endsAt` when given (the live team's
+// actual deadline), else a per-browser deadline persisted in localStorage so a
+// demo countdown stays consistent across reloads instead of resetting. Computes
+// on the client (hydration-safe). Returns remaining whole seconds, or null
+// before mount.
+function useDeadline(endsAt: string | undefined, durationMs: number, key: string): number | null {
+  const [now, setNow] = useState<number | null>(null);
+  const [end, setEnd] = useState<number | null>(null);
   useEffect(() => {
-    const id = setInterval(() => setS((x) => (x > 0 ? x - 1 : 0)), 1000);
+    let e: number;
+    if (endsAt) {
+      e = new Date(endsAt).getTime();
+    } else {
+      const stored = localStorage.getItem(key);
+      if (stored && Number.isFinite(Number(stored))) e = Number(stored);
+      else { e = Date.now() + durationMs; try { localStorage.setItem(key, String(e)); } catch { /* private mode */ } }
+    }
+    setEnd(e);
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [endsAt, durationMs, key]);
+  if (now === null || end === null) return null;
+  return Math.max(0, Math.floor((end - now) / 1000));
+}
+
+// 48-hour accept window — real (live) or persisted (demo).
+function InviteCountdown({ endsAt }: { endsAt?: string }) {
+  const s = useDeadline(endsAt, 48 * 3600 * 1000, "flash_invite_deadline");
   const p = (n: number) => String(n).padStart(2, "0");
+  if (s === null) return <span className="tabular-nums">··:··:··</span>;
+  if (s <= 0) return <span className="tabular-nums">closed</span>;
   return <span className="tabular-nums">{p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)}</span>;
 }
 
@@ -1773,34 +1797,25 @@ function ScoreStepper({ score, onChange }: { score: number; onChange: (v: number
   );
 }
 
-// Excitement 1-10 surfaced as the card's CTA: an orange button at the bottom
-// right (styled like the confirm CTA) that reveals the scale; once set it reads
-// like a confirmed action.
+// Excitement 1-10, always visible at the bottom right of the card with a
+// confirm-CTA-style indicator that reads "Rate" until you pick.
 function ConvictionScale({ value, onChange }: { value: number; onChange: (n: number) => void }) {
-  const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-col items-end gap-2">
-      {open && (
-        <div className="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-orange/30 bg-orange-tint/10 p-2.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">How excited to build this?</span>
-          <div className="flex gap-0.5">
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-              <button key={n} type="button" onClick={() => { onChange(n); setOpen(false); }} aria-label={`Excitement ${n} of 10`}
-                className={`h-7 w-6 rounded-sm text-[10px] font-bold transition-colors ${value >= n ? (n >= 6 ? "bg-orange text-white" : "bg-amber-300 text-amber-900") : "bg-slate-100 text-slate-300 hover:bg-slate-200"}`}>
-                {n}
-              </button>
-            ))}
-          </div>
+    <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">How excited to build this?</span>
+      <div className="flex items-center gap-2">
+        <div className="flex gap-0.5">
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+            <button key={n} type="button" onClick={() => onChange(n)} aria-label={`Excitement ${n} of 10`}
+              className={`h-7 w-6 rounded-sm text-[10px] font-bold transition-colors ${value >= n ? (n >= 6 ? "bg-orange text-white" : "bg-amber-300 text-amber-900") : "bg-slate-100 text-slate-300 hover:bg-slate-200"}`}>
+              {n}
+            </button>
+          ))}
         </div>
-      )}
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-6 py-3 text-sm font-bold transition-colors ${value ? "bg-orange/20 text-orange-dark" : "bg-orange text-white hover:opacity-90"}`}
-      >
-        <Icon name={value ? "check" : "thumb"} className="h-4 w-4" />
-        {value ? `Excited · ${value}/10` : "Rate how excited"}
-      </button>
+        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold ${value ? "bg-orange/20 text-orange-dark" : "bg-orange text-white"}`}>
+          {value ? <><Icon name="check" className="h-4 w-4" />{value}/10</> : "Rate"}
+        </span>
+      </div>
     </div>
   );
 }
@@ -1851,8 +1866,8 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, s
       lenses: "Step 4 of 4 — viewing it through the Magic Lenses.",
     };
     return error
-      ? <ErrorState title="Couldn't build your venture" sub="The agent hit a snag building the venture. Give it another go — it picks up where it left off." onRetry={onRetry} />
-      : <GeneratingState title="Building your venture" sub={stageSub[stage] ?? "Handing off to the research agents — this runs in a few short steps and can take a few minutes. You can leave and come back."} />;
+      ? <ErrorState title="Couldn't build your idea" sub="The agent hit a snag building the idea. Give it another go — it picks up where it left off." onRetry={onRetry} />
+      : <GeneratingState title="Building your idea" sub={stageSub[stage] ?? "Handing off to the research agents — this runs in a few short steps and can take a few minutes. You can leave and come back."} />;
   }
   const list = ventures && ventures.length ? ventures : VENTURES;
   // One venture is birthed from the chosen opportunity — show it (no slate).
@@ -1865,7 +1880,7 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, s
   return (
     <div className="space-y-5">
       <div>
-        <RailTitle>Your venture</RailTitle>
+        <RailTitle>Your idea</RailTitle>
         <p className="mt-1 text-xs text-slate-400">Born from the opportunity your team chose — see it, edit it, carry it into validation.</p>
       </div>
 
@@ -1979,21 +1994,17 @@ const VALIDATION_TARGETS = [
   "Confirm the founding hypothesis with 5 clear yeses",
 ];
 
-// Self-contained 30-day validation window countdown (prototype display).
-function ValidationTimer() {
+// 30-day validation window — real (live) or persisted (demo).
+function ValidationTimer({ endsAt }: { endsAt?: string }) {
   const total = 30 * 86400;
-  const [left, setLeft] = useState(total);
-  useEffect(() => {
-    const id = setInterval(() => setLeft((x) => (x > 60 ? x - 60 : 0)), 60000);
-    return () => clearInterval(id);
-  }, []);
-  const days = Math.floor(left / 86400);
-  const hrs = Math.floor((left % 86400) / 3600);
-  const pct = Math.round(((total - left) / total) * 100);
+  const left = useDeadline(endsAt, total * 1000, "flash_validation_deadline");
+  const days = left === null ? 0 : Math.floor(left / 86400);
+  const hrs = left === null ? 0 : Math.floor((left % 86400) / 3600);
+  const pct = left === null ? 0 : Math.max(0, Math.min(100, Math.round(((total - left) / total) * 100)));
   return (
     <div className="space-y-2 rounded-xl border border-orange/30 bg-orange-tint/15 p-4">
       <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-dark"><Icon name="clock" className="h-3.5 w-3.5" /> 30-day validation window</p>
-      <p className="text-2xl font-extrabold tabular-nums text-foreground">{days}<span className="text-base font-bold text-slate-400">d</span> {String(hrs).padStart(2, "0")}<span className="text-base font-bold text-slate-400">h</span> <span className="text-xs font-semibold text-slate-400">left</span></p>
+      <p className="text-2xl font-extrabold tabular-nums text-foreground">{left === null ? "··" : <>{days}<span className="text-base font-bold text-slate-400">d</span> {String(hrs).padStart(2, "0")}<span className="text-base font-bold text-slate-400">h</span> <span className="text-xs font-semibold text-slate-400">left</span></>}</p>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange" style={{ width: `${pct}%` }} /></div>
     </div>
   );
