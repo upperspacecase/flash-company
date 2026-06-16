@@ -420,7 +420,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
       case 2:
-        return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} data={synthesisData} showAll={!live} status={live ? status : null} />;
+        return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} youId={youId} data={synthesisData} status={live ? status : null} />;
       case 3:
         if (live && !oppData)
           return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
@@ -1296,11 +1296,10 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
 
 /* ----------------------------------------------------- 2. Synthesis */
 
-function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false, status }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; data?: SynthesisData; showAll?: boolean; status?: MemberStatus[] | null }) {
+function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; youId?: string; data?: SynthesisData; status?: MemberStatus[] | null }) {
   const d = data ?? mockSynthesisData();
   const [energy, setEnergy] = useState<Record<string, number[]>>(() => Object.fromEntries(cohort.map((m) => [m.id, [...(d.skillEnergy[m.id] ?? SKILLS.map(() => 3))]])));
-  const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, ...Object.fromEntries(cohort.map((m) => [m.id, showAll])) }));
-  const [editId, setEditId] = useState(cohort[0]?.id ?? YOU);
+  const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, [youId]: true }));
   const [roles, setRoles] = useState(d.roles.map((r) => ({ ...r })));
   const [industries, setIndustries] = useState<NetworkNode[]>(d.network.filter((n) => n.kind === "industry").map((n) => ({ ...n })));
   const [locations, setLocations] = useState<NetworkNode[]>(d.network.filter((n) => n.kind === "location").map((n) => ({ ...n })));
@@ -1356,7 +1355,7 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false, sta
           <RailTitle>Steps</RailTitle>
           {[
             { t: "Review input", d: "All three intakes read.", done: true, count: null as string | null },
-            { t: "Team", d: "Confirm energy, network, roles.", done: teamDone === teamSteps.length, count: `${teamDone}/${teamSteps.length}` },
+            { t: "Team", d: "Confirm skills, network, roles.", done: teamDone === teamSteps.length, count: `${teamDone}/${teamSteps.length}` },
             { t: "Focus", d: "Rank the problems, obsessions & markets.", done: focusDone === focusSteps.length, count: `${focusDone}/${focusSteps.length}` },
           ].map((s) => (
             <Card key={s.t}>
@@ -1399,8 +1398,8 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, data, showAll = false, sta
 
           <Part label="Team" hint="Confirm your profile — add, edit, confirm. Nothing's removed here.">
             <div className="space-y-3">
-              <ConfirmItem title="Skills & energy" hint="Tap a dot to adjust — outer energises, inner drains." open={open.skills} onToggle={() => toggleOpen("skills")} confirmed={confirmed.skills} onConfirm={() => confirmSection("skills")}>
-                <SkillBloom cohort={cohort} energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} editId={editId} onEdit={(id) => { setEditId(id); setShown((s) => ({ ...s, [id]: true })); }} onEnergy={(id, i, val) => setEnergy((e) => ({ ...e, [id]: e[id].map((x, idx) => (idx === i ? val : x)) }))} />
+              <ConfirmItem title="Skills" hint="Tap a dot to set how strong each skill is." open={open.skills} onToggle={() => toggleOpen("skills")} confirmed={confirmed.skills} onConfirm={() => confirmSection("skills")}>
+                <SkillBloom cohort={cohort} youId={youId} energy={energy} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))} onEnergy={(i, val) => setEnergy((e) => ({ ...e, [youId]: (e[youId] ?? SKILLS.map(() => 0)).map((x, idx) => (idx === i ? val : x)) }))} />
               </ConfirmItem>
               <ConfirmItem title="Network" hint="Industries you can talk to." open={open.network} onToggle={() => toggleOpen("network")} confirmed={confirmed.network} onConfirm={() => confirmSection("network")}>
                 <NetworkList cohort={cohort} nodes={industries} onNodes={setIndustries} kind="industry" icon="building" addLabel="industry" />
@@ -1446,20 +1445,24 @@ function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, childr
   const active = open && !confirmed;
   return (
     <div className={`overflow-hidden rounded-xl border bg-white/5 transition-colors ${active ? "border-orange ring-1 ring-orange/30" : "border-slate-200"}`}>
-      <div className="flex items-center gap-2 p-3">
-        <button onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${confirmed ? "bg-orange text-white" : "bg-slate-100 text-slate-400"}`}>{confirmed ? <Icon name="check" className="h-3 w-3" /> : <Icon name="user" className="h-3 w-3" />}</span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-foreground">{title}</span>
-            {hint && <span className="block truncate text-xs text-slate-400">{hint}</span>}
-          </span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 shrink-0 text-slate-300 transition-transform ${open ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
-        </button>
-        {onConfirm && (
-          <button onClick={onConfirm} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${confirmed ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={confirmed ? "check" : "thumb"} className="h-3.5 w-3.5" />{confirmed ? "Confirmed" : "Confirm"}</button>
-        )}
-      </div>
-      {open && <div className="border-t border-slate-100 p-4">{children}</div>}
+      <button onClick={onToggle} className="flex w-full items-center gap-2.5 p-3 text-left">
+        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${confirmed ? "bg-orange text-white" : "bg-slate-100 text-slate-400"}`}>{confirmed ? <Icon name="check" className="h-3 w-3" /> : <Icon name="user" className="h-3 w-3" />}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold text-foreground">{title}</span>
+          {hint && <span className="block truncate text-xs text-slate-400">{hint}</span>}
+        </span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 shrink-0 text-slate-300 transition-transform ${open ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100 p-4">
+          {children}
+          {onConfirm && (
+            <div className="mt-4 flex justify-end">
+              <button onClick={onConfirm} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${confirmed ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={confirmed ? "check" : "thumb"} className="h-3.5 w-3.5" />{confirmed ? "Confirmed" : "Confirm"}</button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1507,7 +1510,7 @@ function CountdownBadge() {
 
 const TEAM_COLOR = "#6f8f5f";
 
-function SkillBloom({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, onEnergy }: { cohort?: Member[]; energy: Record<string, number[]>; shown: Record<string, boolean>; onToggle: (k: string) => void; editId: string; onEdit: (id: string) => void; onEnergy: (id: string, i: number, val: number) => void }) {
+function SkillBloom({ cohort = COHORT, youId = YOU, energy, shown, onToggle, onEnergy }: { cohort?: Member[]; youId?: string; energy: Record<string, number[]>; shown: Record<string, boolean>; onToggle: (k: string) => void; onEnergy: (i: number, val: number) => void }) {
   const cx = 130, cy = 130, R0 = 64, Lmax = 60, max = 5, DENS = 9;
   const skills = SKILLS.length;
   const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -1517,7 +1520,7 @@ function SkillBloom({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, 
   // each shown member, overlaid — equal values read as the same wave in each colour.
   const bands = [
     ...(shown.team ? [{ id: "team", color: TEAM_COLOR, vals: SKILLS.map((_, i) => Math.max(0, ...cohort.map((m) => energy[m.id]?.[i] ?? 0))) }] : []),
-    ...cohort.filter((m) => shown[m.id]).map((m) => ({ id: m.id, color: colorFor(cohort, m.id), vals: energy[m.id] ?? SKILLS.map(() => 0) })),
+    ...(shown[youId] ? [{ id: youId, color: colorFor(cohort, youId), vals: energy[youId] ?? SKILLS.map(() => 0) }] : []),
   ];
   const N = Math.max(1, bands.length);
   const samples = skills * DENS;          // dense samples around the full circle
@@ -1528,11 +1531,12 @@ function SkillBloom({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, 
     const t = s / DENS, i = Math.floor(t) % skills, f = t - Math.floor(t);
     return vals[i] + (vals[(i + 1) % skills] - vals[i]) * smooth(f);
   };
-  const toggles = [{ id: "team", name: "Team", color: TEAM_COLOR }, ...cohort.map((m) => ({ id: m.id, name: m.name, color: colorFor(cohort, m.id) }))];
-  const editEnergy = energy[editId] ?? SKILLS.map(() => 3);
+  const you = cohort.find((m) => m.id === youId);
+  const toggles = [{ id: "team", name: "Team", color: TEAM_COLOR }, { id: youId, name: you?.name ?? "You", color: colorFor(cohort, youId) }];
+  const editEnergy = energy[youId] ?? SKILLS.map(() => 3);
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
-      <svg viewBox="0 0 260 260" className="mx-auto w-full max-w-[300px]">
+      <svg viewBox="0 0 260 260" className="mx-auto w-full max-w-[340px] lg:max-w-none">
         <defs>
           {bands.map((b) => (
             <radialGradient key={b.id} id={`bloom-${b.id}`} gradientUnits="userSpaceOnUse" cx={cx} cy={cy} r={R0 + Lmax}>
@@ -1552,10 +1556,10 @@ function SkillBloom({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, 
         )}
         {SKILLS.map((label, i) => {
           const a = -Math.PI / 2 + (i / skills) * Math.PI * 2;
-          const [lx, ly] = polar(R0 - 6, a);
+          const [lx, ly] = polar(R0 - 10, a);
           let deg = (a * 180) / Math.PI + 90;
           if (a > 0 && a < Math.PI) deg += 180; // keep bottom-half labels upright
-          return <text key={i} x={lx} y={ly} fontSize="5" fill="#64748b" textAnchor="middle" dominantBaseline="middle" transform={`rotate(${deg} ${lx} ${ly})`}>{label}</text>;
+          return <text key={i} x={lx} y={ly} fontSize="7" fontWeight="500" fill="#9aa2b1" textAnchor="middle" dominantBaseline="middle" transform={`rotate(${deg} ${lx} ${ly})`}>{label}</text>;
         })}
       </svg>
       <div>
@@ -1570,22 +1574,16 @@ function SkillBloom({ cohort = COHORT, energy, shown, onToggle, editId, onEdit, 
             );
           })}
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">Each band is a person&rsquo;s energy bloom — longer spoke = more energised by that skill. Team = the best of everyone.</p>
+        <p className="mt-2 text-[11px] text-slate-400">Each band is a skill bloom — longer spoke = stronger in that skill. Team is the best of everyone; your own band is just you.</p>
 
         <div className="mt-4 rounded-xl border border-orange/30 bg-orange-tint/15 p-3">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-dark">
-            <Icon name="bolt" className="h-3.5 w-3.5" /> Adjust energy
+            <Icon name="bolt" className="h-3.5 w-3.5" /> Adjust your skills
             <span className="ml-auto rounded-full bg-orange-tint px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-orange-dark">Editable</span>
           </p>
-          <p className="mt-1 text-[11px] text-slate-500">Pick a person, then tap the dots to set each skill 0–5.</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {cohort.map((m) => {
-              const on = editId === m.id;
-              return <button key={m.id} onClick={() => onEdit(m.id)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${on ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colorFor(cohort, m.id) }} />{m.name}</button>;
-            })}
-          </div>
+          <p className="mt-1 text-[11px] text-slate-500">Tap the dots to set how strong each of your skills is, 0–5.</p>
           <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
-            {SKILLS.map((label, i) => <DotScore key={label} label={label} value={editEnergy[i] ?? 0} onChange={(val) => onEnergy(editId, i, val)} />)}
+            {SKILLS.map((label, i) => <DotScore key={label} tone="grey" label={label} value={editEnergy[i] ?? 0} onChange={(val) => onEnergy(i, val)} />)}
           </div>
         </div>
       </div>
@@ -1606,9 +1604,11 @@ function RolesTasks({ cohort = COHORT, roles, onRoles, confirmed, onConfirm }: {
             <div className="flex items-center gap-2">
               <Avatar m={m} size="h-8 w-8 text-[10px]" />
               <input value={r.role} onChange={(e) => setRole(r.memberId, { role: e.target.value })} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
-              <button onClick={() => onConfirm(r.memberId)} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${ok ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={ok ? "check" : "thumb"} className="h-3.5 w-3.5" />{ok ? "Confirmed" : "Confirm"}</button>
             </div>
             <input value={r.tasks} onChange={(e) => setRole(r.memberId, { tasks: e.target.value })} className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-xs text-slate-600 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
+            <div className="mt-2 flex justify-end">
+              <button onClick={() => onConfirm(r.memberId)} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${ok ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={ok ? "check" : "thumb"} className="h-3.5 w-3.5" />{ok ? "Confirmed" : "Confirm"}</button>
+            </div>
           </div>
         );
       })}
@@ -2252,13 +2252,15 @@ function LabeledBox({ label, value, onChange, placeholder }: { label: string; va
 }
 
 // 0–5 score. Editable when onChange is passed; read-only otherwise.
-function DotScore({ value, onChange, label }: { value: number; onChange?: (v: number) => void; label?: string }) {
+function DotScore({ value, onChange, label, tone = "orange" }: { value: number; onChange?: (v: number) => void; label?: string; tone?: "orange" | "grey" }) {
+  const fill = tone === "grey" ? "bg-slate-400" : "bg-orange";
+  const valueText = tone === "grey" ? "text-slate-400" : "text-orange-dark";
   return (
     <div>
-      {label && <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-500">{label}</span><span className="font-semibold tabular-nums text-orange-dark">{value}/5</span></div>}
+      {label && <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-500">{label}</span><span className={`font-semibold tabular-nums ${valueText}`}>{value}/5</span></div>}
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} type="button" disabled={!onChange} onClick={() => onChange?.(n)} aria-label={`${label ?? "score"}: ${n} of 5`} className={`h-2.5 flex-1 rounded-full transition-colors ${n <= value ? "bg-orange" : "bg-slate-200"} ${onChange ? "cursor-pointer hover:opacity-80" : ""}`} />
+          <button key={n} type="button" disabled={!onChange} onClick={() => onChange?.(n)} aria-label={`${label ?? "score"}: ${n} of 5`} className={`h-2.5 flex-1 rounded-full transition-colors ${n <= value ? fill : "bg-slate-200"} ${onChange ? "cursor-pointer hover:opacity-80" : ""}`} />
         ))}
       </div>
     </div>
