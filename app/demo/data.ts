@@ -287,7 +287,7 @@ export const OPP_CRITERIA = [
 ] as const;
 
 export const oppTotal = (e: OppEvaluation) =>
-  OPP_CRITERIA.reduce((s, c) => s + c.weight * (e[c.key]?.score ?? 0), 0);
+  OPP_CRITERIA.reduce((s, c) => s + c.weight * (e?.[c.key]?.score ?? 0), 0);
 
 export const oppBand = (total: number) => (total >= 8 ? "Strong" : total >= 6 ? "Promising" : "Risky");
 

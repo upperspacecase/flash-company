@@ -1616,7 +1616,11 @@ function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v:
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
 function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT, youId = YOU }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[]; youId?: string }) {
-  const od = data ?? mockOpportunityData();
+  // Guard against opportunity data persisted under the pre-evaluation shape —
+  // fall back to the authored mock so old seeds don't crash the step.
+  const raw = data ?? mockOpportunityData();
+  const valid = raw.spaces.length > 0 && raw.spaces.every((s) => s.evaluation && OPP_CRITERIA.every((c) => typeof s.evaluation[c.key]?.score === "number"));
+  const od = valid ? raw : mockOpportunityData();
   // Order anchors to the agent's ranking by total score; the loud CTA is the top.
   const ranked = [...od.spaces].sort((a, b) => oppTotal(b.evaluation) - oppTotal(a.evaluation));
   const topId = ranked[0]?.id;
