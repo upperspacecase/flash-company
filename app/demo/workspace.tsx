@@ -2343,6 +2343,8 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
   const setDiff = (patch: Partial<VentureDraft["differentiation"]>) => onVenture((p) => ({ ...p, differentiation: { ...p.differentiation, ...patch } }));
   const setTeamRow = (i: number, patch: Partial<VentureDraft["team"][number]>) => onVenture((p) => ({ ...p, team: p.team.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) }));
   const teamInput = "-mx-1 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none";
+  const setLandRow = (i: number, patch: Partial<VentureDraft["landscape"][number]>) => onVenture((p) => ({ ...p, landscape: p.landscape.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) }));
+  const addLandRow = () => onVenture((p) => (p.landscape.length >= 8 ? p : { ...p, landscape: [...p.landscape, { name: "", type: "Competitor", size: "", description: "", differentiation: "" }] }));
   return (
     <div className="mt-5 space-y-5">
       <Part label="Idea basics" hint="One block the team can read and argue in two minutes.">
@@ -2401,14 +2403,32 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
         <div className="mt-3"><LabeledBox label="Network note" value={venture.networkNote} onChange={(v) => set("networkNote", v)} placeholder="One line on the structural network asset." /></div>
       </Part>
 
-      {/* Relocating in later commits: Competition -> Landscape, Market detail -> Financial Model, Principles -> TBD */}
-      <Part label="Foundations" hint="Being reorganized into Landscape and the Financial Model.">
-        <Section title="Competition">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="sm:col-span-1"><LabeledBox label="800-pound gorilla" value={venture.competition.gorilla} onChange={(v) => setCompetition({ gorilla: v })} placeholder="The incumbent" /></div>
-            <div className="sm:col-span-2"><LabeledBox label="Top alternatives" value={venture.competition.alternatives} onChange={(v) => setCompetition({ alternatives: v })} placeholder="Substitutes, workarounds, non-consumption" /></div>
-          </div>
-        </Section>
+      <Part label="Current landscape" hint="Competitors, alternatives, partners and allies — one honest map, max 8 rows.">
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="w-full min-w-[46rem] text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                <th className="p-3">Name</th><th className="p-3">Type</th><th className="p-3">Size</th><th className="p-3">Description</th><th className="p-3">Your differentiation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {venture.landscape.map((r, i) => (
+                <tr key={i} className="border-t border-slate-100 align-top">
+                  <td className="p-2"><input value={r.name} onChange={(e) => setLandRow(i, { name: e.target.value })} placeholder="Name" className={teamInput} /></td>
+                  <td className="p-2"><select value={r.type} onChange={(e) => setLandRow(i, { type: e.target.value })} className="rounded-md border border-slate-200 bg-transparent px-1.5 py-1 text-xs font-semibold text-foreground focus:border-orange focus:outline-none">{["Competitor", "Alternative", "Partner", "Ally"].map((t) => <option key={t} value={t}>{t}</option>)}</select></td>
+                  <td className="p-2"><input value={r.size} onChange={(e) => setLandRow(i, { size: e.target.value })} placeholder="Size" className={teamInput} /></td>
+                  <td className="min-w-[12rem] p-2"><textarea value={r.description} onChange={(e) => setLandRow(i, { description: e.target.value })} placeholder="What they do" rows={2} className={`${teamInput} resize-y leading-snug [field-sizing:content]`} /></td>
+                  <td className="min-w-[12rem] p-2"><textarea value={r.differentiation} onChange={(e) => setLandRow(i, { differentiation: e.target.value })} placeholder="Be honest — or say you're not differentiated" rows={2} className={`${teamInput} resize-y leading-snug [field-sizing:content]`} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {venture.landscape.length < 8 && <button onClick={addLandRow} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add row</button>}
+      </Part>
+
+      {/* Relocating in later commits: Market detail -> Financial Model, Principles -> TBD */}
+      <Part label="Foundations" hint="Being reorganized into the Financial Model.">
         <Section title="Market detail">{detail && detail.market.length ? <MarketFindings findings={detail.market} /> : <MarketReport />}</Section>
         <Section title="Principles"><PrinciplesEditor principles={venture.principles} onChange={(p) => set("principles", p)} /></Section>
       </Part>

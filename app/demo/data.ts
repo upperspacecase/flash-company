@@ -362,6 +362,7 @@ export type VentureDetail = {
   hook?: string; // one sentence — what, for whom, why now (added with the Idea-basics restructure)
   team?: { memberId: string; role: string; owns: string; networkAsset: string }[];
   networkNote?: string;
+  landscape?: { name: string; type: string; size: string; description: string; differentiation: string }[];
   customer: string;
   problem: string;
   advantage: { capability: string; insight: string; motivation: string };
@@ -762,6 +763,7 @@ export type VentureDraft = {
   market: string; // headline market numbers, 2-3 sentences (sources live in the financial model)
   team: { memberId: string; role: string; owns: string; networkAsset: string }[]; // who, what they own, the network they bring
   networkNote: string; // one line on the structural network asset (e.g. a city triangle)
+  landscape: { name: string; type: string; size: string; description: string; differentiation: string }[]; // competitors / alternatives / partners / allies (max ~8)
   // Click "Basics" — Customer, Advantage, Competition.
   basics: { customer: string; problem: string };
   advantage: { capability: string; insight: string; motivation: string };
@@ -795,6 +797,15 @@ export function makeVentureDraft(): VentureDraft {
       { memberId: "alex", role: "Product", owns: "Ships the vouching layer", networkAsset: "—" },
     ],
     networkNote: "The Lisbon–Dublin–London triangle is a structural network asset — three warm markets the team can reach in person.",
+    landscape: [
+      { name: "LinkedIn", type: "Competitor", size: "1B+ users", description: "The default place to find and screen candidates — gap-bias baked into search and filters.", differentiation: "We make the gap legible with a human vouch; they surface scores, not warm signal — though native vouching is a real risk." },
+      { name: "iRelaunch", type: "Alternative", size: "Niche", description: "Enterprise returnship programs + content for returners.", differentiation: "Candidate-first and warm-intro-led, not gated behind an employer program." },
+      { name: "Path Forward", type: "Alternative", size: "Niche nonprofit", description: "Runs employer returnship cohorts.", differentiation: "Continuous signal, not fixed cohorts — and we don't depend on an employer signing up first." },
+      { name: "Women Returners", type: "Partner", size: "UK / EU", description: "Returner coaching and employer returnship programs.", differentiation: "Aligned, not competing — a vouch source and a distribution partner." },
+      { name: "Mumsnet Careers", type: "Ally", size: "Large UK audience", description: "Parent-audience careers content and jobs.", differentiation: "Distribution ally straight into the exact audience." },
+      { name: "Career coaches", type: "Alternative", size: "Fragmented", description: "1:1 confidence and CV help.", differentiation: "We add verifiable third-party signal that coaching alone can't produce." },
+      { name: "ATS vendors (Greenhouse, Workday)", type: "Partner", size: "Large", description: "The systems that do the filtering.", differentiation: "An integration target, not a rival — we feed warm signal in." },
+    ],
     basics: {
       customer: "Parents returning to work after a career break — first in the Lisbon–Dublin–London triangle, reached through Maya's 4,000-member community and Priya's 12k newsletter. The pain bites the moment they start applying and the gap screens them out.",
       problem: "Applicant tracking systems read a career gap as a red flag and filter capable returners out before a human sees them. They reapply into the void; existing returnship programs are tiny and employer-gated.",
@@ -851,6 +862,7 @@ export function draftFromVenture(v: Venture, cohort: Member[]): VentureDraft {
     market: v.market || base.market,
     team: d?.team?.length ? d.team : (cohort.length ? cohort.map((m) => ({ memberId: m.id, role: m.role ?? "", owns: m.brings ?? "", networkAsset: "" })) : base.team),
     networkNote: d?.networkNote ?? base.networkNote,
+    landscape: d?.landscape?.length ? d.landscape : base.landscape,
     purpose: v.purpose,
     unique: v.unique,
     lenses: v.lenses && v.lenses.length ? v.lenses.map((l) => ({ ...l })) : base.lenses,
