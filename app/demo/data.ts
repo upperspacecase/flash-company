@@ -87,68 +87,59 @@ export type IntakeSection = { id: string; title: string; blurb: string; question
 
 const LANGUAGES = ["English", "Spanish", "Portuguese", "Mandarin", "French", "German", "Italian", "Greek", "Japanese", "Arabic", "Hindi"];
 const ROLE_OPTIONS = ["Founder/CEO", "CTO/Technical lead", "Product manager", "Designer", "Engineer/Developer", "Sales/Business dev", "Marketing/Growth", "Operations", "Consultant/Advisor", "Researcher/Analyst", "Freelancer"];
-const INDUSTRY_OPTIONS = ["Tech/Startup", "Real estate", "Rural land", "Agriculture", "Creative/Design", "Health/Wellness", "Education", "Finance", "Hospitality", "Environmental"];
+const INDUSTRY_OPTIONS = ["Tech/Startup", "Real estate", "Agriculture", "Creative/Design", "Health/Wellness", "Education", "Finance", "Hospitality", "Environmental"];
 const PUT_IN_OPTIONS = ["Money", "Tools", "Audience", "Introductions", "Space/Equipment"];
 
 // Every free-text question accepts a voice note except the name.
 export const INTAKE: IntakeSection[] = [
   {
-    id: "identity", title: "Identity & anchor", blurb: "The basics — who you are and where you're based.",
+    id: "identity", title: "Who you are", blurb: "The basics — who you are and where you're based.",
     questions: [
       { id: "name", q: "What's your name?", field: { kind: "short", placeholder: "Your name" } },
       { id: "email", q: "What's your email?", help: "So we can ping you when your synthesis is ready and your teammates finish. No spam.", field: { kind: "short", placeholder: "you@email.com" } },
-      { id: "location", q: "What's your primary location?", help: "As specific as you like — city, region, or exact spot. We'll infer your timezone.", field: { kind: "location", placeholder: "Where are you based?" } },
-      { id: "otherLocations", q: "Any other locations that shaped who you are?", help: "Comma-separated. As specific as you like.", optional: true, field: { kind: "short", placeholder: "e.g. Lisbon, rural Otago, Berlin" } },
+      { id: "location", q: "Where's your homebase?", help: "City, region, exact spot, multiple locations.", field: { kind: "location", placeholder: "Where are you based?" } },
+      { id: "otherLocations", q: "Have any other locations shaped who you are?", help: "Optional. Where you grew up, studied, worked, explored over the years.", optional: true, field: { kind: "short", placeholder: "e.g. Lisbon, rural Otago, Berlin" } },
       { id: "languages", q: "What languages do you speak fluently?", field: { kind: "multiSelect", options: LANGUAGES, allowOther: true } },
     ],
   },
   {
     id: "done", title: "What you've done", blurb: "Track record — what you've built and learned.",
     questions: [
-      { id: "built", q: "What have you built, sold, or run before — even something small?", field: { kind: "long", voice: true, max: 500 } },
+      { id: "built", q: "What have you started, sold, or run before — even something small?", optional: true, field: { kind: "long", voice: true, max: 500 } },
+      { id: "studied", q: "What have you studied?", help: "List university degrees, courses, certificates, retreats.", optional: true, field: { kind: "long", voice: true, max: 500 } },
       { id: "roles", q: "What roles have you held in the past 5 years?", field: { kind: "multiSelect", options: ROLE_OPTIONS, allowOther: true } },
+      { id: "linkedin", q: "Paste your LinkedIn URL", help: "Optional — gives the agent more to work with.", optional: true, field: { kind: "short", placeholder: "linkedin.com/in/…" } },
       { id: "orgs", q: "What organisations have you worked for or with?", help: "The most significant — companies, startups, nonprofits, agencies, projects. If they're not well known, add a little context.", field: { kind: "long", voice: true, max: 500 } },
       { id: "achievements", q: "What major achievements have you made in those roles?", help: "Specific outcomes — revenue, users, systems built, teams led, problems solved.", field: { kind: "long", voice: true, max: 500 } },
-      { id: "failure", q: "Tell us about a time you failed and what you learned.", field: { kind: "long", voice: true, max: 500 } },
+      { id: "teach", q: "If you were asked to teach a class on any topic, what would it be?", field: { kind: "long", voice: true, max: 500 } },
     ],
   },
   {
-    id: "bring", title: "What you bring", blurb: "Your edge — the things you're genuinely strong at.",
+    id: "bring", title: "What you're good at", blurb: "Your edge — what you're strong at, and what you can commit.",
     questions: [
       { id: "greatAt", q: "What are you genuinely great at? Not good — great.", field: { kind: "short", voice: true, max: 200 } },
       { id: "paidFor", q: "What have people paid you for?", field: { kind: "short", voice: true, max: 200 } },
-      { id: "superpowers", q: "What are your hidden superpowers others overlook?", field: { kind: "short", voice: true, max: 500 } },
-    ],
-  },
-  {
-    id: "work", title: "How you work", blurb: "How you operate, decide, and handle friction.",
-    questions: [
-      { id: "decisions", q: "How do you make decisions?", help: "Pick any that fit.", field: { kind: "multiSelect", options: ["Fast gut", "Slow data", "Talk it out", "Wait for clarity"], allowOther: true } },
-      { id: "pressure", q: "How are you under pressure?", help: "Pick any that fit.", field: { kind: "multiSelect", options: ["Push harder", "Step back", "Freeze", "Find flow"], allowOther: true } },
-      { id: "conflict", q: "How do you prefer to handle conflict?", help: "Pick any that fit.", field: { kind: "multiSelect", options: ["Direct", "Avoidant", "Mediate", "Escalate"], allowOther: true } },
-      { id: "comms", q: "How do you prefer to communicate?", help: "Tap in order of preference.", field: { kind: "ranked", options: ["Text", "Voice memo", "Video call", "In-person"] } },
+      { id: "topics", q: "What topics can you read or talk about for hours without getting bored?", field: { kind: "short", voice: true, max: 500 } },
+      { id: "comeFor", q: "What do people naturally come to you for help or advice with?", field: { kind: "short", voice: true, max: 300 } },
+      { id: "weekend", q: "If you had a completely free weekend, how would you naturally choose to spend it?", field: { kind: "short", voice: true, max: 300 } },
       { id: "energizes", q: "What work energises you?", field: { kind: "short", voice: true, max: 200 } },
       { id: "drains", q: "What work drains you?", field: { kind: "short", voice: true, max: 200 } },
-      { id: "boundary", q: "What's your absolute boundary — what makes you quit?", field: { kind: "long", voice: true, max: 500 } },
-    ],
-  },
-  {
-    id: "putIn", title: "What you'll put in", blurb: "Who you can reach, and what you can commit.",
-    questions: [
       { id: "industries", q: "What industries or communities are you embedded in?", field: { kind: "multiSelect", options: INDUSTRY_OPTIONS, allowOther: true } },
-      { id: "market", q: "What's a market you can reach that most people can't?", field: { kind: "short", voice: true, max: 200 } },
-      { id: "hours", q: "How many hours per week can you commit?", field: { kind: "slider", min: 0, max: 60, step: 5, unit: "hrs/wk" } },
-      { id: "runway", q: "How many months of financial runway without income?", field: { kind: "slider", min: 0, max: 24, step: 1, unit: "months" } },
-      { id: "putIn", q: "Beyond time, what can you put in?", help: "Money, tools, an audience, introductions.", field: { kind: "multiSelect", options: PUT_IN_OPTIONS, allowOther: true } },
+      { id: "market", q: "What's an audience/market you can reach that most people can't?", field: { kind: "short", voice: true, max: 200 } },
+      { id: "hours", q: "How many hours per week can you commit to starting something new?", field: { kind: "slider", min: 0, max: 60, step: 5, unit: "hrs/wk" } },
+      { id: "runway", q: "How many months can you explore something new without receiving any income?", field: { kind: "slider", min: 0, max: 24, step: 1, unit: "months" } },
+      { id: "putIn", q: "What other elements could you contribute to something new?", help: "Money, tools, an audience, introductions.", field: { kind: "multiSelect", options: PUT_IN_OPTIONS, allowOther: true } },
     ],
   },
   {
-    id: "why", title: "Why you care & what you see", blurb: "The spark — what you notice and what drives you.",
+    id: "why", title: "What the world needs", blurb: "The spark — what you notice and what drives you.",
     questions: [
-      { id: "trend", q: "What inefficiency, annoying problem, or shifting trend in your industry over the last 6 months keeps bouncing around in your head?", field: { kind: "long", voice: true, max: 500 } },
-      { id: "forFree", q: "What do you love doing so much that you'd do it for free?", field: { kind: "short", voice: true, max: 500 } },
+      { id: "trend", q: "What problems, local or global, make you feel angry or frustrated?", field: { kind: "long", voice: true, max: 500 } },
+      { id: "forFree", q: "What activities did you love doing as a child or teenager?", field: { kind: "short", voice: true, max: 500 } },
       { id: "obsessed", q: "What are you obsessed with that isn't logical?", field: { kind: "short", voice: true, max: 200 } },
       { id: "changeWorld", q: "If you could change one thing about the world, what would it be?", field: { kind: "short", voice: true, max: 200 } },
+      { id: "legacy", q: "What kind of legacy or impact do you want to leave behind?", field: { kind: "short", voice: true, max: 300 } },
+      { id: "improveLives", q: "How can your unique skills improve the lives of the people around you?", field: { kind: "short", voice: true, max: 300 } },
     ],
   },
 ];

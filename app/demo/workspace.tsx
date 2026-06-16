@@ -429,7 +429,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 0:
         return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} resumeUrl={resumeUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} isHost={live ? live.isHost : true} windowEndsAt={live?.windowEndsAt} />;
       case 1:
-        return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} />;
+        return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} windowEndsAt={live?.windowEndsAt} />;
       case 2:
         return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} youId={youId} data={synthesisData} status={live ? status : null} />;
       case 3:
@@ -836,6 +836,7 @@ function asRanked(v: unknown): RankedVal {
 function isVoiceable(f: IntakeField): boolean {
   return (f.kind === "short" || f.kind === "long") && !!f.voice;
 }
+const emailValid = (v: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());
 function isAnswered(v: unknown): boolean {
   if (v == null) return false;
   if (typeof v === "string") return v.trim().length > 0;
@@ -848,8 +849,9 @@ function isAnswered(v: unknown): boolean {
 // Flattened question flow with section markers, for the conversational intake.
 const INTAKE_FLOW = INTAKE.flatMap((s, si) => s.questions.map((q, qi) => ({ q, si, title: s.title, blurb: s.blurb, first: qi === 0 })));
 
-function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId = YOU, othersProgress }: { onNext: () => void; onSubmit?: (answers: Record<string, unknown>) => void; initialAnswers?: Record<string, unknown>; cohort?: Member[]; youId?: string; othersProgress?: (id: string) => number }) {
+function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId = YOU, othersProgress, windowEndsAt }: { onNext: () => void; onSubmit?: (answers: Record<string, unknown>) => void; initialAnswers?: Record<string, unknown>; cohort?: Member[]; youId?: string; othersProgress?: (id: string) => number; windowEndsAt?: string }) {
   const [step, setStep] = useState(0);
+  const [reached, setReached] = useState(0);
   const [answers, setAnswers] = useState<Record<string, unknown>>(initialAnswers ?? {});
   const [voiceMode, setVoiceMode] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -865,7 +867,9 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   const update = (id: string, value: unknown) => setAnswers((a) => ({ ...a, [id]: value }));
   const answeredIn = (s: IntakeSection) => s.questions.filter((q) => isAnswered(answers[q.id])).length;
   const curSi = cur ? cur.si : INTAKE.length - 1;
-  const canSend = !!cur && (isAnswered(answers[cur.q.id]) || cur.q.field.kind === "slider");
+  const canSend = !!cur && (isAnswered(answers[cur.q.id]) || cur.q.field.kind === "slider") && (cur.q.id !== "email" || emailValid(asStr(answers.email)));
+  const goNext = () => { setReached((r) => Math.max(r, step + 1)); setStep((s) => s + 1); };
+  const emailErr = cur?.q.id === "email" && asStr(answers.email).trim().length > 0 && !emailValid(asStr(answers.email));
   // The 1-6 question-section stepper (mobile only — desktop uses the side nav).
   const stepper = (
     <div className="mb-4 flex items-center lg:hidden">
@@ -888,11 +892,11 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   const chat = (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-4 flex shrink-0 items-center justify-between border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange text-white"><FlashMark className="h-4 w-4" /></span>
-          <div><p className="text-sm font-bold text-foreground">Flash</p><p className="text-xs text-slate-400">Tell me about yourself — type, talk, or tap.</p></div>
-        </div>
         <span className="rounded-full bg-orange-tint px-3 py-1 text-xs font-semibold text-orange-dark">{Math.min(step + 1, INTAKE_TOTAL)}/{INTAKE_TOTAL}</span>
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} aria-label="Previous question" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-orange hover:text-orange disabled:opacity-30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m15 18-6-6 6-6" /></svg></button>
+          <button onClick={() => setStep((s) => Math.min(reached, s + 1))} disabled={step >= reached} aria-label="Next question" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-orange hover:text-orange disabled:opacity-30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m9 18 6-6-6-6" /></svg></button>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -901,8 +905,8 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
             <div className="mx-auto max-w-md text-center">
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-tint text-orange"><Icon name="check" className="h-6 w-6" /></span>
               <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground">That&rsquo;s everything.</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500">Your answers stay private until everyone&rsquo;s input is in and the team synthesis runs.</p>
-              <div className="mt-5 flex justify-center"><PrimaryBtn label="Run synthesis" onClick={onNext} icon="sparkle" /></div>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500">Your answers stay anonymous and are presented as a team. Use the arrows up top to scroll back and make edits.</p>
+              <div className="mt-5 flex justify-center"><PrimaryBtn label="Submit for Synthesis" onClick={onNext} icon="sparkle" /></div>
             </div>
           ) : cur ? (
             <div>
@@ -913,8 +917,9 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
                 <h2 className="text-xl font-bold leading-snug tracking-tight text-foreground sm:text-2xl">{cur.q.q}</h2>
                 {cur.q.help && <p className="mt-2 text-sm leading-relaxed text-slate-500">{cur.q.help}</p>}
                 <div className="mt-5">
-                  <Composer key={cur.q.id} q={cur.q} value={answers[cur.q.id]} onChange={(v) => update(cur.q.id, v)} voice={isVoice(cur.q.id)} onVoice={() => setVoiceMode((m) => ({ ...m, [cur.q.id]: !m[cur.q.id] }))} canSend={canSend} onSend={() => setStep((s) => s + 1)} onBack={step > 0 ? () => setStep((s) => Math.max(0, s - 1)) : undefined} />
+                  <Composer key={cur.q.id} q={cur.q} value={answers[cur.q.id]} onChange={(v) => update(cur.q.id, v)} voice={isVoice(cur.q.id)} onVoice={() => setVoiceMode((m) => ({ ...m, [cur.q.id]: !m[cur.q.id] }))} canSend={canSend} onSend={goNext} onBack={step > 0 ? () => setStep((s) => Math.max(0, s - 1)) : undefined} />
                 </div>
+                {emailErr && <p className="mt-2 text-xs font-semibold text-red-500">Enter a valid email address.</p>}
               </div>
             </div>
           ) : null}
@@ -927,7 +932,7 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   // the center column is a viewport-tall box with the stepper on top.
   return (
     <Columns
-      left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />}
+      left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} windowEndsAt={windowEndsAt} />}
       center={
         <div className="flex h-[calc(100svh-11rem)] flex-col rounded-2xl border border-orange bg-white/5 p-4 lg:h-[32rem] lg:border-slate-200 lg:p-6">
           {stepper}
@@ -938,12 +943,24 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   );
 }
 
-function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProgress }: { curSi: number; answeredIn: (s: IntakeSection) => number; cohort?: Member[]; youId?: string; othersProgress?: (id: string) => number }) {
+function IntakeDeadline({ endsAt }: { endsAt?: string }) {
+  const s = useDeadline(endsAt, 48 * 3600 * 1000, "flash_invite_deadline");
+  const p = (n: number) => String(n).padStart(2, "0");
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-bold tabular-nums text-amber-700">
+      <Icon name="clock" className="h-4 w-4 shrink-0" />
+      {s === null ? "··:··:··" : s <= 0 ? "Window closed" : <span>{p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)} <span className="font-semibold text-amber-600">left to submit</span></span>}
+    </div>
+  );
+}
+
+function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProgress, windowEndsAt }: { curSi: number; answeredIn: (s: IntakeSection) => number; cohort?: Member[]; youId?: string; othersProgress?: (id: string) => number; windowEndsAt?: string }) {
   const youDone = INTAKE.reduce((n, s) => n + answeredIn(s), 0);
   return (
     <div className="hidden space-y-4 lg:block">
+      <IntakeDeadline endsAt={windowEndsAt} />
       <RailTitle>Your intake</RailTitle>
-      <p className="px-1 text-xs text-slate-400">Six sections, conversational. Anonymous until synthesis.</p>
+      <p className="px-1 text-xs text-slate-400">Four sections, one question at a time. Your answers stay anonymous and are presented as a team.</p>
       <div className="space-y-1.5">
         {INTAKE.map((s, i) => {
           const a = answeredIn(s);
