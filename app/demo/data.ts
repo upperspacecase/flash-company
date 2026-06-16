@@ -44,7 +44,7 @@ export const PHASES = [
   { id: "invite", label: "Invite", blurb: "Share a link. The team forms when everyone accepts." },
   { id: "input", label: "Input", blurb: "Each person answers privately. Typed or voice." },
   { id: "synthesis", label: "Synthesis", blurb: "The agent maps the team and surfaces problems, obsessions, and markets to confirm and narrow into a focus." },
-  { id: "opportunity", label: "Ventures", blurb: "Five ventures you could build, scored. Rate your conviction; the team narrows to one." },
+  { id: "opportunity", label: "Opportunities", blurb: "Distinct opportunities you could build, scored and ranked. Rate how excited you are to build each; the team's excitement narrows to one." },
   { id: "ventures", label: "Venture", blurb: "The one venture the team chose — flesh it out and carry it to validation." },
   { id: "validation", label: "Validation", blurb: "Assets to test, feedback synthesis, and the 7/14/21/30 check-ins." },
 ] as const;
@@ -55,7 +55,7 @@ export const PROCESS: { label: string; text: string }[] = [
   { label: "Invite", text: "Form the team. Everyone accepts the link, and the 48-hour window starts." },
   { label: "Input", text: "Each person answers a short private intake — type or talk. Nothing's shared until everyone's in." },
   { label: "Synthesis", text: "Flash maps the team — your overlaps, tensions, skills, and reach — and you confirm the areas of interest to focus on." },
-  { label: "Ventures", text: "Flash turns that focus into five distinct, scored ventures (customer, market, why-now). Each of you rates your conviction, and the team's highest-conviction venture is the one to build." },
+  { label: "Opportunities", text: "Flash turns that focus into distinct, scored opportunities — each with a hook, problem, solution, market, and a weighted evaluation. Each of you rates how excited you are to build it, and the team's excitement narrows to one." },
   { label: "Venture", text: "The chosen opportunity is built into one full venture — researched market, financials, approach, and strategy lenses — for you to see and edit together." },
   { label: "Validation", text: "Everything to test it for real: a landing page, shareable link, pitch deck, and a live signups dashboard — plus a 7/14/21/30-day check-in plan." },
 ];
@@ -256,24 +256,102 @@ export function mockSynthesisData(): SynthesisData {
 // here are seeded from the other two members.
 // Each opportunity is a small, researched mini-venture — enough to compare and
 // vote on — framed with the Click "basics" the venture step uses as guides.
+export type OppScore = { score: number; note: string }; // 0-10 + one-line rationale
+export type OppEvaluation = {
+  realProblem: OppScore;
+  founderFit: OppScore;
+  rightMoment: OppScore;
+  flashProof: OppScore;
+  benefits: OppScore;
+};
 export type OpportunitySpace = {
   id: string;
   title: string;
-  customer: string;
-  problem: string;
-  market: string;
-  advantage: string; // why this team
-  whyNow: string;
-  scores: { problem: number; market: number; fit: number }; // 0-10, from inputs + broad market
-  scoreNote: string; // one-line rationale for the scores
+  hook: string;     // one sentence: what it does
+  problem: string;  // who feels it, what they do now, why existing solutions fail
+  solution: string; // the mechanism + the core insight
+  market: string;   // who pays, how much/often, rough size
+  customer: string; // who uses it
+  evaluation: OppEvaluation;
   votes: number;
 };
 
+// Flash Ventures Evaluation — weighted criteria (weights sum to 1). The agent
+// scores each 0-10 with a rationale; the team can nudge.
+export const OPP_CRITERIA = [
+  { key: "realProblem", label: "Real Problem", weight: 0.25 },
+  { key: "founderFit", label: "Founder Fit", weight: 0.2 },
+  { key: "rightMoment", label: "Right Moment", weight: 0.15 },
+  { key: "flashProof", label: "Flash Proof", weight: 0.25 },
+  { key: "benefits", label: "Benefits & Impact", weight: 0.15 },
+] as const;
+
+export const oppTotal = (e: OppEvaluation) =>
+  OPP_CRITERIA.reduce((s, c) => s + c.weight * (e[c.key]?.score ?? 0), 0);
+
+export const oppBand = (total: number) => (total >= 8 ? "Strong" : total >= 6 ? "Promising" : "Risky");
+
 export const OPPORTUNITY_SPACES: OpportunitySpace[] = [
-  { id: "reentry", title: "Guided re-entry", customer: "Parents returning to work after a career break.", problem: "Going back is cold and confidence-eroding; job boards screen out the gap.", market: "Millions of returners a year; returnship demand is climbing.", advantage: "A trusted 4,000-parent community and a team that's lived the comeback.", whyNow: "Returnships are going mainstream and tight labour markets prize overlooked talent.", scores: { problem: 9, market: 7, fit: 9 }, scoreNote: "Sharpest, most-felt problem with the team's strongest unfair advantage.", votes: 3 },
-  { id: "employer", title: "Employer returnships", customer: "Companies that want to hire from an overlooked talent pool.", problem: "They can't read a career gap and miss capable candidates.", market: "Enterprise talent + DEI budgets; returnship programmes scaling.", advantage: "Warm access to returners plus insight into what employers misread.", whyNow: "Returnship incentives and DEI pressure make this fundable now.", scores: { problem: 7, market: 8, fit: 6 }, scoreNote: "Bigger budgets, but a slower B2B sale and weaker founder-market fit.", votes: 1 },
-  { id: "confidence", title: "Confidence & coaching", customer: "Returners whose self-belief eroded during time out.", problem: "The block isn't skills — it's confidence and a broken signal.", market: "Coaching and upskilling spend; large and fragmented.", advantage: "A brand that's lived the comeback and a community to coach within.", whyNow: "The motherhood penalty is in the spotlight; returning is being destigmatised.", scores: { problem: 7, market: 6, fit: 8 }, scoreNote: "Strong fit, but a fuzzier problem and a crowded coaching market.", votes: 1 },
-  { id: "community", title: "Returner community", customer: "Parents who need peers, leads, and accountability for the comeback.", problem: "Re-entry is isolating; there's no trusted place for warm intros and momentum.", market: "Community plus jobs; recurring-membership potential.", advantage: "An existing 4,000-member community to build the flywheel on.", whyNow: "Warm intros and word-of-mouth compound fastest right now.", scores: { problem: 6, market: 6, fit: 9 }, scoreNote: "Best distribution fit, but monetising community alone is hard.", votes: 2 },
+  {
+    id: "reentry", title: "Guided re-entry", votes: 3,
+    hook: "A guided 90-day comeback that gets parents back into paid work through warm intros, not cold job boards.",
+    problem: "Parents returning after a career break hit cold job boards that screen out the gap, eroded confidence, and no trusted path back. Today they apply into the void or lean on luck and personal contacts — and existing courses teach skills they already have.",
+    solution: "A structured 90-day track — confidence resets, a portfolio refresh, and warm intros — matched to returnship-friendly employers. The insight: the block is signal and access, not skill, so we fix the signal.",
+    market: "Returners pay a ~$40/mo membership or a success fee; millions return to work each year and returnship demand is climbing.",
+    customer: "Parents returning to work after a career break.",
+    evaluation: {
+      realProblem: { score: 9, note: "Sharp, frequent, and people already pay for coaching and courses to solve it." },
+      founderFit: { score: 9, note: "A trusted 4,000-parent community and a team that's lived the comeback — unfair access." },
+      rightMoment: { score: 7, note: "Returnships going mainstream; tight labour markets prize overlooked talent." },
+      flashProof: { score: 8, note: "Test in a week: a landing page, 10 calls to returners, one employer warm-intro pilot." },
+      benefits: { score: 8, note: "Measurable — time-to-offer and income restored; high stakes for the user." },
+    },
+  },
+  {
+    id: "community", title: "Returner community", votes: 2,
+    hook: "A paid membership for the comeback — warm intros, leads, and accountability in one trusted place.",
+    problem: "Re-entry is isolating; there's no trusted place for warm intros and momentum. Returners scatter across generic groups, lose steam, and miss the intros that actually land roles.",
+    solution: "A focused membership with intro-matching, accountability pods, and a jobs board, built on the existing 4,000-member base. The insight: warm intros and accountability compound — own the flywheel.",
+    market: "Recurring membership (~$20/mo) plus jobs revenue; community + jobs.",
+    customer: "Parents who need peers, leads, and accountability for the comeback.",
+    evaluation: {
+      realProblem: { score: 6, note: "Real need, but 'community' is a softer, less-urgent purchase." },
+      founderFit: { score: 9, note: "An existing 4,000-member community to build the flywheel on — best distribution fit." },
+      rightMoment: { score: 6, note: "Word-of-mouth compounds now, but no external forcing function." },
+      flashProof: { score: 8, note: "Easiest to test — open paid membership to the existing list this week." },
+      benefits: { score: 6, note: "Value is real but diffuse; monetising community alone is hard." },
+    },
+  },
+  {
+    id: "confidence", title: "Confidence & coaching", votes: 1,
+    hook: "Comeback-specific coaching: short daily confidence resets plus peer cohorts that have done it.",
+    problem: "The block isn't skills, it's eroded confidence and a broken signal. Returners self-isolate, over-prepare, and stall — and buy generic coaching that doesn't get the comeback.",
+    solution: "Guided confidence resets, peer cohorts, and comeback-specific coaching delivered in the community. The insight: confidence rebuilds fastest with peers who've done it, not solo courses.",
+    market: "Subscription coaching / upskilling spend; large but fragmented.",
+    customer: "Returners whose self-belief eroded during time out.",
+    evaluation: {
+      realProblem: { score: 7, note: "Felt, but fuzzier and harder to tie to a paid outcome." },
+      founderFit: { score: 8, note: "A brand that's lived the comeback and a community to coach within." },
+      rightMoment: { score: 6, note: "Motherhood penalty in the spotlight, but no sharp catalyst." },
+      flashProof: { score: 7, note: "Testable fast — run one paid cohort from the community." },
+      benefits: { score: 6, note: "Real but softer; confidence is harder to measure than income." },
+    },
+  },
+  {
+    id: "employer", title: "Employer returnships", votes: 1,
+    hook: "A hiring channel that helps companies tap a vetted, returnship-ready pool of returning parents.",
+    problem: "Employers can't read a career gap and miss capable candidates; they run ad-hoc returnship pilots with no pipeline. They post roles and hope, or pay agencies that don't get the segment.",
+    solution: "A curated, pre-vetted pool plus a light structured returnship program companies buy into; we screen for readiness and handle onboarding. The insight: warm, pre-vetted candidates de-risk the gap for hiring managers.",
+    market: "Enterprises pay per-hire or per-program; DEI + talent budgets, returnship programs scaling.",
+    customer: "Companies hiring from an overlooked talent pool.",
+    evaluation: {
+      realProblem: { score: 7, note: "Real, but felt less acutely than by the returners themselves." },
+      founderFit: { score: 6, note: "Warm access to returners, but enterprise B2B selling is new for the team." },
+      rightMoment: { score: 8, note: "Returnship incentives and DEI pressure make this fundable now." },
+      flashProof: { score: 6, note: "Slower — needs a few employer conversations and a pilot to prove." },
+      benefits: { score: 7, note: "Clear ROI for employers; measurable hires." },
+    },
+  },
 ];
 
 // ------------------------------------------------------------ Ventures

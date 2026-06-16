@@ -28,7 +28,7 @@ function teamContext(synthesis: SynthesisData, space?: Space): string {
   const list = (xs: { text: string }[]) => xs.map((x) => `- ${x.text}`).join("\n");
   return [
     space
-      ? `The chosen opportunity (build the venture from this):\nTitle: ${space.title}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nMarket: ${space.market}\nUnfair advantage: ${space.advantage}\nWhy now: ${space.whyNow}`
+      ? `The chosen opportunity (build the venture from this):\nTitle: ${space.title}\nHook: ${space.hook}\nCustomer: ${space.customer}\nProblem: ${space.problem}\nSolution: ${space.solution}\nMarket: ${space.market}`
       : "",
     `Lived problems:\n${list(synthesis.problems)}`,
     `Obsessions:\n${list(synthesis.obsessions)}`,

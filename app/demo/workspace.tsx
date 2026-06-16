@@ -13,6 +13,7 @@ import {
   INVITE,
   MARKET_REPORT,
   NETWORK,
+  OPP_CRITERIA,
   PHASES,
   PROCESS,
   PRICE,
@@ -30,6 +31,8 @@ import {
   memberById,
   mockOpportunityData,
   mockSynthesisData,
+  oppBand,
+  oppTotal,
   revenueBuild,
   revenueDefaults,
   type ApproachOption,
@@ -40,6 +43,7 @@ import {
   type IntakeSection,
   type Member,
   type NetworkNode,
+  type OppEvaluation,
   type OpportunityData,
   type ScorecardKey,
   type SynthesisData,
@@ -1629,37 +1633,45 @@ function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v:
 
 function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT, youId = YOU }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[]; youId?: string }) {
   const od = data ?? mockOpportunityData();
-  const spaces = [...od.spaces].sort((a, b) => b.votes - a.votes);
+  // Order anchors to the agent's ranking by total score; the loud CTA is the top.
+  const ranked = [...od.spaces].sort((a, b) => oppTotal(b.evaluation) - oppTotal(a.evaluation));
+  const topId = ranked[0]?.id;
+  // Editable evaluations (hybrid nudge) + your excitement (the one decision).
+  const [evals, setEvals] = useState<Record<string, OppEvaluation>>(() => Object.fromEntries(od.spaces.map((s) => [s.id, { ...s.evaluation }])));
   const [conviction, setConviction] = useState<Record<string, number>>({});
+  const [adjusting, setAdjusting] = useState<Record<string, boolean>>({});
+  const [openOverview, setOpenOverview] = useState<Record<string, boolean>>({});
   const setC = (id: string, n: number) => setConviction((c) => ({ ...c, [id]: n }));
-  const allRated = spaces.length > 0 && spaces.every((s) => (conviction[s.id] ?? 0) > 0);
-  const pick = [...spaces].sort((a, b) => (conviction[b.id] ?? 0) - (conviction[a.id] ?? 0))[0];
+  const setScore = (id: string, key: keyof OppEvaluation, val: number) => setEvals((e) => ({ ...e, [id]: { ...e[id], [key]: { ...e[id][key], score: val } } }));
+  const allRated = od.spaces.length > 0 && od.spaces.every((s) => (conviction[s.id] ?? 0) > 0);
+  const pick = [...od.spaces].sort((a, b) => (conviction[b.id] ?? 0) - (conviction[a.id] ?? 0))[0];
   const pickTitle = pick && (conviction[pick.id] ?? 0) > 0 ? pick.title : "—";
   const submit = () => { onSubmitRatings?.(conviction); onNext(); };
-  // Each person's conviction-rating progress over the five ventures.
-  const OPP_TOTAL = spaces.length;
+  // Each person's excitement-rating progress over the opportunities.
+  const OPP_TOTAL = od.spaces.length;
   const oppDone = (id: string) => {
-    if (id === youId) return spaces.filter((s) => (conviction[s.id] ?? 0) > 0).length;
+    if (id === youId) return od.spaces.filter((s) => (conviction[s.id] ?? 0) > 0).length;
     const st = status?.find((s) => s.id === id);
     if (st) return st.rated ? OPP_TOTAL : 0;
     return Math.round(demoPace(cohort, id) * OPP_TOTAL);
   };
+  const bandClass = (b: string) => (b === "Strong" ? "bg-orange-tint text-orange-dark" : b === "Promising" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500");
   return (
     <Columns
       left={
         <div className="space-y-4">
           <RailTitle>Stages</RailTitle>
           {[
-            { t: "Five ventures", d: "Distinct, scored from your consensus.", n: "1" },
-            { t: "Rate conviction", d: "How excited to build each — 1 to 10.", n: "2" },
+            { t: "Scored opportunities", d: "Distinct, scored and ranked from your consensus.", n: "1" },
+            { t: "Rate excitement", d: "How excited you'd be to build each — 1 to 10.", n: "2" },
           ].map((s) => (
             <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
           ))}
-          <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Decided by the team.</span> Each of you rates independently — Flash builds the one with the most conviction.</p></Card>
+          <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Decided by the team.</span> The score ranks them; each of you rates how excited you&rsquo;d be to build — the team&rsquo;s excitement narrows to one.</p></Card>
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
             <RailTitle>Your top pick</RailTitle>
             <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{pickTitle}</p>{pick && pickTitle !== "—" && <p className="mt-1 text-xs text-slate-500">{pick.customer}</p>}</div>
-            <p className="text-xs text-slate-400">The team&rsquo;s highest-conviction venture is the one Flash builds.</p>
+            <p className="text-xs text-slate-400">The venture the team is most excited to build is the one Flash builds.</p>
           </div>
           <TeamProgress cohort={cohort} youId={youId} total={OPP_TOTAL} done={oppDone} />
         </div>
@@ -1667,48 +1679,101 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
       center={
         <div className="space-y-5">
           <Card className="p-5">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Your ventures</h1>
-            <p className="mt-1 text-slate-500">Five distinct ventures you could build, scored from your team&rsquo;s consensus. Rate how excited you&rsquo;d be to build each — the team&rsquo;s conviction picks the one.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Opportunities</h1>
+            <p className="mt-1 text-slate-500">Distinct opportunities you could build, scored and ranked. The one input you give is how excited you&rsquo;d be to build each — the team&rsquo;s excitement narrows to one.</p>
           </Card>
 
-          <Part label="Five ventures" hint="Rate each 1-10 — no sitting on the fence.">
-            <div className="space-y-3">
-              {spaces.map((s) => (
-                <div key={s.id} className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-lg font-bold tracking-tight text-foreground">{s.title}</p>
-                  <dl className="mt-3 grid gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
-                    <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Customer</dt><dd className="mt-0.5 text-slate-600">{s.customer}</dd></div>
-                    <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Problem</dt><dd className="mt-0.5 text-slate-600">{s.problem}</dd></div>
-                    <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Market</dt><dd className="mt-0.5 text-slate-600">{s.market}</dd></div>
-                    <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Advantage</dt><dd className="mt-0.5 text-slate-600">{s.advantage}</dd></div>
-                    <div className="sm:col-span-2"><dt className="font-semibold uppercase tracking-wide text-orange-dark">Why now</dt><dd className="mt-0.5 text-slate-600">{s.whyNow}</dd></div>
-                  </dl>
-                  {s.scores && (
-                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
-                      <span><span className="font-semibold uppercase tracking-wide text-slate-400">Problem</span> <span className="font-bold text-foreground">{s.scores.problem}</span>/10</span>
-                      <span><span className="font-semibold uppercase tracking-wide text-slate-400">Market</span> <span className="font-bold text-foreground">{s.scores.market}</span>/10</span>
-                      <span><span className="font-semibold uppercase tracking-wide text-slate-400">Fit</span> <span className="font-bold text-foreground">{s.scores.fit}</span>/10</span>
+          <div className="space-y-3">
+            {ranked.map((s, i) => {
+              const ev = evals[s.id] ?? s.evaluation;
+              const total = oppTotal(ev);
+              const band = oppBand(total);
+              const isTop = s.id === topId;
+              const adj = !!adjusting[s.id];
+              const ov = !!openOverview[s.id];
+              return (
+                <div key={s.id} className={`rounded-2xl border p-4 transition-colors ${isTop ? "border-orange ring-1 ring-orange/30" : "border-slate-200"}`}>
+                  <div className="flex items-start gap-3">
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isTop ? "bg-orange text-white" : "bg-slate-100 text-slate-500"}`}>{i + 1}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-bold tracking-tight text-foreground">{s.title}</p>
+                        {isTop && <span className="shrink-0 rounded-full bg-orange-tint px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-dark">Top ranked</span>}
+                      </div>
+                      <p className="mt-0.5 text-sm text-slate-600">{s.hook}</p>
                     </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-2xl font-extrabold tabular-nums leading-none text-foreground">{total.toFixed(1)}<span className="text-sm font-bold text-slate-400">/10</span></p>
+                      <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${bandClass(band)}`}>{band}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Evaluation</p>
+                      <button onClick={() => setAdjusting((a) => ({ ...a, [s.id]: !a[s.id] }))} className="text-xs font-semibold text-orange-dark hover:underline">{adj ? "Done" : "Adjust scores"}</button>
+                    </div>
+                    <div className="mt-2 space-y-2.5">
+                      {OPP_CRITERIA.map((c) => {
+                        const sc = ev[c.key];
+                        return (
+                          <div key={c.key}>
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="font-semibold text-slate-500">{c.label} <span className="font-normal text-slate-400">{Math.round(c.weight * 100)}%</span></span>
+                              {adj
+                                ? <ScoreStepper score={sc.score} onChange={(v) => setScore(s.id, c.key, v)} />
+                                : <span className="font-bold tabular-nums text-foreground">{sc.score}/10</span>}
+                            </div>
+                            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange" style={{ width: `${sc.score * 10}%` }} /></div>
+                            <p className="mt-0.5 text-[11px] text-slate-400">{sc.note}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button onClick={() => setOpenOverview((o) => ({ ...o, [s.id]: !o[s.id] }))} className="mt-3 flex w-full items-center gap-1.5 border-t border-slate-100 pt-3 text-xs font-semibold text-slate-500 hover:text-orange">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={`h-3.5 w-3.5 transition-transform ${ov ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
+                    Overview — problem, solution &amp; market
+                  </button>
+                  {ov && (
+                    <dl className="mt-2 space-y-2 text-xs">
+                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Problem</dt><dd className="mt-0.5 text-slate-600">{s.problem}</dd></div>
+                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Solution</dt><dd className="mt-0.5 text-slate-600">{s.solution}</dd></div>
+                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Market</dt><dd className="mt-0.5 text-slate-600">{s.market}</dd></div>
+                    </dl>
                   )}
-                  {s.scoreNote && <p className="mt-1 text-xs italic text-slate-400">{s.scoreNote}</p>}
+
                   <div className="mt-3 border-t border-slate-100 pt-3"><ConvictionScale value={conviction[s.id] ?? 0} onChange={(n) => setC(s.id, n)} /></div>
                 </div>
-              ))}
-            </div>
-          </Part>
+              );
+            })}
+          </div>
 
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-orange/40 bg-orange-tint/20 p-5 sm:flex-row sm:items-center">
             <div className="flex-1">
-              <p className="text-sm font-bold text-foreground">Submit your conviction</p>
-              <p className="mt-0.5 text-xs text-slate-500">Everyone rates independently. Flash builds the venture the team is most convicted on{pickTitle !== "—" ? ` — your top pick is ${pickTitle}` : ""}.</p>
+              <p className="text-sm font-bold text-foreground">Submit your excitement</p>
+              <p className="mt-0.5 text-xs text-slate-500">Rate how excited you&rsquo;d be to build each. The team&rsquo;s combined excitement narrows to one venture{pickTitle !== "—" ? ` — your top pick is ${pickTitle}` : ""}.</p>
             </div>
             {allRated
-              ? <PrimaryBtn label="Submit my conviction" onClick={submit} icon="sparkle" />
-              : <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-orange/40 px-5 text-sm font-bold text-white">Rate all 5 to continue</span>}
+              ? <PrimaryBtn label="Submit my ratings" onClick={submit} icon="sparkle" />
+              : <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-orange/40 px-5 text-sm font-bold text-white">Rate every opportunity to continue</span>}
           </div>
         </div>
       }
     />
+  );
+}
+
+// 0-10 score nudge (the hybrid adjust on each evaluation criterion).
+function ScoreStepper({ score, onChange }: { score: number; onChange: (v: number) => void }) {
+  const btn = "flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition-colors hover:border-orange hover:text-orange";
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <button type="button" aria-label="Lower" onClick={() => onChange(Math.max(0, score - 1))} className={btn}>&minus;</button>
+      <span className="w-10 text-center text-xs font-bold tabular-nums text-foreground">{score}/10</span>
+      <button type="button" aria-label="Raise" onClick={() => onChange(Math.min(10, score + 1))} className={btn}>+</button>
+    </span>
   );
 }
 

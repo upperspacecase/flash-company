@@ -15,6 +15,13 @@ function summarize(s: SynthesisData): string {
 
 /* ----------------------------------- candidate ventures (scored, distinct) */
 
+const CRIT = {
+  type: "object",
+  additionalProperties: false,
+  properties: { score: { type: "integer" }, note: { type: "string" } },
+  required: ["score", "note"],
+} as const;
+
 const SPACES_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -26,32 +33,33 @@ const SPACES_SCHEMA = {
         additionalProperties: false,
         properties: {
           title: { type: "string" },
-          customer: { type: "string" },
+          hook: { type: "string" },
           problem: { type: "string" },
+          solution: { type: "string" },
           market: { type: "string" },
-          advantage: { type: "string" },
-          whyNow: { type: "string" },
-          scores: {
+          customer: { type: "string" },
+          evaluation: {
             type: "object",
             additionalProperties: false,
-            properties: { problem: { type: "integer" }, market: { type: "integer" }, fit: { type: "integer" } },
-            required: ["problem", "market", "fit"],
+            properties: { realProblem: CRIT, founderFit: CRIT, rightMoment: CRIT, flashProof: CRIT, benefits: CRIT },
+            required: ["realProblem", "founderFit", "rightMoment", "flashProof", "benefits"],
           },
-          scoreNote: { type: "string" },
         },
-        required: ["title", "customer", "problem", "market", "advantage", "whyNow", "scores", "scoreNote"],
+        required: ["title", "hook", "problem", "solution", "market", "customer", "evaluation"],
       },
     },
   },
   required: ["spaces"],
 } as const;
 
+type RawCrit = { score: number; note: string };
 type RawSpace = {
-  title: string; customer: string; problem: string; market: string; advantage: string; whyNow: string;
-  scores: { problem: number; market: number; fit: number }; scoreNote: string;
+  title: string; hook: string; problem: string; solution: string; market: string; customer: string;
+  evaluation: { realProblem: RawCrit; founderFit: RawCrit; rightMoment: RawCrit; flashProof: RawCrit; benefits: RawCrit };
 };
 
 const clamp10 = (n: number) => Math.max(0, Math.min(10, Math.round(Number.isFinite(n) ? n : 5)));
+const crit = (c?: RawCrit) => ({ score: clamp10(c?.score ?? 5), note: c?.note ?? "" });
 
 async function generateSpaces(client: ReturnType<typeof getAnthropic>, ctx: string): Promise<OpportunityData["spaces"]> {
   const body = {
@@ -60,7 +68,7 @@ async function generateSpaces(client: ReturnType<typeof getAnthropic>, ctx: stri
     thinking: { type: "adaptive" },
     output_config: { effort: "low", format: { type: "json_schema", schema: SPACES_SCHEMA } },
     system: SPACES_SYSTEM,
-    messages: [{ role: "user", content: `The team's confirmed, consensus-ranked synthesis:\n\n${ctx}\n\nProduce 5 genuinely DISTINCT candidate ventures, scored.` }],
+    messages: [{ role: "user", content: `The team's confirmed, consensus-ranked synthesis:\n\n${ctx}\n\nProduce 5 genuinely DISTINCT opportunities, each scored on the five weighted criteria with a one-line rationale per criterion.` }],
   };
   const message = (await client.messages.create(body as never)) as { content: { type: string; text?: string }[] };
   const raw = message.content.filter((b) => b.type === "text" && b.text).map((b) => b.text as string).join("");
@@ -70,13 +78,18 @@ async function generateSpaces(client: ReturnType<typeof getAnthropic>, ctx: stri
     .map((s, i) => ({
       id: `sp${i}`,
       title: s.title,
-      customer: s.customer,
+      hook: s.hook,
       problem: s.problem,
+      solution: s.solution,
       market: s.market,
-      advantage: s.advantage,
-      whyNow: s.whyNow,
-      scores: { problem: clamp10(s.scores?.problem), market: clamp10(s.scores?.market), fit: clamp10(s.scores?.fit) },
-      scoreNote: s.scoreNote ?? "",
+      customer: s.customer,
+      evaluation: {
+        realProblem: crit(s.evaluation?.realProblem),
+        founderFit: crit(s.evaluation?.founderFit),
+        rightMoment: crit(s.evaluation?.rightMoment),
+        flashProof: crit(s.evaluation?.flashProof),
+        benefits: crit(s.evaluation?.benefits),
+      },
       votes: 0,
     }));
 }
