@@ -582,38 +582,23 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
   };
   return (
     <div className="mx-auto max-w-3xl space-y-12 py-4">
-      {/* 1 · Action zone: accept invite / start your input, inside the orange border */}
-      <section className="rounded-2xl border border-orange bg-white/5 p-6">
-        {accepted ? (
-          <div>
-            <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-orange" /> You&rsquo;re in.</p>
-            <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
-            <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
-            {resumeUrl && (
-              <div className="mt-4 rounded-xl border border-slate-200 bg-white/5 p-3">
-                <p className="text-xs font-bold text-foreground">Your resume link</p>
-                <p className="mt-0.5 text-xs text-slate-500">Bookmark this to pick up where you left off — on any device.</p>
-                <code className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{resumeUrl}</code>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground">{isHost ? "You started this Flash" : "Accept your invite"}</p>
-                <p className="mt-1 text-sm text-slate-500">{isHost ? `Your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`)}</p>
-              </div>
-              {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
+      {/* 1 · Accept invite — host kick-off / teammate accept (hidden once you're in) */}
+      {!accepted && (
+        <section className="rounded-2xl border border-orange bg-white/5 p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-foreground">{isHost ? "You started this Flash" : "Accept your invite"}</p>
+              <p className="mt-1 text-sm text-slate-500">{isHost ? `Your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`)}</p>
             </div>
-            <div className="mt-5">
-              {expired
-                ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
-                : <PrimaryBtn label={isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept invite to get started"} onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
-            </div>
+            {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
           </div>
-        )}
-      </section>
+          <div className="mt-5">
+            {expired
+              ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
+              : <PrimaryBtn label={isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept invite to get started"} onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
+          </div>
+        </section>
+      )}
 
       {/* 3 · Hero */}
       <section>
@@ -655,6 +640,22 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
           ))}
         </ol>
       </section>
+
+      {/* You're in — start your input (shown once accepted), just above Invite your team */}
+      {accepted && (
+        <section className="rounded-2xl border border-orange bg-white/5 p-6">
+          <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-orange" /> You&rsquo;re in.</p>
+          <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
+          <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
+          {resumeUrl && (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white/5 p-3">
+              <p className="text-xs font-bold text-foreground">Your resume link</p>
+              <p className="mt-0.5 text-xs text-slate-500">Bookmark this to pick up where you left off — on any device.</p>
+              <code className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{resumeUrl}</code>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Invite your team — share link + 48h accept window */}
       <section>
@@ -1296,31 +1297,19 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
   const [obsessions, setObsessions] = useState<Votable[]>(d.obsessions.map((p) => ({ ...p })));
   const [markets, setMarkets] = useState<Votable[]>(d.markets.map((p) => ({ ...p })));
 
-  const toggleConfirm = (k: string) => setConfirmed((c) => ({ ...c, [k]: !c[k] }));
   const toggleOpen = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
-  // You only confirm your own role; teammates confirm theirs in their own session.
-  const rolesConfirmed = confirmed[youId] ?? false;
   // Worked one section at a time: confirming a section collapses it and opens the
   // next (each stays openable to review/change). The Team group flows straight
   // into the Focus rankings, so the whole screen is a single guided sequence.
-  const SECTIONS = ["skills", "network", "locations", "roles", "problems", "obsessions", "markets"];
+  const SECTIONS = ["skills", "network", "locations", "problems", "obsessions", "markets"];
   const confirmSection = (k: string) => {
     setConfirmed((c) => ({ ...c, [k]: true }));
     const next = SECTIONS[SECTIONS.indexOf(k) + 1];
     setOpen((o) => ({ ...o, [k]: false, ...(next ? { [next]: true } : {}) }));
   };
-  // Roles is confirmed per-member; once all are in, advance to the first Focus list
-  // (just once, so re-opening roles to review doesn't keep kicking you forward).
-  const rolesAdvanced = useRef(false);
-  useEffect(() => {
-    if (rolesConfirmed && open.roles && !rolesAdvanced.current) {
-      rolesAdvanced.current = true;
-      setOpen((o) => ({ ...o, roles: false, problems: true }));
-    }
-  }, [rolesConfirmed, open.roles]);
 
-  // Left-rail progress: Team (4 sub-steps) then Focus (3 rankings).
-  const teamSteps = [confirmed.skills, confirmed.network, confirmed.locations, rolesConfirmed];
+  // Left-rail progress: Team (3 sub-steps) then Focus (3 rankings).
+  const teamSteps = [confirmed.skills, confirmed.network, confirmed.locations];
   const focusSteps = [confirmed.problems, confirmed.obsessions, confirmed.markets];
   const teamDone = teamSteps.filter(Boolean).length;
   const focusDone = focusSteps.filter(Boolean).length;
@@ -1329,7 +1318,7 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
   // Each person's progress through the synthesis sections — real for you, live
   // status (or an illustrative demo pace) for teammates.
   const SYNTH_TOTAL = SECTIONS.length;
-  const youSynthDone = SECTIONS.filter((k) => (k === "roles" ? rolesConfirmed : confirmed[k])).length;
+  const youSynthDone = SECTIONS.filter((k) => confirmed[k]).length;
   const synthDone = (id: string) => {
     if (id === youId) return youSynthDone;
     const st = status?.find((s) => s.id === id);
@@ -1354,8 +1343,8 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
           <RailTitle>Steps</RailTitle>
           {[
             { t: "Review input", d: "All three intakes read.", done: true, count: null as string | null },
-            { t: "Team", d: "Confirm skills, network, roles.", done: teamDone === teamSteps.length, count: `${teamDone}/${teamSteps.length}` },
-            { t: "Focus", d: "Rank the problems, obsessions & markets.", done: focusDone === focusSteps.length, count: `${focusDone}/${focusSteps.length}` },
+            { t: "Team", d: "Confirm skills, network, locations.", done: teamDone === teamSteps.length, count: `${teamDone}/${teamSteps.length}` },
+            { t: "Focus", d: "Rank the problems, insights & markets.", done: focusDone === focusSteps.length, count: `${focusDone}/${focusSteps.length}` },
           ].map((s) => (
             <Card key={s.t}>
               <div className="flex items-center gap-3">
@@ -1386,9 +1375,6 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
               <ConfirmItem title="Locations" hint="Where you can reach and meet." open={open.locations} onToggle={() => toggleOpen("locations")} confirmed={confirmed.locations} onConfirm={() => confirmSection("locations")}>
                 <NetworkList cohort={cohort} nodes={locations} onNodes={setLocations} kind="location" icon="target" addLabel="location" />
               </ConfirmItem>
-              <ConfirmItem title="Roles & tasks" hint="Confirm your role." open={open.roles} onToggle={() => toggleOpen("roles")} confirmed={rolesConfirmed}>
-                <RolesTasks cohort={cohort} youId={youId} roles={roles} onRoles={setRoles} confirmed={confirmed} onConfirm={toggleConfirm} />
-              </ConfirmItem>
             </div>
           </Part>
 
@@ -1397,8 +1383,8 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
               <ConfirmItem title="Lived problems" hint="Tap to award 1st, 2nd, 3rd place." open={open.problems} onToggle={() => toggleOpen("problems")} confirmed={confirmed.problems} onConfirm={() => confirmSection("problems")}>
                 <RankList items={problems} onItems={setProblems} addLabel="problem" />
               </ConfirmItem>
-              <ConfirmItem title="Obsessions & moonshots" hint="Tap to award 1st, 2nd, 3rd place." open={open.obsessions} onToggle={() => toggleOpen("obsessions")} confirmed={confirmed.obsessions} onConfirm={() => confirmSection("obsessions")}>
-                <RankList items={obsessions} onItems={setObsessions} addLabel="obsession" />
+              <ConfirmItem title="Insights" hint="Tap to award 1st, 2nd, 3rd place." open={open.obsessions} onToggle={() => toggleOpen("obsessions")} confirmed={confirmed.obsessions} onConfirm={() => confirmSection("obsessions")}>
+                <RankList items={obsessions} onItems={setObsessions} addLabel="insight" />
               </ConfirmItem>
               <ConfirmItem title="Potential target markets" hint="Tap to award 1st, 2nd, 3rd place." open={open.markets} onToggle={() => toggleOpen("markets")} confirmed={confirmed.markets} onConfirm={() => confirmSection("markets")}>
                 <RankList items={markets} onItems={setMarkets} addLabel="market" />
@@ -1409,8 +1395,8 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
           <div className="flex flex-col items-end gap-2">
             {!allConfirmed && <p className="text-xs text-slate-400">Confirm each section above to continue.</p>}
             {allConfirmed
-              ? <PrimaryBtn label="Lock it in — see your ventures" onClick={handleConfirm} icon="sparkle" />
-              : <span className="inline-flex h-12 items-center gap-2 rounded-xl bg-orange/40 px-6 text-sm font-bold text-white">Lock it in — see your ventures</span>}
+              ? <PrimaryBtn label="Confirm Synthesis" onClick={handleConfirm} icon="sparkle" />
+              : <span className="inline-flex h-12 items-center gap-2 rounded-xl bg-orange/40 px-6 text-sm font-bold text-white">Confirm Synthesis</span>}
           </div>
         </div>
       }
