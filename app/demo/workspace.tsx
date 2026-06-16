@@ -424,7 +424,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 3:
         if (live && !oppData)
           return <GeneratingState title="Finding your ventures" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into ventures to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your venture options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
-        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} />;
+        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} youId={youId} />;
       case 4:
         if (live && !ventData && !ratingsReady)
           return <GeneratingState title="Choosing your venture" sub="Waiting for everyone to rate their conviction — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
@@ -457,8 +457,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
     <div className="relative flex min-h-screen flex-col bg-black">
       <div className="pointer-events-none fixed inset-0 z-0 bg-grid" />
       <div className="relative z-10 flex flex-1 flex-col">
-      <Header plan={plan} cohort={cohort} windowEndsAt={live?.windowEndsAt} />
-      <Timeline phase={phase} onJump={setPhase} unlocked={unlocked} reached={reached} />
+      <Header phase={phase} onJump={setPhase} unlocked={unlocked} />
       {windowExpired && (
         <div className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-center text-xs font-semibold text-amber-700">
           Your {SPRINT.windowHours}-hour window has closed. New teammates can no longer join, but you can still review what your team has so far.
@@ -522,54 +521,37 @@ function Countdown({ endsAt }: { endsAt: string }) {
   );
 }
 
-function Header({ plan, cohort = COHORT, windowEndsAt }: { plan: "free" | "full"; cohort?: Member[]; windowEndsAt?: string }) {
-  const isFree = plan === "free";
+// Logo + the whole step flow on one line. Orange = focused; tick = a step
+// you've passed; lock = not yet unlocked (live only); grey number = unlocked
+// but not opened (the demo, where you can jump around freely).
+function Header({ phase, onJump, unlocked }: { phase: number; onJump: (n: number) => void; unlocked: (i: number) => boolean }) {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-black/85 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-4 px-5 py-3">
+      <div className="mx-auto flex w-full max-w-[1500px] items-center gap-4 px-5 py-3">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-orange"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
           <span className="text-lg font-bold tracking-tight text-foreground">Flash Company</span>
-          <span className="hidden text-sm font-medium italic text-orange md:inline">{TAGLINE}</span>
         </Link>
-        <div className="flex shrink-0 items-center gap-3">
-          {windowEndsAt ? <Countdown endsAt={windowEndsAt} /> : (
-            <span className="hidden items-center gap-2 rounded-full bg-orange-tint px-3 py-1.5 text-xs font-semibold text-orange-dark sm:flex">
-              <Icon name="clock" className="h-3.5 w-3.5" /> {isFree ? `Free · ${SPRINT.freeHours}h` : `${SPRINT.windowHours}h sprint`}
-            </span>
-          )}
-          <div className="hidden items-center -space-x-2 sm:flex">{cohort.map((m) => <Avatar key={m.id} m={m} />)}</div>
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="link" className="h-4 w-4" /> Invite</button>
-        </div>
+        <ol className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+          {PHASES.map((p, i) => {
+            const active = i === phase;
+            const done = i < phase;
+            const locked = !unlocked(i);
+            return (
+              <li key={p.id} className="flex shrink-0 items-center gap-1">
+                <button onClick={() => onJump(i)} className={`flex shrink-0 items-center gap-2 rounded-xl border px-2.5 py-1.5 text-left transition-colors ${active ? "border-orange bg-orange-tint/40" : "border-transparent hover:bg-white/5"}`}>
+                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${active ? "bg-orange text-white" : "bg-slate-100 text-slate-400"}`}>
+                    {active ? i + 1 : done ? <Icon name="check" className="h-3 w-3" /> : locked ? <Icon name="lock" className="h-3 w-3" /> : i + 1}
+                  </span>
+                  <span className={`hidden whitespace-nowrap text-sm font-semibold sm:block ${active ? "text-orange-dark" : "text-slate-500"}`}>{p.label}</span>
+                </button>
+                {i < PHASES.length - 1 && <span className="shrink-0 text-slate-600">›</span>}
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </header>
-  );
-}
-
-function Timeline({ phase, onJump, unlocked, reached }: { phase: number; onJump: (n: number) => void; unlocked: (i: number) => boolean; reached: number }) {
-  return (
-    <nav className="border-b border-slate-200 bg-white/5">
-      <ol className="mx-auto flex w-full max-w-[1500px] gap-2 overflow-x-auto px-5 py-3">
-        {PHASES.map((p, i) => {
-          const locked = !unlocked(i);
-          const active = i === phase;
-          const done = !locked && i < reached;
-          return (
-            <li key={p.id} className="flex flex-1 items-center gap-2">
-              <button onClick={() => onJump(i)} className={`flex flex-1 items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${active ? "border-orange bg-orange-tint/40" : locked ? "border-transparent opacity-50 hover:opacity-80" : "border-transparent hover:bg-slate-50"}`}>
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${active ? "bg-orange text-white" : done ? "bg-orange/20 text-orange-dark" : "bg-slate-100 text-slate-400"}`}>
-                  {locked ? <Icon name="lock" className="h-3 w-3" /> : i + 1}
-                </span>
-                <span className="min-w-0">
-                  <span className={`block whitespace-nowrap text-sm font-semibold ${active ? "text-orange-dark" : "text-slate-600"}`}>{p.label}</span>
-                </span>
-              </button>
-              {i < PHASES.length - 1 && <span className="hidden text-slate-300 lg:block">›</span>}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
   );
 }
 
@@ -600,52 +582,23 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
   };
   return (
     <div className="mx-auto max-w-3xl space-y-12 py-4">
-      {/* 1 · Action zone: accept invite + invite your team, inside the orange border */}
-      <section className="rounded-2xl border border-orange bg-white/5 p-6">
-        {accepted ? (
-          <div>
-            <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-orange" /> You&rsquo;re in.</p>
-            <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
-            <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
-            {resumeUrl && (
-              <div className="mt-4 rounded-xl border border-slate-200 bg-white/5 p-3">
-                <p className="text-xs font-bold text-foreground">Your resume link</p>
-                <p className="mt-0.5 text-xs text-slate-500">Bookmark this to pick up where you left off — on any device.</p>
-                <code className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{resumeUrl}</code>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground">{isHost ? "You started this Flash" : "Accept your invite"}</p>
-                <p className="mt-1 text-sm text-slate-500">{isHost ? `Your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`)}</p>
-              </div>
-              {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
+      {/* 1 · Accept — host kick-off / teammate accept. Hidden once you're in. */}
+      {!accepted && (
+        <section className="rounded-2xl border border-orange bg-white/5 p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-foreground">{isHost ? "You started this Flash" : "Accept your invite"}</p>
+              <p className="mt-1 text-sm text-slate-500">{isHost ? `Your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`)}</p>
             </div>
-            <div className="mt-5">
-              {expired
-                ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
-                : <PrimaryBtn label={isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept invite to get started"} onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
-            </div>
+            {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
           </div>
-        )}
-
-        <div className="my-6 h-px bg-slate-200" />
-
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Invite your team</h2>
-        <p className="mt-1 text-sm text-slate-500">Up to three people. Share a link — no app, no account.</p>
-        <div className="mt-4 rounded-xl border border-slate-200 p-4">
-          <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
-          <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-orange"><Icon name="link" className="h-4 w-4" /></span>
-            <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{inviteUrl}</code>
-            <button onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md bg-orange px-3 py-1.5 text-xs font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}</button>
+          <div className="mt-5">
+            {expired
+              ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
+              : <PrimaryBtn label={isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept invite to get started"} onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
           </div>
-          <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 3 · Hero */}
       <section>
@@ -659,6 +612,7 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
       {/* 4 · How it works */}
       <section>
         <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">How it works</h2>
+        <p className="mt-1 text-sm text-slate-500">About 90 minutes of your time each, spread across a 48-hour window.</p>
         <div className="mt-4 grid gap-5 sm:grid-cols-3">
           {HOW_STEPS.map((s) => (
             <div key={s.title}>
@@ -685,6 +639,24 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
             </li>
           ))}
         </ol>
+      </section>
+
+      {/* Invite your team — share link + 48h accept window */}
+      <section>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Invite your team</h2>
+        <p className="mt-1 text-sm text-slate-500">Up to three people. Share a link — no app, no account.</p>
+        <div className="mt-4 rounded-xl border border-slate-200 p-4">
+          <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
+          <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-orange"><Icon name="link" className="h-4 w-4" /></span>
+            <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{inviteUrl}</code>
+            <button onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md bg-orange px-3 py-1.5 text-xs font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}</button>
+          </div>
+          <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
+        </div>
+        <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700">
+          <Icon name="clock" className="h-4 w-4" /> <InviteCountdown /> left for invitations to be accepted
+        </div>
       </section>
 
       {/* 5 · Who's accepted */}
@@ -925,35 +897,16 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
     </div>
   );
 
-  const tips = (
-    <>
-      <RailTitle>How input works</RailTitle>
-      <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Just dump it.</span> No wrong answers — get it down, refine later.</p></Card>
-      <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Type, talk, or tap.</span> Each question picks the easiest way to answer.</p></Card>
-      <Card><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Private.</span> Your answers stay yours until the team synthesis runs.</p></Card>
-      <Card className="bg-orange-tint/30"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="clock" className="h-4 w-4 text-orange" /> Deadline</p><p className="mt-1 text-sm text-slate-600">12 hours from team formation.</p></Card>
-    </>
-  );
-
-  // One render for both breakpoints (so there's a single chat + dictation engine).
-  // Mobile: the center column becomes a viewport-tall orange box with the stepper
-  // on top and tips below; desktop: the usual three-column workspace.
+  // One render for both breakpoints (single chat + dictation engine). Mobile:
+  // the center column is a viewport-tall box with the stepper on top.
   return (
     <Columns
-      left={
-        <div className="space-y-4">
-          <IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />
-          <div className="hidden space-y-4 lg:block">{tips}</div>
-        </div>
-      }
+      left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />}
       center={
-        <>
-          <div className="flex h-[calc(100svh-11rem)] flex-col rounded-2xl border border-orange bg-white/5 p-4 lg:h-[32rem] lg:border-slate-200 lg:p-6">
-            {stepper}
-            {chat}
-          </div>
-          <div className="mt-4 space-y-4 lg:hidden">{tips}</div>
-        </>
+        <div className="flex h-[calc(100svh-11rem)] flex-col rounded-2xl border border-orange bg-white/5 p-4 lg:h-[32rem] lg:border-slate-200 lg:p-6">
+          {stepper}
+          {chat}
+        </div>
       }
     />
   );
@@ -961,7 +914,6 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
 
 function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProgress }: { curSi: number; answeredIn: (s: IntakeSection) => number; cohort?: Member[]; youId?: string; othersProgress?: (id: string) => number }) {
   const youDone = INTAKE.reduce((n, s) => n + answeredIn(s), 0);
-  const team = cohort.map((m) => ({ m, done: m.id === youId ? youDone : (othersProgress?.(m.id) ?? 0), you: m.id === youId }));
   return (
     <div className="hidden space-y-4 lg:block">
       <RailTitle>Your intake</RailTitle>
@@ -982,25 +934,37 @@ function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProg
           );
         })}
       </div>
-      <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
-        {team.map((t) => {
-          const m = t.m;
-          const pct = Math.round((t.done / INTAKE_TOTAL) * 100);
-          return (
-            <div key={m.id} className="flex items-center gap-2.5">
-              <Avatar m={m} size="h-7 w-7 text-[10px]" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">{m.name}{t.you && <span className="font-normal text-slate-400"> (you)</span>}</span>
-                  <span className="tabular-nums text-slate-400">{t.done}/{INTAKE_TOTAL}</span>
-                </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange" style={{ width: `${pct}%` }} /></div>
+      <TeamProgress cohort={cohort} youId={youId} total={INTAKE_TOTAL} done={(id) => (id === youId ? youDone : (othersProgress?.(id) ?? 0))} />
+    </div>
+  );
+}
+
+// Illustrative teammate pace for the demo's Team-progress bars (no live signal).
+const DEMO_PACE = [1, 1, 0.75, 0.6];
+const demoPace = (cohort: Member[], id: string) => DEMO_PACE[Math.max(0, cohort.findIndex((m) => m.id === id))] ?? 0.5;
+
+// Team-progress bars (avatar + name + done/total). Shared across input,
+// synthesis and ventures so each step shows where everyone's up to.
+function TeamProgress({ cohort = COHORT, youId = YOU, total, done }: { cohort?: Member[]; youId?: string; total: number; done: (id: string) => number }) {
+  return (
+    <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
+      {cohort.map((m) => {
+        const d = Math.max(0, Math.min(total, done(m.id)));
+        const pct = total > 0 ? Math.round((d / total) * 100) : 0;
+        return (
+          <div key={m.id} className="flex items-center gap-2.5">
+            <Avatar m={m} size="h-7 w-7 text-[10px]" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-foreground">{m.name}{m.id === youId && <span className="font-normal text-slate-400"> (you)</span>}</span>
+                <span className="tabular-nums text-slate-400">{d}/{total}</span>
               </div>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange" style={{ width: `${pct}%` }} /></div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1312,12 +1276,10 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
   const [locations, setLocations] = useState<NetworkNode[]>(d.network.filter((n) => n.kind === "location").map((n) => ({ ...n })));
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
   const [open, setOpen] = useState<Record<string, boolean>>({ skills: true });
-  // Seed the agent's order as places 1-3 so each person starts from a sensible
-  // ranking and only nudges it (less work than reordering the whole list).
-  const seedRanks = (vs: Votable[]) => vs.map((p, i) => ({ ...p, rank: i < 3 ? i + 1 : undefined }));
-  const [problems, setProblems] = useState<Votable[]>(seedRanks(d.problems));
-  const [obsessions, setObsessions] = useState<Votable[]>(seedRanks(d.obsessions));
-  const [markets, setMarkets] = useState<Votable[]>(seedRanks(d.markets));
+  // Focus starts unranked — each person awards their own 1st/2nd/3rd place.
+  const [problems, setProblems] = useState<Votable[]>(d.problems.map((p) => ({ ...p })));
+  const [obsessions, setObsessions] = useState<Votable[]>(d.obsessions.map((p) => ({ ...p })));
+  const [markets, setMarkets] = useState<Votable[]>(d.markets.map((p) => ({ ...p })));
 
   const toggleConfirm = (k: string) => setConfirmed((c) => ({ ...c, [k]: !c[k] }));
   const toggleOpen = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
@@ -1349,6 +1311,17 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
   const focusDone = focusSteps.filter(Boolean).length;
   const allConfirmed = teamDone === teamSteps.length && focusDone === focusSteps.length;
 
+  // Each person's progress through the synthesis sections — real for you, live
+  // status (or an illustrative demo pace) for teammates.
+  const SYNTH_TOTAL = SECTIONS.length;
+  const youSynthDone = SECTIONS.filter((k) => (k === "roles" ? rolesConfirmed : confirmed[k])).length;
+  const synthDone = (id: string) => {
+    if (id === youId) return youSynthDone;
+    const st = status?.find((s) => s.id === id);
+    if (st) return st.ranked ? SYNTH_TOTAL : st.intakeComplete ? Math.round(SYNTH_TOTAL * 0.55) : 0;
+    return Math.round(demoPace(cohort, id) * SYNTH_TOTAL);
+  };
+
   const handleConfirm = () => onConfirm({
     convergence: d.convergence,
     skillEnergy: energy,
@@ -1377,35 +1350,14 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
               </div>
             </Card>
           ))}
-          {status && status.some((s) => s.accepted) && (
-            <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
-              {status.filter((s) => s.accepted).map((s) => { const m = cohort.find((x) => x.id === s.id); return (
-                <div key={s.id} className="flex items-center gap-2.5 text-xs">
-                  {m && <Avatar m={m} size="h-7 w-7 text-[10px]" />}
-                  <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{s.name ?? m?.name ?? "Teammate"}</span>
-                  <span className={s.ranked ? "font-semibold text-orange-dark" : "text-slate-400"}>{s.ranked ? "Locked in" : "Ranking…"}</span>
-                </div>
-              ); })}
-            </div>
-          )}
+          <TeamProgress cohort={cohort} youId={youId} total={SYNTH_TOTAL} done={synthDone} />
         </div>
       }
       center={
         <div className="space-y-5">
-          <div className="flex items-center justify-between gap-3">
-            <CountdownBadge />
-            <p className="hidden text-xs text-slate-400 sm:block">Lists keep updating as people edit. Run over and it just shows late — no hard block.</p>
-          </div>
-
           <Card className="p-5">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Synthesis</h1>
             <p className="mt-1 text-slate-500">The agent read all three intakes. Confirm who you are, then narrow to a focus.</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {d.convergence.map((s, i) => (
-                <span key={s.kind + i} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${s.tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-orange-tint/40 text-orange-dark"}`}><Icon name={s.icon} className="h-3.5 w-3.5" />{s.kind}</span>
-              ))}
-            </div>
           </Card>
 
           <Part label="Team" hint="Confirm your profile — add, edit, confirm. Nothing's removed here.">
@@ -1499,25 +1451,15 @@ function NetworkList({ cohort = COHORT, nodes, onNodes, kind, icon, addLabel }: 
   );
 }
 
-function CountdownBadge() {
-  const [s, setS] = useState(23 * 3600 + 47 * 60 + 12);
+// Self-contained 48-hour accept-window countdown (prototype display).
+function InviteCountdown() {
+  const [s, setS] = useState(48 * 3600);
   useEffect(() => {
     const id = setInterval(() => setS((x) => (x > 0 ? x - 1 : 0)), 1000);
     return () => clearInterval(id);
   }, []);
   const p = (n: number) => String(n).padStart(2, "0");
-  if (s <= 0) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-sm font-bold text-red-700">
-        <Icon name="clock" className="h-4 w-4" /> Window closed · late
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-bold tabular-nums text-amber-700">
-      <Icon name="clock" className="h-4 w-4" /> {p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)} left
-    </span>
-  );
+  return <span className="tabular-nums">{p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)}</span>;
 }
 
 const TEAM_COLOR = "#6f8f5f";
@@ -1684,7 +1626,7 @@ function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v:
 
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
-function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[] }) {
+function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT, youId = YOU }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[]; youId?: string }) {
   const od = data ?? mockOpportunityData();
   const spaces = [...od.spaces].sort((a, b) => b.votes - a.votes);
   const [conviction, setConviction] = useState<Record<string, number>>({});
@@ -1693,6 +1635,14 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
   const pick = [...spaces].sort((a, b) => (conviction[b.id] ?? 0) - (conviction[a.id] ?? 0))[0];
   const pickTitle = pick && (conviction[pick.id] ?? 0) > 0 ? pick.title : "—";
   const submit = () => { onSubmitRatings?.(conviction); onNext(); };
+  // Each person's conviction-rating progress over the five ventures.
+  const OPP_TOTAL = spaces.length;
+  const oppDone = (id: string) => {
+    if (id === youId) return spaces.filter((s) => (conviction[s.id] ?? 0) > 0).length;
+    const st = status?.find((s) => s.id === id);
+    if (st) return st.rated ? OPP_TOTAL : 0;
+    return Math.round(demoPace(cohort, id) * OPP_TOTAL);
+  };
   return (
     <Columns
       left={
@@ -1710,18 +1660,7 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
             <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{pickTitle}</p>{pick && pickTitle !== "—" && <p className="mt-1 text-xs text-slate-500">{pick.customer}</p>}</div>
             <p className="text-xs text-slate-400">The team&rsquo;s highest-conviction venture is the one Flash builds.</p>
           </div>
-          {status && status.some((s) => s.accepted) && (
-            <div className="space-y-2.5 rounded-xl border border-slate-200 p-3">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Team progress</p>
-              {status.filter((s) => s.accepted).map((s) => { const m = cohort.find((x) => x.id === s.id); return (
-                <div key={s.id} className="flex items-center gap-2.5 text-xs">
-                  {m && <Avatar m={m} size="h-7 w-7 text-[10px]" />}
-                  <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{s.name ?? m?.name ?? "Teammate"}</span>
-                  <span className={s.rated ? "font-semibold text-orange-dark" : "text-slate-400"}>{s.rated ? "Rated" : "Rating…"}</span>
-                </div>
-              ); })}
-            </div>
-          )}
+          <TeamProgress cohort={cohort} youId={youId} total={OPP_TOTAL} done={oppDone} />
         </div>
       }
       center={
