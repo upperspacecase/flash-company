@@ -2341,6 +2341,8 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
   const setCompetition = (patch: Partial<VentureDraft["competition"]>) => onVenture((p) => ({ ...p, competition: { ...p.competition, ...patch } }));
   const setProblem = (patch: Partial<VentureDraft["problem"]>) => onVenture((p) => ({ ...p, problem: { ...p.problem, ...patch } }));
   const setDiff = (patch: Partial<VentureDraft["differentiation"]>) => onVenture((p) => ({ ...p, differentiation: { ...p.differentiation, ...patch } }));
+  const setTeamRow = (i: number, patch: Partial<VentureDraft["team"][number]>) => onVenture((p) => ({ ...p, team: p.team.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) }));
+  const teamInput = "-mx-1 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none";
   return (
     <div className="mt-5 space-y-5">
       <Part label="Idea basics" hint="One block the team can read and argue in two minutes.">
@@ -2373,16 +2375,34 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
         <InsightAccordion lenses={venture.lenses} onReframe={(id, text) => set("lenses", venture.lenses.map((l) => (l.id === id ? { ...l, reframe: text } : l)))} />
       </Part>
 
-      {/* Relocating in later commits: Advantage -> Team, Competition -> Landscape, Market detail -> Financial Model, Principles -> TBD */}
-      <Part label="Foundations" hint="Being reorganized into Team, Landscape and the Financial Model.">
-        <Section title="Advantage">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <LabeledBox label="Capability" value={venture.advantage.capability} onChange={(v) => setAdvantage({ capability: v })} placeholder="What can only you do?" />
-            <LabeledBox label="Insight" value={venture.advantage.insight} onChange={(v) => setAdvantage({ insight: v })} placeholder="What do you know that others don't?" />
-            <LabeledBox label="Motivation" value={venture.advantage.motivation} onChange={(v) => setAdvantage({ motivation: v })} placeholder="Why you, why this?" />
-          </div>
-          <div className="mt-3"><LabeledBox label="Only we can do this" value={venture.unique} onChange={(val) => set("unique", val)} placeholder="The combination only your team has" /></div>
-        </Section>
+      <Part label="Team & roles + network" hint="The people the idea rests on, and the network they bring.">
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="w-full min-w-[36rem] text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                <th className="p-3">Person</th><th className="p-3">Role</th><th className="p-3">Owns</th><th className="p-3">Network asset</th>
+              </tr>
+            </thead>
+            <tbody>
+              {venture.team.map((r, i) => {
+                const m = cohort.find((x) => x.id === r.memberId);
+                return (
+                  <tr key={r.memberId} className="border-t border-slate-100 align-top">
+                    <td className="p-3"><div className="flex items-center gap-2">{m && <Avatar m={m} size="h-7 w-7 text-[10px]" />}<span className="whitespace-nowrap font-semibold text-foreground">{m?.name ?? r.memberId}</span></div></td>
+                    <td className="p-3"><input value={r.role} onChange={(e) => setTeamRow(i, { role: e.target.value })} placeholder="Role" className={teamInput} /></td>
+                    <td className="p-3"><input value={r.owns} onChange={(e) => setTeamRow(i, { owns: e.target.value })} placeholder="What they own" className={teamInput} /></td>
+                    <td className="p-3"><input value={r.networkAsset} onChange={(e) => setTeamRow(i, { networkAsset: e.target.value })} placeholder="—" className={teamInput} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3"><LabeledBox label="Network note" value={venture.networkNote} onChange={(v) => set("networkNote", v)} placeholder="One line on the structural network asset." /></div>
+      </Part>
+
+      {/* Relocating in later commits: Competition -> Landscape, Market detail -> Financial Model, Principles -> TBD */}
+      <Part label="Foundations" hint="Being reorganized into Landscape and the Financial Model.">
         <Section title="Competition">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="sm:col-span-1"><LabeledBox label="800-pound gorilla" value={venture.competition.gorilla} onChange={(v) => setCompetition({ gorilla: v })} placeholder="The incumbent" /></div>

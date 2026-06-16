@@ -360,6 +360,8 @@ export const OPPORTUNITY_SPACES: OpportunitySpace[] = [
 // editable venture page; rendered/edited live (not just the read-only summary).
 export type VentureDetail = {
   hook?: string; // one sentence — what, for whom, why now (added with the Idea-basics restructure)
+  team?: { memberId: string; role: string; owns: string; networkAsset: string }[];
+  networkNote?: string;
   customer: string;
   problem: string;
   advantage: { capability: string; insight: string; motivation: string };
@@ -758,6 +760,8 @@ export type VentureDraft = {
   thesis: string;
   hook: string;   // one sentence — what, for whom, why now
   market: string; // headline market numbers, 2-3 sentences (sources live in the financial model)
+  team: { memberId: string; role: string; owns: string; networkAsset: string }[]; // who, what they own, the network they bring
+  networkNote: string; // one line on the structural network asset (e.g. a city triangle)
   // Click "Basics" — Customer, Advantage, Competition.
   basics: { customer: string; problem: string };
   advantage: { capability: string; insight: string; motivation: string };
@@ -785,6 +789,12 @@ export function makeVentureDraft(): VentureDraft {
     thesis: CHOSEN.thesis,
     hook: "A peer-vouching layer for returning parents — colleagues vouch for what they can do now, turning a career gap into warm, verifiable signal employers trust.",
     market: "Millions of parents return to work each year and gap-bias is well documented (HBS / Accenture). Returnship demand is climbing and tight labour markets increasingly prize overlooked talent (Timewise, CIPD).",
+    team: [
+      { memberId: "maya", role: "Candidate side", owns: "Community + supply seeding", networkAsset: "4,000-member paid community" },
+      { memberId: "priya", role: "Distribution", owns: "Launch + creator reach", networkAsset: "12,000 newsletter, 30-creator network" },
+      { memberId: "alex", role: "Product", owns: "Ships the vouching layer", networkAsset: "—" },
+    ],
+    networkNote: "The Lisbon–Dublin–London triangle is a structural network asset — three warm markets the team can reach in person.",
     basics: {
       customer: "Parents returning to work after a career break — first in the Lisbon–Dublin–London triangle, reached through Maya's 4,000-member community and Priya's 12k newsletter. The pain bites the moment they start applying and the gap screens them out.",
       problem: "Applicant tracking systems read a career gap as a red flag and filter capable returners out before a human sees them. They reapply into the void; existing returnship programs are tiny and employer-gated.",
@@ -839,6 +849,8 @@ export function draftFromVenture(v: Venture, cohort: Member[]): VentureDraft {
     thesis: v.thesis,
     hook: d?.hook ?? base.hook,
     market: v.market || base.market,
+    team: d?.team?.length ? d.team : (cohort.length ? cohort.map((m) => ({ memberId: m.id, role: m.role ?? "", owns: m.brings ?? "", networkAsset: "" })) : base.team),
+    networkNote: d?.networkNote ?? base.networkNote,
     purpose: v.purpose,
     unique: v.unique,
     lenses: v.lenses && v.lenses.length ? v.lenses.map((l) => ({ ...l })) : base.lenses,
