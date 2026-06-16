@@ -1311,7 +1311,8 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
 
   const toggleConfirm = (k: string) => setConfirmed((c) => ({ ...c, [k]: !c[k] }));
   const toggleOpen = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
-  const rolesConfirmed = roles.every((r) => confirmed[r.memberId]);
+  // You only confirm your own role; teammates confirm theirs in their own session.
+  const rolesConfirmed = confirmed[youId] ?? false;
   // Worked one section at a time: confirming a section collapses it and opens the
   // next (each stays openable to review/change). The Team group flows straight
   // into the Focus rankings, so the whole screen is a single guided sequence.
@@ -1407,8 +1408,8 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
               <ConfirmItem title="Locations" hint="Where you can reach and meet." open={open.locations} onToggle={() => toggleOpen("locations")} confirmed={confirmed.locations} onConfirm={() => confirmSection("locations")}>
                 <NetworkList cohort={cohort} nodes={locations} onNodes={setLocations} kind="location" icon="target" addLabel="location" />
               </ConfirmItem>
-              <ConfirmItem title="Roles & tasks" hint="Confirm each person's role." open={open.roles} onToggle={() => toggleOpen("roles")} confirmed={rolesConfirmed}>
-                <RolesTasks cohort={cohort} roles={roles} onRoles={setRoles} confirmed={confirmed} onConfirm={toggleConfirm} />
+              <ConfirmItem title="Roles & tasks" hint="Confirm your role." open={open.roles} onToggle={() => toggleOpen("roles")} confirmed={rolesConfirmed}>
+                <RolesTasks cohort={cohort} youId={youId} roles={roles} onRoles={setRoles} confirmed={confirmed} onConfirm={toggleConfirm} />
               </ConfirmItem>
             </div>
           </Part>
@@ -1458,7 +1459,7 @@ function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, childr
           {children}
           {onConfirm && (
             <div className="mt-4 flex justify-end">
-              <button onClick={onConfirm} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${confirmed ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={confirmed ? "check" : "thumb"} className="h-3.5 w-3.5" />{confirmed ? "Confirmed" : "Confirm"}</button>
+              <button onClick={onConfirm} className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-6 py-3 text-sm font-bold transition-colors ${confirmed ? "bg-orange/20 text-orange-dark" : "bg-orange text-white hover:opacity-90"}`}><Icon name={confirmed ? "check" : "thumb"} className="h-4 w-4" />{confirmed ? "Confirmed" : "Confirm"}</button>
             </div>
           )}
         </div>
@@ -1474,12 +1475,12 @@ function NetworkList({ cohort = COHORT, nodes, onNodes, kind, icon, addLabel }: 
     <div className="space-y-2">
       {nodes.map((node, idx) => (
         <div key={idx} className="rounded-xl border border-slate-200 p-3">
-          <div className="flex items-center gap-2">
-            <Icon name={icon} className="h-4 w-4 shrink-0 text-orange" />
-            <input value={node.name} onChange={(e) => setNode(idx, { name: e.target.value })} placeholder={`Add ${addLabel}…`} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
-            {node.members.length > 0 && <div className="ml-auto flex -space-x-1.5">{node.members.map((id) => { const m = cohort.find((x) => x.id === id); return m ? <Avatar key={id} m={m} size="h-6 w-6 text-[9px]" /> : null; })}</div>}
+          <div className="flex items-start gap-2">
+            <Icon name={icon} className="mt-1.5 h-4 w-4 shrink-0 text-orange" />
+            <EditableArea value={node.name} onChange={(v) => setNode(idx, { name: v })} rows={1} placeholder={`Add ${addLabel}…`} className="min-w-0 flex-1 text-sm font-semibold text-foreground [field-sizing:content]" />
+            {node.members.length > 0 && <div className="mt-1 flex shrink-0 -space-x-1.5">{node.members.map((id) => { const m = cohort.find((x) => x.id === id); return m ? <Avatar key={id} m={m} size="h-6 w-6 text-[9px]" /> : null; })}</div>}
           </div>
-          <input value={node.opportunity} onChange={(e) => setNode(idx, { opportunity: e.target.value })} placeholder="What's the opportunity here?" className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-600 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
+          <EditableArea value={node.opportunity} onChange={(v) => setNode(idx, { opportunity: v })} rows={2} placeholder="What's the opportunity here?" className="mt-1.5 text-sm text-slate-600 [field-sizing:content]" />
         </div>
       ))}
       <button onClick={() => onNodes([...nodes, { name: "", kind, members: [], opportunity: "" }])} className="text-sm font-semibold text-orange-dark hover:underline">+ Add {addLabel}</button>
@@ -1591,7 +1592,7 @@ function SkillBloom({ cohort = COHORT, youId = YOU, energy, shown, onToggle, onE
   );
 }
 
-function RolesTasks({ cohort = COHORT, roles, onRoles, confirmed, onConfirm }: { cohort?: Member[]; roles: SynthesisData["roles"]; onRoles: (r: SynthesisData["roles"]) => void; confirmed: Record<string, boolean>; onConfirm: (id: string) => void }) {
+function RolesTasks({ cohort = COHORT, youId = YOU, roles, onRoles, confirmed, onConfirm }: { cohort?: Member[]; youId?: string; roles: SynthesisData["roles"]; onRoles: (r: SynthesisData["roles"]) => void; confirmed: Record<string, boolean>; onConfirm: (id: string) => void }) {
   const setRole = (id: string, patch: Partial<SynthesisData["roles"][number]>) => onRoles(roles.map((r) => (r.memberId === id ? { ...r, ...patch } : r)));
   return (
     <div className="space-y-2">
@@ -1599,16 +1600,19 @@ function RolesTasks({ cohort = COHORT, roles, onRoles, confirmed, onConfirm }: {
         const m = cohort.find((x) => x.id === r.memberId);
         if (!m) return null;
         const ok = confirmed[r.memberId];
+        const isYou = r.memberId === youId;
         return (
           <div key={r.memberId} className="rounded-xl border border-slate-200 p-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               <Avatar m={m} size="h-8 w-8 text-[10px]" />
-              <input value={r.role} onChange={(e) => setRole(r.memberId, { role: e.target.value })} className="-mx-1 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
+              <EditableArea value={r.role} onChange={(v) => setRole(r.memberId, { role: v })} rows={1} className="min-w-0 flex-1 text-sm font-semibold text-foreground [field-sizing:content]" />
             </div>
-            <input value={r.tasks} onChange={(e) => setRole(r.memberId, { tasks: e.target.value })} className="-mx-1 mt-1.5 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-xs text-slate-600 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
-            <div className="mt-2 flex justify-end">
-              <button onClick={() => onConfirm(r.memberId)} className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${ok ? "bg-orange text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Icon name={ok ? "check" : "thumb"} className="h-3.5 w-3.5" />{ok ? "Confirmed" : "Confirm"}</button>
-            </div>
+            <EditableArea value={r.tasks} onChange={(v) => setRole(r.memberId, { tasks: v })} rows={2} className="mt-1.5 text-xs text-slate-600 [field-sizing:content]" />
+            {isYou && (
+              <div className="mt-2 flex justify-end">
+                <button onClick={() => onConfirm(r.memberId)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-6 py-3 text-sm font-bold transition-colors ${ok ? "bg-orange/20 text-orange-dark" : "bg-orange text-white hover:opacity-90"}`}><Icon name={ok ? "check" : "thumb"} className="h-4 w-4" />{ok ? "Confirmed" : "Confirm"}</button>
+              </div>
+            )}
           </div>
         );
       })}
