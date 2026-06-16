@@ -582,23 +582,38 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
   };
   return (
     <div className="mx-auto max-w-3xl space-y-12 py-4">
-      {/* 1 · Accept — host kick-off / teammate accept. Hidden once you're in. */}
-      {!accepted && (
-        <section className="rounded-2xl border border-orange bg-white/5 p-6">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-foreground">{isHost ? "You started this Flash" : "Accept your invite"}</p>
-              <p className="mt-1 text-sm text-slate-500">{isHost ? `Your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`)}</p>
+      {/* 1 · Action zone: accept invite / start your input, inside the orange border */}
+      <section className="rounded-2xl border border-orange bg-white/5 p-6">
+        {accepted ? (
+          <div>
+            <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-orange" /> You&rsquo;re in.</p>
+            <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
+            <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
+            {resumeUrl && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white/5 p-3">
+                <p className="text-xs font-bold text-foreground">Your resume link</p>
+                <p className="mt-0.5 text-xs text-slate-500">Bookmark this to pick up where you left off — on any device.</p>
+                <code className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{resumeUrl}</code>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground">{isHost ? "You started this Flash" : "Accept your invite"}</p>
+                <p className="mt-1 text-sm text-slate-500">{isHost ? `Your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`)}</p>
+              </div>
+              {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
             </div>
-            {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
+            <div className="mt-5">
+              {expired
+                ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
+                : <PrimaryBtn label={isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept invite to get started"} onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
+            </div>
           </div>
-          <div className="mt-5">
-            {expired
-              ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
-              : <PrimaryBtn label={isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept invite to get started"} onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
-          </div>
-        </section>
-      )}
+        )}
+      </section>
 
       {/* 3 · Hero */}
       <section>
