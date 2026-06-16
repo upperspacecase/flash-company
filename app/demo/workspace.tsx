@@ -1971,6 +1971,34 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const CHANNELS = [{ key: "linkedin", label: "LinkedIn" }, { key: "dm", label: "DM" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }] as const;
 
+const VALIDATION_TARGETS = [
+  "Get 10 customer conversations this week",
+  "Collect 25 email signups on the landing page",
+  "Share the landing page in 3 relevant communities",
+  "Send the outreach to 20 prospects",
+  "Confirm the founding hypothesis with 5 clear yeses",
+];
+
+// Self-contained 30-day validation window countdown (prototype display).
+function ValidationTimer() {
+  const total = 30 * 86400;
+  const [left, setLeft] = useState(total);
+  useEffect(() => {
+    const id = setInterval(() => setLeft((x) => (x > 60 ? x - 60 : 0)), 60000);
+    return () => clearInterval(id);
+  }, []);
+  const days = Math.floor(left / 86400);
+  const hrs = Math.floor((left % 86400) / 3600);
+  const pct = Math.round(((total - left) / total) * 100);
+  return (
+    <div className="space-y-2 rounded-xl border border-orange/30 bg-orange-tint/15 p-4">
+      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-dark"><Icon name="clock" className="h-3.5 w-3.5" /> 30-day validation window</p>
+      <p className="text-2xl font-extrabold tabular-nums text-foreground">{days}<span className="text-base font-bold text-slate-400">d</span> {String(hrs).padStart(2, "0")}<span className="text-base font-bold text-slate-400">h</span> <span className="text-xs font-semibold text-slate-400">left</span></p>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange" style={{ width: `${pct}%` }} /></div>
+    </div>
+  );
+}
+
 function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail, publicUrl }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail; publicUrl?: string }) {
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
   const v = VALIDATION;
@@ -1981,33 +2009,52 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
   const liveUrl = publicUrl ?? "flashco.app";
   const landingEditable = !gated;
   const setLanding = (patch: Partial<LandingCopy>) => onVenture((p) => ({ ...p, landing: { ...(p.landing ?? landing), ...patch } }));
+  // Suggested validation targets/tasks — editable + addable (local for now).
+  const [targets, setTargets] = useState(() => VALIDATION_TARGETS.map((t, i) => ({ id: `vt${i}`, text: t, done: false, suggested: true })));
+  const addId = useRef(0);
+  const setTargetText = (id: string, text: string) => setTargets((ts) => ts.map((t) => (t.id === id ? { ...t, text } : t)));
+  const toggleTarget = (id: string) => setTargets((ts) => ts.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  const addTarget = () => setTargets((ts) => [...ts, { id: `vt-add-${addId.current++}`, text: "", done: false, suggested: false }]);
   return (
     <Columns
       left={
         <div className="space-y-4">
-          <RailTitle>Check-ins</RailTitle>
-          <p className="px-1 text-xs text-slate-400">The agent goes quiet between these. The work is yours.</p>
-          {v.checkins.map((c) => {
-            const sel = c.day === checkin;
-            return (
-              <button key={c.day} onClick={() => onCheckin(c.day)} className={`block w-full rounded-xl border p-3 text-left transition-colors ${sel ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-foreground">{c.day}</span>
-                  <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${c.status === "active" ? "bg-orange text-white" : "bg-slate-100 text-slate-400"}`}>{c.status === "active" ? "Open now" : "Locked"}</span>
-                </div>
-                {sel && <p className="mt-2 text-sm text-slate-600">{c.text}</p>}
-              </button>
-            );
-          })}
+          <RailTitle>How it works</RailTitle>
+          <div className="space-y-2.5">
+            {[
+              { n: "1", t: "Share your idea", d: "Publish the landing page and put it in front of your network." },
+              { n: "2", t: "Gather feedback", d: "Send the outreach, collect signups and replies." },
+              { n: "3", t: "Confirm your founding hypothesis", d: "Tick each clause as the evidence lands." },
+            ].map((s) => (
+              <div key={s.n} className="flex gap-3 rounded-xl border border-slate-200 p-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{s.n}</span>
+                <div className="min-w-0"><p className="text-sm font-bold text-foreground">{s.t}</p><p className="mt-0.5 text-xs text-slate-500">{s.d}</p></div>
+              </div>
+            ))}
+          </div>
+          <ValidationTimer />
         </div>
       }
       center={
         <Card className="p-6">
           <CenterHead title={`Validate ${name}`} sub="Answer the six questions with real people before you build." />
-          <Section title="Founding hypothesis">
+          <Section title="Validation targets &amp; tasks">
+            <p className="-mt-1 mb-3 text-xs text-slate-400">Suggested targets to hit and tasks to run — edit any, tick them off, or add your own.</p>
+            <div className="space-y-2">
+              {targets.map((t) => (
+                <div key={t.id} className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-2.5">
+                  <button type="button" onClick={() => toggleTarget(t.id)} aria-label={t.done ? "Mark not done" : "Mark done"} className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors ${t.done ? "border-orange bg-orange text-white" : "border-slate-300 text-transparent hover:border-orange"}`}><Icon name="check" className="h-3.5 w-3.5" /></button>
+                  <input value={t.text} onChange={(e) => setTargetText(t.id, e.target.value)} placeholder="A target or task…" className={`min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none ${t.done ? "text-slate-400 line-through" : "text-foreground"}`} />
+                  {t.suggested && <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Suggested</span>}
+                </div>
+              ))}
+            </div>
+            <button onClick={addTarget} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add target</button>
+          </Section>
+          <div className="mt-6"><Section title="Founding hypothesis">
             <p className="-mt-1 mb-3 text-xs text-slate-400">Each clause is a thing to prove — tick its scorecard check when the evidence lands.</p>
             <HypothesisScorecard v={venture} onToggle={(k) => onVenture((p) => ({ ...p, scorecard: { ...p.scorecard, [k]: !p.scorecard[k] } }))} />
-          </Section>
+          </Section></div>
 
           <div className="mt-6"><ValidationScorecard published={published} /></div>
 
