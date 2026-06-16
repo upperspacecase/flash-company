@@ -883,31 +883,46 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
     </div>
   );
 
-  // The conversation: Flash header, the questions/answers so far, then the input
-  // (or the submitted -> run-synthesis state). Shared by the mobile and desktop layouts.
+  // One question at a time (Typeform-style): the current question fills the card,
+  // vertically centred with its input right below — no growing transcript, so the
+  // layout doesn't shift as you answer. Progress lives in the rail and stepper.
   const chat = (
-    <>
-      <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-4 flex shrink-0 items-center justify-between border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange text-white"><FlashMark className="h-4 w-4" /></span>
           <div><p className="text-sm font-bold text-foreground">Flash</p><p className="text-xs text-slate-400">Tell me about yourself — type, talk, or tap.</p></div>
         </div>
-        <span className="rounded-full bg-orange-tint px-3 py-1 text-xs font-semibold text-orange-dark">{Math.min(step, INTAKE_FLOW.length)}/{INTAKE_TOTAL}</span>
+        <span className="rounded-full bg-orange-tint px-3 py-1 text-xs font-semibold text-orange-dark">{Math.min(step + 1, INTAKE_TOTAL)}/{INTAKE_TOTAL}</span>
       </div>
 
-      <Conversation step={step} done={done} answers={answers} isVoice={isVoice} />
-
-      <div className="border-t border-orange pt-4 lg:mt-5 lg:border-slate-100">
-        {done ? (
-          <div className="flex items-center justify-between gap-4 rounded-xl bg-orange-tint/40 p-3">
-            <p className="text-sm font-semibold text-orange-dark">Submitted — private until the team synthesis runs.</p>
-            <PrimaryBtn label="Run synthesis" onClick={onNext} icon="sparkle" />
-          </div>
-        ) : cur ? (
-          <Composer key={cur.q.id} q={cur.q} value={answers[cur.q.id]} onChange={(v) => update(cur.q.id, v)} voice={isVoice(cur.q.id)} onVoice={() => setVoiceMode((m) => ({ ...m, [cur.q.id]: !m[cur.q.id] }))} canSend={canSend} onSend={() => setStep((s) => s + 1)} />
-        ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-full flex-col justify-center py-2">
+          {done ? (
+            <div className="mx-auto max-w-md text-center">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-tint text-orange"><Icon name="check" className="h-6 w-6" /></span>
+              <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground">That&rsquo;s everything.</h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500">Your answers stay private until everyone&rsquo;s input is in and the team synthesis runs.</p>
+              <div className="mt-5 flex justify-center"><PrimaryBtn label="Run synthesis" onClick={onNext} icon="sparkle" /></div>
+            </div>
+          ) : cur ? (
+            <div>
+              {cur.first
+                ? <SectionIntro index={cur.si} title={cur.title} blurb={cur.blurb} />
+                : <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Section {cur.si + 1} · {cur.title}</p>}
+              <div className={cur.first ? "mt-6" : "mt-3"}>
+                <h2 className="text-xl font-bold leading-snug tracking-tight text-foreground sm:text-2xl">{cur.q.q}</h2>
+                {cur.q.help && <p className="mt-2 text-sm leading-relaxed text-slate-500">{cur.q.help}</p>}
+                {isVoiceable(cur.q.field) && <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-orange-dark"><Icon name="mic" className="h-3 w-3" /> Voice or text</p>}
+                <div className="mt-5">
+                  <Composer key={cur.q.id} q={cur.q} value={answers[cur.q.id]} onChange={(v) => update(cur.q.id, v)} voice={isVoice(cur.q.id)} onVoice={() => setVoiceMode((m) => ({ ...m, [cur.q.id]: !m[cur.q.id] }))} canSend={canSend} onSend={() => setStep((s) => s + 1)} onBack={step > 0 ? () => setStep((s) => Math.max(0, s - 1)) : undefined} />
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
-    </>
+    </div>
   );
 
   const tips = (
@@ -927,7 +942,7 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
     <Columns
       left={<IntakeNav curSi={curSi} answeredIn={answeredIn} cohort={cohort} youId={youId} othersProgress={othersProgress} />}
       center={
-        <div className="flex h-[calc(100svh-11rem)] flex-col rounded-2xl border border-orange bg-white/5 p-4 lg:h-auto lg:border-slate-200 lg:p-6">
+        <div className="flex h-[calc(100svh-11rem)] flex-col rounded-2xl border border-orange bg-white/5 p-4 lg:h-[32rem] lg:border-slate-200 lg:p-6">
           {stepper}
           {chat}
         </div>
@@ -996,75 +1011,8 @@ function SectionIntro({ index, title, blurb }: { index: number; title: string; b
   );
 }
 
-// The scrollable Q&A history: a fixed height (about three exchanges) that scrolls
-// rather than grows, auto-scrolled to the latest so the current question stays in
-// view just above the input.
-function Conversation({ step, done, answers, isVoice }: { step: number; done: boolean; answers: Record<string, unknown>; isVoice: (id: string) => boolean }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [step, done]);
-  return (
-    <div ref={ref} className="min-h-0 flex-1 space-y-4 overflow-y-auto lg:h-[28rem] lg:flex-none">
-      {INTAKE_FLOW.slice(0, step + 1).map((item, i) => (
-        <Fragment key={item.q.id}>
-          {item.first && <SectionIntro index={item.si} title={item.title} blurb={item.blurb} />}
-          <AgentBubble q={item.q} />
-          {i < step && <UserAnswer field={item.q.field} value={answers[item.q.id]} voice={isVoice(item.q.id)} />}
-        </Fragment>
-      ))}
-      {done && <AgentBubble text="That's everything. Whenever you're ready, I'll synthesise all three of you." />}
-    </div>
-  );
-}
-
-function AgentBubble({ q, text }: { q?: IntakeQuestion; text?: string }) {
-  return (
-    <div className="flex items-start gap-2">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange text-white"><FlashMark className="h-3.5 w-3.5" /></span>
-      <div className="max-w-lg rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5">
-        <p className="text-sm text-slate-700">{q ? q.q : text}</p>
-        {q?.help && <p className="mt-1 text-xs text-slate-400">{q.help}</p>}
-        {q && isVoiceable(q.field) && <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-orange-dark"><Icon name="mic" className="h-3 w-3" /> Voice or text</p>}
-      </div>
-    </div>
-  );
-}
-
-function UserAnswer({ field, value, voice }: { field: IntakeField; value: unknown; voice: boolean }) {
-  const text = formatAnswer(field, value);
-  return (
-    <div className="flex justify-end">
-      <div className="max-w-lg rounded-2xl rounded-tr-sm bg-orange px-4 py-2.5 text-sm text-white">
-        {voice && <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-white/80"><Icon name="mic" className="h-3.5 w-3.5" /> voice memo</span>}
-        <span className="whitespace-pre-line">{text || "—"}</span>
-      </div>
-    </div>
-  );
-}
-
-function formatAnswer(f: IntakeField, v: unknown): string {
-  switch (f.kind) {
-    case "short":
-    case "long":
-    case "location":
-      return asStr(v);
-    case "slider":
-      return `${typeof v === "number" ? v : f.min} ${f.unit ?? ""}`.trim();
-    case "multiSelect": {
-      const m = asMulti(v);
-      const sel = m.sel.filter((x) => x !== "Other");
-      if (m.sel.includes("Other") && m.other) sel.push(m.other);
-      return sel.join(", ");
-    }
-    case "ranked": {
-      const r = asRanked(v);
-      return [r.ranked.join(" › "), r.note].filter(Boolean).join(" — ");
-    }
-  }
-  return "";
-}
-
-// The chat composer: renders the right input control for the current question.
-function Composer({ q, value, onChange, voice, onVoice, canSend, onSend }: { q: IntakeQuestion; value: unknown; onChange: (v: unknown) => void; voice: boolean; onVoice: () => void; canSend: boolean; onSend: () => void }) {
+// The composer: renders the right input control for the current question.
+function Composer({ q, value, onChange, voice, onVoice, canSend, onSend, onBack }: { q: IntakeQuestion; value: unknown; onChange: (v: unknown) => void; voice: boolean; onVoice: () => void; canSend: boolean; onSend: () => void; onBack?: () => void }) {
   const f = q.field;
   const label = canSend ? "Send" : q.optional ? "Skip" : "Send";
   const supported = useSpeechSupported();
@@ -1086,11 +1034,16 @@ function Composer({ q, value, onChange, voice, onVoice, canSend, onSend }: { q: 
       {keyboardMic && !voice && (
         <p className="-mt-1 mb-3 flex items-center gap-1.5 text-xs text-slate-400"><Icon name="mic" className="h-3.5 w-3.5 shrink-0 text-orange" /><span>Prefer to talk? Tap the <span className="font-semibold text-slate-600">mic on your keyboard</span> to dictate your answer.</span></p>
       )}
-      <div className="flex items-center justify-end gap-2">
-        {desktopVoice && !voice && (
-          <button onClick={onVoice} aria-label="Dictate your answer" className="inline-flex h-11 items-center gap-2 rounded-xl border border-orange px-4 text-sm font-bold text-orange-dark transition-colors hover:bg-orange-tint"><Icon name="mic" className="h-4 w-4" /> Voice</button>
-        )}
-        <button onClick={onSend} disabled={!canSend && !q.optional} className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:opacity-40">{label} <Icon name="send" className="h-4 w-4" /></button>
+      <div className="flex items-center justify-between gap-2">
+        {onBack ? (
+          <button onClick={onBack} aria-label="Previous question" className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m15 18-6-6 6-6" /></svg> Back</button>
+        ) : <span />}
+        <div className="flex items-center gap-2">
+          {desktopVoice && !voice && (
+            <button onClick={onVoice} aria-label="Dictate your answer" className="inline-flex h-11 items-center gap-2 rounded-xl border border-orange px-4 text-sm font-bold text-orange-dark transition-colors hover:bg-orange-tint"><Icon name="mic" className="h-4 w-4" /> Voice</button>
+          )}
+          <button onClick={onSend} disabled={!canSend && !q.optional} className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:opacity-40">{label} <Icon name="send" className="h-4 w-4" /></button>
+        </div>
       </div>
     </div>
   );
