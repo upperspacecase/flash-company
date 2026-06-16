@@ -1576,6 +1576,7 @@ const RANK_PLACES = 3;
 function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v: Votable[]) => void; addLabel: string }) {
   const setText = (id: string, text: string) => onItems(items.map((i) => (i.id === id ? { ...i, text } : i)));
   const awardedCount = items.filter((x) => x.rank != null).length;
+  const ord = (n: number) => ["1st", "2nd", "3rd"][n - 1] ?? `${n}`;
   const award = (id: string) => {
     const awarded = items.filter((x) => x.rank != null).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
     const target = items.find((x) => x.id === id);
@@ -1598,16 +1599,17 @@ function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v:
         {items.map((item) => {
           const ranked = item.rank != null;
           const full = awardedCount >= RANK_PLACES;
+          const badge = ranked ? ord(item.rank ?? 0) : full ? "—" : ord(awardedCount + 1);
           return (
             <li key={item.id} className={`flex items-center gap-2.5 rounded-xl border p-2.5 transition-colors ${ranked ? "border-orange/50 bg-orange-tint/10" : "border-slate-200"}`}>
               <button
                 type="button"
                 onClick={() => award(item.id)}
                 disabled={!ranked && full}
-                aria-label={ranked ? `Clear place ${item.rank}` : "Award next place"}
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors ${ranked ? "bg-orange text-white hover:opacity-90" : full ? "border border-slate-200 text-slate-300" : "border border-dashed border-slate-300 text-slate-400 hover:border-orange hover:text-orange"}`}
+                aria-label={ranked ? `Clear ${ord(item.rank ?? 0)} place` : full ? "Top three already chosen" : `Award ${ord(awardedCount + 1)} place`}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${ranked ? "bg-orange text-white hover:opacity-90" : full ? "border border-slate-200 text-slate-300" : "border border-dashed border-slate-300 text-slate-400 hover:border-orange hover:text-orange"}`}
               >
-                {ranked ? item.rank : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>}
+                {badge}
               </button>
               <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`A ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
             </li>
