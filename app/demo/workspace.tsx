@@ -246,6 +246,11 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   const isFree = plan === "free";
   const youId = live ? live.meId : YOU;
 
+  // Build shareable links off the real serving origin so the invite/resume URLs
+  // work on whatever domain the app is deployed on (not a hardcoded one).
+  const [origin, setOrigin] = useState<string | null>(null);
+  useEffect(() => { setOrigin(window.location.origin); }, []);
+
   const [phase, setPhase] = useState(0);
   // Demo: assume the full flow already ran — every step unlocked and navigable so
   // you can click around and see it all. Live: gated step by step as before.
@@ -414,8 +419,9 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       ? (status?.find((s) => s.id === id)?.intakeComplete ? INTAKE_TOTAL : 0)
       : id === "alex" ? INTAKE_TOTAL : id === "priya" ? 19 : 0;
 
-  const inviteUrl = live ? `https://flashco.org/s/${live.token}` : INVITE.url;
-  const resumeUrl = live ? `https://flashco.org/s/${live.token}/r/${live.meId}` : undefined;
+  const base = origin ?? "https://flashco.org";
+  const inviteUrl = live ? `${base}/s/${live.token}` : INVITE.url;
+  const resumeUrl = live ? `${base}/s/${live.token}/r/${live.meId}` : undefined;
 
   const content = (i: number) => {
     switch (i) {
@@ -645,22 +651,6 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
         </ol>
       </section>
 
-      {/* You're in — start your input (shown once accepted), just above Invite your team */}
-      {accepted && (
-        <section className="rounded-2xl border border-orange bg-white/5 p-6">
-          <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-orange" /> You&rsquo;re in.</p>
-          <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
-          <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
-          {resumeUrl && (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-white/5 p-3">
-              <p className="text-xs font-bold text-foreground">Your resume link</p>
-              <p className="mt-0.5 text-xs text-slate-500">Bookmark this to pick up where you left off — on any device.</p>
-              <code className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{resumeUrl}</code>
-            </div>
-          )}
-        </section>
-      )}
-
       {/* Invite your team — share link + 48h accept window */}
       <section>
         <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Invite your team</h2>
@@ -700,6 +690,22 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
         </ul>
         <p className="mt-3 text-xs text-slate-400">{INVITE.forms}</p>
       </section>
+
+      {/* You're in — start your input (shown once accepted), under Who's accepted */}
+      {accepted && (
+        <section className="rounded-2xl border border-orange bg-white/5 p-6">
+          <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-orange" /> You&rsquo;re in.</p>
+          <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
+          <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
+          {resumeUrl && (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white/5 p-3">
+              <p className="text-xs font-bold text-foreground">Your resume link</p>
+              <p className="mt-0.5 text-xs text-slate-500">Bookmark this to pick up where you left off — on any device.</p>
+              <code className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{resumeUrl}</code>
+            </div>
+          )}
+        </section>
+      )}
 
       {payOpen && <PaymentModal onClose={() => setPayOpen(false)} onPaid={() => { setPayOpen(false); onAccept(); }} payment={payment} />}
     </div>
@@ -1765,21 +1771,34 @@ function ScoreStepper({ score, onChange }: { score: number; onChange: (v: number
   );
 }
 
-// Conviction 1-10, no neutral middle: 1-5 leans "meh" (amber), 6-10 leans "yes"
-// (orange) — you're on one side or the other.
+// Excitement 1-10 surfaced as the card's CTA: an orange button at the bottom
+// right (styled like the confirm CTA) that reveals the scale; once set it reads
+// like a confirmed action.
 function ConvictionScale({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">How excited to build this?</span>
-      <div className="flex gap-0.5">
-        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-          <button key={n} type="button" onClick={() => onChange(n)} aria-label={`Conviction ${n} of 10`}
-            className={`h-7 w-6 rounded-sm text-[10px] font-bold transition-colors ${value >= n ? (n >= 6 ? "bg-orange text-white" : "bg-amber-300 text-amber-900") : "bg-slate-100 text-slate-300 hover:bg-slate-200"}`}>
-            {n}
-          </button>
-        ))}
-      </div>
-      <span className="text-xs font-bold text-foreground">{value ? `${value}/10` : "rate"}</span>
+    <div className="flex flex-col items-end gap-2">
+      {open && (
+        <div className="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-orange/30 bg-orange-tint/10 p-2.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">How excited to build this?</span>
+          <div className="flex gap-0.5">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+              <button key={n} type="button" onClick={() => { onChange(n); setOpen(false); }} aria-label={`Excitement ${n} of 10`}
+                className={`h-7 w-6 rounded-sm text-[10px] font-bold transition-colors ${value >= n ? (n >= 6 ? "bg-orange text-white" : "bg-amber-300 text-amber-900") : "bg-slate-100 text-slate-300 hover:bg-slate-200"}`}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-6 py-3 text-sm font-bold transition-colors ${value ? "bg-orange/20 text-orange-dark" : "bg-orange text-white hover:opacity-90"}`}
+      >
+        <Icon name={value ? "check" : "thumb"} className="h-4 w-4" />
+        {value ? `Excited · ${value}/10` : "Rate how excited"}
+      </button>
     </div>
   );
 }
