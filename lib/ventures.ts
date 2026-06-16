@@ -109,8 +109,10 @@ const CORE_SCHEMA = {
     differentiation: { type: "object", additionalProperties: false, properties: { statement: { type: "string" }, clarity: { type: "integer" } }, required: ["statement", "clarity"] },
     principles: { type: "array", items: { type: "string" } },
     approaches: { type: "array", items: { type: "object", additionalProperties: false, properties: { title: { type: "string" }, why: { type: "string" } }, required: ["title", "why"] } },
+    hook: { type: "string" },
+    landscape: { type: "array", items: { type: "object", additionalProperties: false, properties: { name: { type: "string" }, type: { type: "string", enum: ["Competitor", "Alternative", "Partner", "Ally"] }, size: { type: "string" }, description: { type: "string" }, differentiation: { type: "string" } }, required: ["name", "type", "size", "description", "differentiation"] } },
   },
-  required: ["name", "thesis", "purpose", "unique", "problemScore", "solution", "spark", "conviction", "customer", "problem", "advantage", "competition", "problemBreakdown", "differentiation", "principles", "approaches"],
+  required: ["name", "thesis", "purpose", "unique", "problemScore", "solution", "spark", "conviction", "customer", "problem", "advantage", "competition", "problemBreakdown", "differentiation", "principles", "approaches", "hook", "landscape"],
 };
 
 type RawCore = {
@@ -123,6 +125,8 @@ type RawCore = {
   differentiation: { statement: string; clarity: number };
   principles: string[];
   approaches: { title: string; why: string }[];
+  hook: string;
+  landscape: { name: string; type: string; size: string; description: string; differentiation: string }[];
 };
 
 async function buildCore(client: ReturnType<typeof getAnthropic>, synthesis: SynthesisData, space: Space | undefined, brief: string): Promise<RawCore> {
@@ -144,8 +148,11 @@ const PLAN_SCHEMA = {
     origin: { type: "array", items: { type: "string" } },
     sprint: { type: "array", items: { type: "object", additionalProperties: false, properties: { days: { type: "string" }, text: { type: "string" } }, required: ["days", "text"] } },
     risks: { type: "array", items: { type: "object", additionalProperties: false, properties: { risk: { type: "string" }, mitigation: { type: "string" } }, required: ["risk", "mitigation"] } },
+    currency: { type: "object", additionalProperties: false, properties: { code: { type: "string" }, symbol: { type: "string" } }, required: ["code", "symbol"] },
+    costs: { type: "string" },
+    assumptions: { type: "array", items: { type: "object", additionalProperties: false, properties: { label: { type: "string" }, value: { type: "string" }, source: { type: "string" } }, required: ["label", "value", "source"] } },
   },
-  required: ["marketSummary", "market", "financials", "revenue", "earn", "origin", "sprint", "risks"],
+  required: ["marketSummary", "market", "financials", "revenue", "earn", "origin", "sprint", "risks", "currency", "costs", "assumptions"],
 };
 
 type RawPlan = {
@@ -157,6 +164,9 @@ type RawPlan = {
   origin: string[];
   sprint: { days: string; text: string }[];
   risks: { risk: string; mitigation: string }[];
+  currency: { code: string; symbol: string };
+  costs: string;
+  assumptions: { label: string; value: string; source: string }[];
 };
 
 async function buildPlan(client: ReturnType<typeof getAnthropic>, space: Space | undefined, brief: string, core: RawCore): Promise<RawPlan> {
@@ -201,6 +211,11 @@ function assemble(core: RawCore, plan: RawPlan, lensesRaw: { lenses: { name: str
     recommended: true,
     lenses,
     detail: {
+      hook: core.hook,
+      landscape: core.landscape ?? [],
+      currency: plan.currency,
+      costs: plan.costs,
+      assumptions: plan.assumptions ?? [],
       customer: core.customer,
       problem: core.problem,
       advantage: core.advantage,
