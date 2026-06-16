@@ -2323,21 +2323,34 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
   const setDiff = (patch: Partial<VentureDraft["differentiation"]>) => onVenture((p) => ({ ...p, differentiation: { ...p.differentiation, ...patch } }));
   return (
     <div className="mt-5 space-y-5">
-      <Section title="North star">
+      <Part label="Idea basics" hint="One block the team can read and argue in two minutes.">
         <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-4">
-          <p className="text-xs italic text-slate-400">The clear why behind it all.</p>
-          <EditableArea value={venture.purpose} onChange={(val) => set("purpose", val)} className="mt-1 text-foreground" />
+          <p className="text-xs font-bold uppercase tracking-wide text-orange-dark">Hook</p>
+          <p className="text-[11px] italic text-slate-400">One sentence — what it is, for whom, why now.</p>
+          <EditableArea value={venture.hook} onChange={(v) => set("hook", v)} className="mt-1 text-base font-semibold text-foreground" placeholder="One sentence." />
         </div>
-      </Section>
+        <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-orange-dark">North star</p>
+          <p className="text-[11px] italic text-slate-400">The one-line why.</p>
+          <EditableArea value={venture.purpose} onChange={(v) => set("purpose", v)} className="mt-1 text-foreground" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <LabeledBox label="Customer" value={venture.basics.customer} onChange={(v) => setBasics({ customer: v })} placeholder="Who exactly, which markets, what triggers the pain?" />
+          <LabeledBox label="Problem" value={venture.basics.problem} onChange={(v) => setBasics({ problem: v })} placeholder="The mechanism — and why existing solutions fail." />
+        </div>
+        <LabeledBox label="Solution" value={venture.differentiation.statement} onChange={(v) => setDiff({ statement: v })} placeholder="The mechanism + the core insight. Not a feature list." />
+        <LabeledBox label="Market" value={venture.market} onChange={(v) => set("market", v)} placeholder="Headline numbers only — full sources live in the Financial Model." />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ProblemBreakdown problem={venture.problem} set={setProblem} />
+          <Section title="Clarity">
+            <p className="-mt-1 mb-2 text-xs text-slate-400">How sharply the differentiation lands.</p>
+            <DotScore label="Clarity" value={venture.differentiation.clarity} onChange={(n) => setDiff({ clarity: n })} />
+          </Section>
+        </div>
+      </Part>
 
-      <Part label="Basics" hint="Get the foundation right.">
-        <Section title="Customer & problem">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="sm:col-span-1"><LabeledBox label="Customer" value={venture.basics.customer} onChange={(v) => setBasics({ customer: v })} placeholder="Who exactly?" /></div>
-            <div className="sm:col-span-2"><LabeledBox label="Problem" value={venture.basics.problem} onChange={(v) => setBasics({ problem: v })} placeholder="What's broken for them?" /></div>
-          </div>
-        </Section>
-        <ProblemBreakdown problem={venture.problem} set={setProblem} />
+      {/* Relocating in later commits: Advantage -> Team, Competition -> Landscape, Market detail -> Financial Model, Principles -> TBD */}
+      <Part label="Foundations" hint="Being reorganized into Team, Landscape and the Financial Model.">
         <Section title="Advantage">
           <div className="grid gap-3 sm:grid-cols-3">
             <LabeledBox label="Capability" value={venture.advantage.capability} onChange={(v) => setAdvantage({ capability: v })} placeholder="What can only you do?" />
@@ -2352,11 +2365,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
             <div className="sm:col-span-2"><LabeledBox label="Top alternatives" value={venture.competition.alternatives} onChange={(v) => setCompetition({ alternatives: v })} placeholder="Substitutes, workarounds, non-consumption" /></div>
           </div>
         </Section>
-        <Section title="Market">{detail && detail.market.length ? <MarketFindings findings={detail.market} /> : <MarketReport />}</Section>
-      </Part>
-
-      <Part label="Differentiation" hint="Differentiation makes products click.">
-        <DifferentiationBlock diff={venture.differentiation} set={setDiff} />
+        <Section title="Market detail">{detail && detail.market.length ? <MarketFindings findings={detail.market} /> : <MarketReport />}</Section>
         <Section title="Principles"><PrinciplesEditor principles={venture.principles} onChange={(p) => set("principles", p)} /></Section>
       </Part>
 

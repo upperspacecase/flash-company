@@ -211,7 +211,7 @@ function assemble(core: RawCore, plan: RawPlan, lensesRaw: { lenses: { name: str
         whyNow: clamp(core.problemBreakdown.whyNow, 0, 5),
         payNow: core.problemBreakdown.payNow,
       },
-      differentiation: { statement: core.differentiation.statement, clarity: clamp(core.differentiation.clarity, 0, 10) },
+      differentiation: { statement: core.differentiation.statement, clarity: clamp(core.differentiation.clarity, 0, 5) },
       principles: core.principles ?? [],
       origin: plan.origin ?? [],
       sprint: plan.sprint ?? [],

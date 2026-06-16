@@ -359,6 +359,7 @@ export const OPPORTUNITY_SPACES: OpportunitySpace[] = [
 // The comprehensive, research-grounded venture the birth step fills in. Seeds the
 // editable venture page; rendered/edited live (not just the read-only summary).
 export type VentureDetail = {
+  hook?: string; // one sentence — what, for whom, why now (added with the Idea-basics restructure)
   customer: string;
   problem: string;
   advantage: { capability: string; insight: string; motivation: string };
@@ -755,6 +756,8 @@ export type LandingCopy = { headline: string; subhead: string; visualCaption: st
 
 export type VentureDraft = {
   thesis: string;
+  hook: string;   // one sentence — what, for whom, why now
+  market: string; // headline market numbers, 2-3 sentences (sources live in the financial model)
   // Click "Basics" — Customer, Advantage, Competition.
   basics: { customer: string; problem: string };
   advantage: { capability: string; insight: string; motivation: string };
@@ -780,22 +783,24 @@ export type VentureDraft = {
 export function makeVentureDraft(): VentureDraft {
   return {
     thesis: CHOSEN.thesis,
+    hook: "A peer-vouching layer for returning parents — colleagues vouch for what they can do now, turning a career gap into warm, verifiable signal employers trust.",
+    market: "Millions of parents return to work each year and gap-bias is well documented (HBS / Accenture). Returnship demand is climbing and tight labour markets increasingly prize overlooked talent (Timewise, CIPD).",
     basics: {
-      customer: "Parents returning to work after a career break — reachable through Maya's 4,000-member community.",
-      problem: "Going back after a break is cold and confidence-eroding; job boards screen out a career gap.",
+      customer: "Parents returning to work after a career break — first in the Lisbon–Dublin–London triangle, reached through Maya's 4,000-member community and Priya's 12k newsletter. The pain bites the moment they start applying and the gap screens them out.",
+      problem: "Applicant tracking systems read a career gap as a red flag and filter capable returners out before a human sees them. They reapply into the void; existing returnship programs are tiny and employer-gated.",
     },
     advantage: {
-      capability: "A trusted 4,000-parent community, a full-stack builder, and a brand that's lived the comeback.",
-      insight: "Job boards are the worst re-entry path — people need a guided cohort, not a search box.",
+      capability: "A trusted 4,000-parent community, a 12k newsletter + 30-creator network, and a full-stack builder.",
+      insight: "The block isn't skill — it's a broken signal. A human vouch beats an opaque score.",
       motivation: "We've watched capable people give up on work that mattered. We want them back.",
     },
     competition: {
       gorilla: "LinkedIn / mainstream job boards",
-      alternatives: "Career coaches, returnship bootcamps, Facebook parent groups",
+      alternatives: "iRelaunch, Path Forward, career coaches, Facebook parent groups",
     },
-    purpose: CHOSEN.purpose,
+    purpose: "A warm referral, not a rejection algorithm.",
     problem: { ...PROBLEM_BREAKDOWN },
-    differentiation: { statement: DIFFERENTIATION.statement, clarity: DIFFERENTIATION.clarity },
+    differentiation: { statement: "A structured peer-vouching layer: people who've worked with a returner vouch for specific, current capabilities — an opaque gap becomes warm, verifiable signal. Not a job board, not an AI score.", clarity: DIFFERENTIATION.clarity },
     principles: [
       "Warm beats cold — always lead with a real introduction.",
       "Outcomes over activity — measure placements, not logins.",
@@ -832,6 +837,8 @@ export function draftFromVenture(v: Venture, cohort: Member[]): VentureDraft {
   return {
     ...base,
     thesis: v.thesis,
+    hook: d?.hook ?? base.hook,
+    market: v.market || base.market,
     purpose: v.purpose,
     unique: v.unique,
     lenses: v.lenses && v.lenses.length ? v.lenses.map((l) => ({ ...l })) : base.lenses,
