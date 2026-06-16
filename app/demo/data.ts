@@ -199,7 +199,7 @@ export const SYNTH_ROLES = [
 
 // Votable lists. `votes` is seeded for the later Opportunity-spaces and Ventures
 // pages, where voting happens; Synthesis itself only confirms, edits, and vetoes.
-export type Votable = { id: string; text: string; votes: number };
+export type Votable = { id: string; text: string; votes: number; rank?: number };
 
 export const LIVED_PROBLEMS: Votable[] = [
   { id: "reentry", text: "Parents can't find a supportive path back to work after a break.", votes: 2 },

@@ -1306,15 +1306,18 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
 function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; youId?: string; data?: SynthesisData; status?: MemberStatus[] | null }) {
   const d = data ?? mockSynthesisData();
   const [energy, setEnergy] = useState<Record<string, number[]>>(() => Object.fromEntries(cohort.map((m) => [m.id, [...(d.skillEnergy[m.id] ?? SKILLS.map(() => 3))]])));
-  const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, [youId]: true }));
+  const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, ...Object.fromEntries(cohort.map((m) => [m.id, true])) }));
   const [roles, setRoles] = useState(d.roles.map((r) => ({ ...r })));
   const [industries, setIndustries] = useState<NetworkNode[]>(d.network.filter((n) => n.kind === "industry").map((n) => ({ ...n })));
   const [locations, setLocations] = useState<NetworkNode[]>(d.network.filter((n) => n.kind === "location").map((n) => ({ ...n })));
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
   const [open, setOpen] = useState<Record<string, boolean>>({ skills: true });
-  const [problems, setProblems] = useState<Votable[]>(d.problems.map((p) => ({ ...p })));
-  const [obsessions, setObsessions] = useState<Votable[]>(d.obsessions.map((p) => ({ ...p })));
-  const [markets, setMarkets] = useState<Votable[]>(d.markets.map((p) => ({ ...p })));
+  // Seed the agent's order as places 1-3 so each person starts from a sensible
+  // ranking and only nudges it (less work than reordering the whole list).
+  const seedRanks = (vs: Votable[]) => vs.map((p, i) => ({ ...p, rank: i < 3 ? i + 1 : undefined }));
+  const [problems, setProblems] = useState<Votable[]>(seedRanks(d.problems));
+  const [obsessions, setObsessions] = useState<Votable[]>(seedRanks(d.obsessions));
+  const [markets, setMarkets] = useState<Votable[]>(seedRanks(d.markets));
 
   const toggleConfirm = (k: string) => setConfirmed((c) => ({ ...c, [k]: !c[k] }));
   const toggleOpen = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
@@ -1424,13 +1427,13 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
 
           <Part label="Focus" hint="Rank what matters most — your order, and your teammates', sets the team's focus.">
             <div className="space-y-3">
-              <ConfirmItem title="Lived problems" hint="Drag to rank — most important first." open={open.problems} onToggle={() => toggleOpen("problems")} confirmed={confirmed.problems} onConfirm={() => confirmSection("problems")}>
+              <ConfirmItem title="Lived problems" hint="Tap to award 1st, 2nd, 3rd place." open={open.problems} onToggle={() => toggleOpen("problems")} confirmed={confirmed.problems} onConfirm={() => confirmSection("problems")}>
                 <RankList items={problems} onItems={setProblems} addLabel="problem" />
               </ConfirmItem>
-              <ConfirmItem title="Obsessions & moonshots" hint="Drag to rank — most important first." open={open.obsessions} onToggle={() => toggleOpen("obsessions")} confirmed={confirmed.obsessions} onConfirm={() => confirmSection("obsessions")}>
+              <ConfirmItem title="Obsessions & moonshots" hint="Tap to award 1st, 2nd, 3rd place." open={open.obsessions} onToggle={() => toggleOpen("obsessions")} confirmed={confirmed.obsessions} onConfirm={() => confirmSection("obsessions")}>
                 <RankList items={obsessions} onItems={setObsessions} addLabel="obsession" />
               </ConfirmItem>
-              <ConfirmItem title="Potential target markets" hint="Drag to rank — most important first." open={open.markets} onToggle={() => toggleOpen("markets")} confirmed={confirmed.markets} onConfirm={() => confirmSection("markets")}>
+              <ConfirmItem title="Potential target markets" hint="Tap to award 1st, 2nd, 3rd place." open={open.markets} onToggle={() => toggleOpen("markets")} confirmed={confirmed.markets} onConfirm={() => confirmSection("markets")}>
                 <RankList items={markets} onItems={setMarkets} addLabel="market" />
               </ConfirmItem>
             </div>
@@ -1529,7 +1532,7 @@ function SkillBloom({ cohort = COHORT, youId = YOU, energy, shown, onToggle, onE
   // each shown member, overlaid — equal values read as the same wave in each colour.
   const bands = [
     ...(shown.team ? [{ id: "team", color: TEAM_COLOR, vals: SKILLS.map((_, i) => Math.max(0, ...cohort.map((m) => energy[m.id]?.[i] ?? 0))) }] : []),
-    ...(shown[youId] ? [{ id: youId, color: colorFor(cohort, youId), vals: energy[youId] ?? SKILLS.map(() => 0) }] : []),
+    ...cohort.filter((m) => shown[m.id]).map((m) => ({ id: m.id, color: colorFor(cohort, m.id), vals: energy[m.id] ?? SKILLS.map(() => 0) })),
   ];
   const N = Math.max(1, bands.length);
   const samples = skills * DENS;          // dense samples around the full circle
@@ -1540,8 +1543,7 @@ function SkillBloom({ cohort = COHORT, youId = YOU, energy, shown, onToggle, onE
     const t = s / DENS, i = Math.floor(t) % skills, f = t - Math.floor(t);
     return vals[i] + (vals[(i + 1) % skills] - vals[i]) * smooth(f);
   };
-  const you = cohort.find((m) => m.id === youId);
-  const toggles = [{ id: "team", name: "Team", color: TEAM_COLOR }, { id: youId, name: you?.name ?? "You", color: colorFor(cohort, youId) }];
+  const toggles = [{ id: "team", name: "Team", color: TEAM_COLOR }, ...cohort.map((m) => ({ id: m.id, name: m.name, color: colorFor(cohort, m.id) }))];
   const editEnergy = energy[youId] ?? SKILLS.map(() => 3);
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -1583,7 +1585,7 @@ function SkillBloom({ cohort = COHORT, youId = YOU, energy, shown, onToggle, onE
             );
           })}
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">Each band is a skill bloom — longer spoke = stronger in that skill. Team is the best of everyone; your own band is just you.</p>
+        <p className="mt-2 text-[11px] text-slate-400">Each band is a person&rsquo;s skill bloom — longer spoke = stronger in that skill. Team is the best of everyone. You can only edit your own.</p>
 
         <div className="mt-4 rounded-xl border border-orange/30 bg-orange-tint/15 p-3">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-dark">
@@ -1630,39 +1632,50 @@ function RolesTasks({ cohort = COHORT, youId = YOU, roles, onRoles, confirmed, o
 
 // Rank the items — most important at the top. The order IS this member's
 // ranking; it's saved with the synthesis and aggregated across the team into the
-// consensus that drives venture generation. Drag to reorder, or use the arrows.
+// consensus that drives venture generation. Tap to award 1st/2nd/3rd place;
+// the array stays ordered (awarded first) so downstream reads the ranking from
+// the order. Tap an awarded item again to clear it.
+const RANK_PLACES = 3;
 function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v: Votable[]) => void; addLabel: string }) {
-  const dragId = useRef<string | null>(null);
   const setText = (id: string, text: string) => onItems(items.map((i) => (i.id === id ? { ...i, text } : i)));
-  const move = (from: number, to: number) => {
-    if (to < 0 || to >= items.length) return;
-    const next = [...items];
-    const [it] = next.splice(from, 1);
-    next.splice(to, 0, it);
-    onItems(next);
+  const awardedCount = items.filter((x) => x.rank != null).length;
+  const award = (id: string) => {
+    const awarded = items.filter((x) => x.rank != null).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+    const target = items.find((x) => x.id === id);
+    if (!target) return;
+    let next;
+    if (target.rank != null) next = awarded.filter((x) => x.id !== id);
+    else if (awarded.length >= RANK_PLACES) return;
+    else next = [...awarded, target];
+    const rankOf = new Map(next.map((x, idx) => [x.id, idx + 1]));
+    const rest = items.filter((x) => !rankOf.has(x.id));
+    onItems([
+      ...next.map((x) => ({ ...x, rank: rankOf.get(x.id) })),
+      ...rest.map((x) => ({ ...x, rank: undefined })),
+    ]);
   };
   return (
     <div>
-      <p className="-mt-1 mb-2 text-xs text-slate-400">Drag to rank — most important at the top. Your ranking and your teammates&rsquo; decide the focus.</p>
+      <p className="-mt-1 mb-2 text-xs text-slate-400">Tap to award 1st, 2nd and 3rd place — tap a place again to clear it. Your top three (and your teammates&rsquo;) decide the focus.</p>
       <ol className="space-y-2">
-        {items.map((item, i) => (
-          <li
-            key={item.id}
-            draggable
-            onDragStart={() => { dragId.current = item.id; }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => { const from = items.findIndex((x) => x.id === dragId.current); if (from >= 0 && from !== i) move(from, i); dragId.current = null; }}
-            className="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5"
-          >
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{i + 1}</span>
-            <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`A ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
-            <span className="flex shrink-0 flex-col -space-y-1">
-              <button onClick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up" className="text-slate-400 transition-colors hover:text-orange disabled:opacity-30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="m6 15 6-6 6 6" /></svg></button>
-              <button onClick={() => move(i, i + 1)} disabled={i === items.length - 1} aria-label="Move down" className="text-slate-400 transition-colors hover:text-orange disabled:opacity-30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="m6 9 6 6 6-6" /></svg></button>
-            </span>
-            <span className="shrink-0 cursor-grab text-slate-300" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></svg></span>
-          </li>
-        ))}
+        {items.map((item) => {
+          const ranked = item.rank != null;
+          const full = awardedCount >= RANK_PLACES;
+          return (
+            <li key={item.id} className={`flex items-center gap-2.5 rounded-xl border p-2.5 transition-colors ${ranked ? "border-orange/50 bg-orange-tint/10" : "border-slate-200"}`}>
+              <button
+                type="button"
+                onClick={() => award(item.id)}
+                disabled={!ranked && full}
+                aria-label={ranked ? `Clear place ${item.rank}` : "Award next place"}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors ${ranked ? "bg-orange text-white hover:opacity-90" : full ? "border border-slate-200 text-slate-300" : "border border-dashed border-slate-300 text-slate-400 hover:border-orange hover:text-orange"}`}
+              >
+                {ranked ? item.rank : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>}
+              </button>
+              <input value={item.text} onChange={(e) => setText(item.id, e.target.value)} placeholder={`A ${addLabel}…`} className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
+            </li>
+          );
+        })}
       </ol>
     </div>
   );
@@ -1886,19 +1899,6 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, s
             )}
           </Card>
         </section>
-        <aside className="lg:w-80 lg:shrink-0">
-          <div className="lg:sticky lg:top-[72px] lg:self-start">
-            <div className="space-y-4 rounded-2xl border border-slate-200 bg-white/5 p-5">
-              <RailTitle>Deliberation</RailTitle>
-              <div className="grid gap-3"><Bars label="Spark" value={v.spark} /><Bars label="Conviction" value={v.conviction} /></div>
-              <div className="flex gap-2">
-                <button className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-orange py-2.5 text-sm font-semibold text-white"><Icon name="thumb" className="h-4 w-4" /> Vote</button>
-                <button className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-600"><Icon name="comment" className="h-4 w-4" /> Comment</button>
-              </div>
-              <p className="text-xs text-slate-400">All three vote independently within 12 hours. Votes reveal together.</p>
-            </div>
-          </div>
-        </aside>
       </div>
     </div>
   );
@@ -1985,11 +1985,6 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
               </button>
             );
           })}
-
-          <div className="pt-2"><RailTitle>What you walk away with</RailTitle></div>
-          <Card className="bg-orange-tint/20"><p className="font-bold text-foreground">{name}</p><p className="mt-0.5 text-sm text-slate-600">Venture locked. Validation assets generated.</p></Card>
-          <Card><ul className="space-y-1.5">{["Venture details & roles", "Team alignment & cap table", "Hosted landing page", "Live signups dashboard", "Pitch deck", "Outreach copy"].map((x) => <CheckRow key={x} label={x} />)}</ul></Card>
-          <Card className="bg-slate-50"><p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="heart" className="h-4 w-4 text-orange" /> The Flash Fund</p><p className="mt-1 text-sm text-slate-600">Part of every buy-in seeds ventures that emerge here.</p></Card>
         </div>
       }
       center={
@@ -2240,7 +2235,7 @@ function DotScore({ value, onChange, label, tone = "orange" }: { value: number; 
       {label && <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-500">{label}</span><span className={`font-semibold tabular-nums ${valueText}`}>{value}/5</span></div>}
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} type="button" disabled={!onChange} onClick={() => onChange?.(n)} aria-label={`${label ?? "score"}: ${n} of 5`} className={`h-2.5 flex-1 rounded-full transition-colors ${n <= value ? fill : "bg-slate-200"} ${onChange ? "cursor-pointer hover:opacity-80" : ""}`} />
+          <button key={n} type="button" disabled={!onChange} onClick={() => onChange?.(n === 1 && value === 1 ? 0 : n)} aria-label={`${label ?? "score"}: ${n} of 5`} className={`h-2.5 flex-1 rounded-full transition-colors ${n <= value ? fill : "bg-slate-200"} ${onChange ? "cursor-pointer hover:opacity-80" : ""}`} />
         ))}
       </div>
     </div>
