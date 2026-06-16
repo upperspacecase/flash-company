@@ -773,6 +773,7 @@ export type VentureDraft = {
   currency: { code: string; symbol: string }; // financials currency, defaulted from the user's location
   costs: string; // the cost / runway line that sits next to revenue
   assumptions: { label: string; value: string; source: string }[]; // benchmark rows, each with an inline source
+  risks: { risk: string; mitigation: string }[]; // real risks + testable mitigations
   // Click "Basics" — Customer, Advantage, Competition.
   basics: { customer: string; problem: string };
   advantage: { capability: string; insight: string; motivation: string };
@@ -815,6 +816,13 @@ export function makeVentureDraft(): VentureDraft {
       { label: "Net revenue retention", value: "Placement is transactional; membership ~90% NRR", source: "Comparable membership models" },
       { label: "CAC payback", value: "<6 months via warm community channels", source: "Community-led GTM benchmark" },
       { label: "Valuation multiple", value: "4–8× ARR at seed for vertical SaaS / marketplace", source: "Seed comps, 2026" },
+    ],
+    risks: [
+      { risk: "Cold start — no supply or demand on day one.", mitigation: "Seed supply from Maya's 4,000-member community and Priya's 12k newsletter before any employer is live; run a manual concierge round (10 vouches → 1 placement) to prove the loop by hand before building it." },
+      { risk: "Vouch-quality decay — vouches become noise or favour-trading.", mitigation: "Structured vouches tied to a named capability and a real working relationship; rate-limit, weight by voucher credibility, and spot-audit a sample weekly. Test: do employers rate vouched candidates higher than CV-screened ones?" },
+      { risk: "ATS friction — employers won't change their pipeline.", mitigation: "Start outside the ATS as a warm-intro layer (email + a one-pager), not an integration — that's the wedge, not a workaround. Prove placements convert without integration first; earn the integration later. Test: do warm intros convert at all without touching the ATS?" },
+      { risk: "LinkedIn ships native vouching.", mitigation: "Win the returning-parent niche and its trust before they generalise — a curated, gap-aware community they can't replicate quickly. Test: in head-to-head intros, do returners and employers prefer our vetted signal?" },
+      { risk: "Geographic over-reach — spreading thin across three cities.", mitigation: "Run London to liquidity before opening the next market; use Lisbon/Dublin for warm supply only, not parallel go-to-market. Test: hit a steady placement cadence in one city before expanding." },
     ],
     landscape: [
       { name: "LinkedIn", type: "Competitor", size: "1B+ users", description: "The default place to find and screen candidates — gap-bias baked into search and filters.", differentiation: "We make the gap legible with a human vouch; they surface scores, not warm signal — though native vouching is a real risk." },
@@ -885,6 +893,7 @@ export function draftFromVenture(v: Venture, cohort: Member[]): VentureDraft {
     currency: d?.currency ?? base.currency,
     costs: d?.costs ?? base.costs,
     assumptions: d?.assumptions?.length ? d.assumptions : base.assumptions,
+    risks: d?.risks?.length ? d.risks : base.risks,
     purpose: v.purpose,
     unique: v.unique,
     lenses: v.lenses && v.lenses.length ? v.lenses.map((l) => ({ ...l })) : base.lenses,

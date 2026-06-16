@@ -2357,6 +2357,8 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
   const setLandRow = (i: number, patch: Partial<VentureDraft["landscape"][number]>) => onVenture((p) => ({ ...p, landscape: p.landscape.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) }));
   const addLandRow = () => onVenture((p) => (p.landscape.length >= 8 ? p : { ...p, landscape: [...p.landscape, { name: "", type: "Competitor", size: "", description: "", differentiation: "" }] }));
   const setAssumption = (i: number, patch: Partial<VentureDraft["assumptions"][number]>) => onVenture((p) => ({ ...p, assumptions: p.assumptions.map((a, idx) => (idx === i ? { ...a, ...patch } : a)) }));
+  const setRiskRow = (i: number, patch: Partial<VentureDraft["risks"][number]>) => onVenture((p) => ({ ...p, risks: p.risks.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) }));
+  const addRiskRow = () => onVenture((p) => ({ ...p, risks: [...p.risks, { risk: "", mitigation: "" }] }));
   return (
     <div className="mt-5 space-y-5">
       <Part label="Idea basics" hint="One block the team can read and argue in two minutes.">
@@ -2476,9 +2478,26 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
         <Section title="Market"><p className="-mt-1 mb-2 text-xs text-slate-400">The full market read and its sources.</p>{detail && detail.market.length ? <MarketFindings findings={detail.market} /> : <MarketReport />}</Section>
       </Part>
 
+      <Part label="Risks" hint="The real risks — each with a testable plan, not a reassurance.">
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="w-full min-w-[40rem] text-sm">
+            <thead><tr className="bg-slate-50 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400"><th className="p-3">Risk</th><th className="p-3">Mitigation</th></tr></thead>
+            <tbody>
+              {venture.risks.map((r, i) => (
+                <tr key={i} className="border-t border-slate-100 align-top">
+                  <td className="min-w-[14rem] p-2"><textarea value={r.risk} onChange={(e) => setRiskRow(i, { risk: e.target.value })} rows={2} placeholder="The risk" className={`${teamInput} resize-y leading-snug [field-sizing:content]`} /></td>
+                  <td className="min-w-[20rem] p-2"><textarea value={r.mitigation} onChange={(e) => setRiskRow(i, { mitigation: e.target.value })} rows={3} placeholder="A testable plan — what you'd actually do and how you'd know" className={`${teamInput} resize-y leading-snug [field-sizing:content]`} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button onClick={addRiskRow} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add risk</button>
+      </Part>
+
       <Section title="Principles"><PrinciplesEditor principles={venture.principles} onChange={(p) => set("principles", p)} /></Section>
 
-      <FullVentureDetails venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} detail={detail} cohort={cohort} />
+      <div className="flex justify-end"><PrimaryBtn label="Lock it & validate" onClick={onNext} icon="target" /></div>
     </div>
   );
 }
