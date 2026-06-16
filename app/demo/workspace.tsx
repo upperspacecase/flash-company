@@ -1992,15 +1992,9 @@ function LensCards({ lenses }: { lenses: NonNullable<Venture["lenses"]> }) {
 function FullVentureDetails({ onNext, detail }: { venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; detail?: VentureDetail; cohort?: Member[] }) {
   const d = VENTURE_DETAILS;
   // Prefer the live, research-grounded content when the venture was generated.
-  const financials = detail && detail.financials.rows.length ? detail.financials : d.financials;
   const risks = detail && detail.risks.length ? detail.risks : d.risks;
   return (
     <div className="space-y-6 border-t border-slate-100 pt-6">
-      <Section title="Financials">
-        <p className="mb-2 text-xs text-slate-400">{financials.note}</p>
-        <dl className="space-y-2">{financials.rows.map((r) => <div key={r.label} className="flex gap-3 rounded-lg border border-slate-200 p-3 text-sm"><dt className="w-28 shrink-0 font-semibold text-slate-400">{r.label}</dt><dd className="text-foreground">{r.value}</dd></div>)}</dl>
-      </Section>
-
       <Section title="Risk register">
         <div className="space-y-2">{risks.map((r) => (
           <div key={r.risk} className="rounded-lg border border-slate-200 p-3">
@@ -2362,6 +2356,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
   const teamInput = "-mx-1 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none";
   const setLandRow = (i: number, patch: Partial<VentureDraft["landscape"][number]>) => onVenture((p) => ({ ...p, landscape: p.landscape.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) }));
   const addLandRow = () => onVenture((p) => (p.landscape.length >= 8 ? p : { ...p, landscape: [...p.landscape, { name: "", type: "Competitor", size: "", description: "", differentiation: "" }] }));
+  const setAssumption = (i: number, patch: Partial<VentureDraft["assumptions"][number]>) => onVenture((p) => ({ ...p, assumptions: p.assumptions.map((a, idx) => (idx === i ? { ...a, ...patch } : a)) }));
   return (
     <div className="mt-5 space-y-5">
       <Part label="Idea basics" hint="One block the team can read and argue in two minutes.">
@@ -2444,13 +2439,44 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
         {venture.landscape.length < 8 && <button onClick={addLandRow} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add row</button>}
       </Part>
 
-      {/* Relocating in later commits: Market detail -> Financial Model, Principles -> TBD */}
-      <Part label="Foundations" hint="Being reorganized into the Financial Model.">
-        <Section title="Market detail">{detail && detail.market.length ? <MarketFindings findings={detail.market} /> : <MarketReport />}</Section>
-        <Section title="Principles"><PrinciplesEditor principles={venture.principles} onChange={(p) => set("principles", p)} /></Section>
+      <Part label="Financial model" hint="Which way could this make money — and does any of it hold up? Figures in your currency.">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500">Currency</span>
+          <select value={venture.currency.code} onChange={(e) => set("currency", CURRENCIES.find((c) => c.code === e.target.value) ?? venture.currency)} className="rounded-md border border-slate-200 bg-transparent px-2 py-1 text-sm font-semibold text-foreground focus:border-orange focus:outline-none">
+            {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+          </select>
+          <span className="text-[11px] text-slate-400">Defaulted from your homebase — change if needed.</span>
+        </div>
+
+        <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} sym={venture.currency.symbol} />
+
+        <Section title="Cost &amp; runway">
+          <p className="-mt-1 mb-2 text-xs text-slate-400">The cost side next to revenue — what it takes to run, and where it turns ramen-profitable.</p>
+          <LabeledBox label="Cost &amp; runway" value={venture.costs} onChange={(v) => set("costs", v)} placeholder="Monthly burn, and the revenue that makes it ramen-profitable." />
+        </Section>
+
+        <Section title="Assumptions &amp; sources">
+          <p className="-mt-1 mb-2 text-xs text-slate-400">Every benchmark carries an inline source — no uncited ranges.</p>
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[34rem] text-sm">
+              <thead><tr className="bg-slate-50 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400"><th className="p-3">Assumption</th><th className="p-3">Value</th><th className="p-3">Source</th></tr></thead>
+              <tbody>
+                {venture.assumptions.map((a, i) => (
+                  <tr key={i} className="border-t border-slate-100 align-top">
+                    <td className="p-2"><input value={a.label} onChange={(e) => setAssumption(i, { label: e.target.value })} placeholder="Assumption" className={teamInput} /></td>
+                    <td className="min-w-[12rem] p-2"><input value={a.value} onChange={(e) => setAssumption(i, { value: e.target.value })} placeholder="Value" className={teamInput} /></td>
+                    <td className="p-2"><input value={a.source} onChange={(e) => setAssumption(i, { source: e.target.value })} placeholder="Source" className={`${teamInput} italic text-slate-500`} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+
+        <Section title="Market"><p className="-mt-1 mb-2 text-xs text-slate-400">The full market read and its sources.</p>{detail && detail.market.length ? <MarketFindings findings={detail.market} /> : <MarketReport />}</Section>
       </Part>
 
-      <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} />
+      <Section title="Principles"><PrinciplesEditor principles={venture.principles} onChange={(p) => set("principles", p)} /></Section>
 
       <FullVentureDetails venture={venture} onVenture={onVenture} recorded={recorded} onRecord={onRecord} onNext={onNext} detail={detail} cohort={cohort} />
     </div>
@@ -2602,31 +2628,33 @@ function DifferentiationBlock({ diff, set }: { diff: VentureDraft["differentiati
   );
 }
 
-function money(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}m`;
-  if (n >= 1_000) return `$${Math.round(n / 1_000)}k`;
-  return `$${Math.round(n)}`;
+function money(n: number, sym = "$"): string {
+  if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}m`;
+  if (n >= 1_000) return `${sym}${Math.round(n / 1_000)}k`;
+  return `${sym}${Math.round(n)}`;
 }
 
-function revenueFormula(id: string, d: Record<string, number>): string {
+function revenueFormula(id: string, d: Record<string, number>, sym = "$"): string {
   switch (id) {
-    case "cohort": return `${d.cohorts ?? 0} cohorts × ${d.seats ?? 0} seats × $${(d.price ?? 0).toLocaleString()}`;
-    case "placement": return `${d.placements ?? 0} placements × $${(d.fee ?? 0).toLocaleString()}`;
-    case "subscription": return `${d.members ?? 0} members × $${d.price ?? 0}/mo × 12`;
-    case "marketplace": return `${money(d.gmv ?? 0)} value × ${d.take ?? 0}%`;
+    case "cohort": return `${d.cohorts ?? 0} cohorts × ${d.seats ?? 0} seats × ${sym}${(d.price ?? 0).toLocaleString()}`;
+    case "placement": return `${d.placements ?? 0} placements × ${sym}${(d.fee ?? 0).toLocaleString()}`;
+    case "subscription": return `${d.members ?? 0} members × ${sym}${d.price ?? 0}/mo × 12`;
+    case "marketplace": return `${money(d.gmv ?? 0, sym)} value × ${d.take ?? 0}%`;
     default: return "";
   }
 }
 
-function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenue"]; onChange: (r: VentureDraft["revenue"]) => void }) {
+const CURRENCIES = [{ code: "GBP", symbol: "£" }, { code: "USD", symbol: "$" }, { code: "EUR", symbol: "€" }, { code: "AUD", symbol: "$" }, { code: "CAD", symbol: "$" }, { code: "JPY", symbol: "¥" }];
+
+function RevenueBreakdown({ revenue, onChange, sym = "$" }: { revenue: VentureDraft["revenue"]; onChange: (r: VentureDraft["revenue"]) => void; sym?: string }) {
   const model = REVENUE_MODELS.find((m) => m.id === revenue.id) ?? REVENUE_MODELS[0];
   const build = revenueBuild(revenue.id, revenue.drivers, revenue.growth);
   const max = Math.max(...build, 1);
   const setDriver = (key: string, val: number) => onChange({ ...revenue, drivers: { ...revenue.drivers, [key]: val } });
   return (
-    <Section title="Earning potential">
+    <div>
       <div className="rounded-xl border border-slate-200 p-4">
-        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Revenue model — model out the options</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Compare the revenue models</p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {REVENUE_MODELS.map((m) => {
             const active = m.id === revenue.id;
@@ -2635,7 +2663,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
               <button key={m.id} onClick={() => onChange(revenueDefaults(m))} className={`rounded-xl border p-3 text-left transition-colors ${active ? "border-orange bg-orange-tint/20 ring-1 ring-orange" : "border-slate-200 hover:border-orange/50"}`}>
                 <p className="text-sm font-bold text-foreground">{m.label}</p>
                 <p className="mt-0.5 text-[11px] uppercase tracking-wide text-slate-400">Y3 {m.unit}</p>
-                <p className="text-lg font-bold tabular-nums text-orange-dark">{money(y3)}</p>
+                <p className="text-lg font-bold tabular-nums text-orange-dark">{money(y3, sym)}</p>
               </button>
             );
           })}
@@ -2653,7 +2681,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
                   <div key={d.key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white/5 p-2.5">
                     <span className="text-sm text-slate-600">{d.label}</span>
                     <span className="flex items-center gap-0.5">
-                      {d.prefix && <span className="text-sm text-slate-400">{d.prefix}</span>}
+                      {d.prefix && <span className="text-sm text-slate-400">{sym}</span>}
                       <input inputMode="numeric" value={revenue.drivers[d.key] ?? 0} onChange={(e) => setDriver(d.key, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)} className="w-24 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-orange focus:outline-none" />
                       {d.suffix && <span className="text-sm text-slate-400">{d.suffix}</span>}
                     </span>
@@ -2667,7 +2695,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
                   </span>
                 </div>
               </div>
-              <p className="mt-2 text-[11px] text-slate-400">{revenueFormula(revenue.id, revenue.drivers)} = <span className="font-semibold text-slate-500">{money(build[0])}</span> in year 1</p>
+              <p className="mt-2 text-[11px] text-slate-400">{revenueFormula(revenue.id, revenue.drivers, sym)} = <span className="font-semibold text-slate-500">{money(build[0], sym)}</span> in year 1</p>
             </div>
 
             <div>
@@ -2675,7 +2703,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
               <div className="flex h-32 items-end gap-3">
                 {build.map((rev, i) => (
                   <div key={i} className="flex flex-1 flex-col items-center justify-end gap-1">
-                    <span className="text-xs font-bold tabular-nums text-foreground">{money(rev)}</span>
+                    <span className="text-xs font-bold tabular-nums text-foreground">{money(rev, sym)}</span>
                     <div className="w-full rounded-t-md bg-orange" style={{ height: `${Math.max(6, (rev / max) * 100)}%` }} />
                     <span className="text-[11px] font-semibold text-slate-400">Y{i + 1}</span>
                   </div>
@@ -2683,7 +2711,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
               </div>
               <div className="mt-3 rounded-lg bg-accent px-3 py-2 text-center">
                 <p className="text-[11px] uppercase tracking-wide text-white/60">Year 3 {model.unit}</p>
-                <p className="text-xl font-bold tabular-nums text-white">{money(build[2])}</p>
+                <p className="text-xl font-bold tabular-nums text-white">{money(build[2], sym)}</p>
               </div>
             </div>
           </div>
@@ -2695,7 +2723,7 @@ function RevenueBreakdown({ revenue, onChange }: { revenue: VentureDraft["revenu
           <p className="mt-3 text-[11px] text-slate-400">Illustrative founder model — assumptions, not results. Edit the drivers to pressure-test the story.</p>
         </div>
       </div>
-    </Section>
+    </div>
   );
 }
 

@@ -354,6 +354,9 @@ export type VentureDetail = {
   team?: { memberId: string; role: string; owns: string; networkAsset: string }[];
   networkNote?: string;
   landscape?: { name: string; type: string; size: string; description: string; differentiation: string }[];
+  currency?: { code: string; symbol: string };
+  costs?: string;
+  assumptions?: { label: string; value: string; source: string }[];
   customer: string;
   problem: string;
   advantage: { capability: string; insight: string; motivation: string };
@@ -709,6 +712,18 @@ export function revenueDefaults(m: RevenueModel) {
   return { id: m.id, growth: m.growth, drivers: Object.fromEntries(m.drivers.map((d) => [d.key, d.value])) };
 }
 
+// The financials currency, inferred from a free-text location. Defaults to USD.
+export function currencyOf(location: string): { code: string; symbol: string } {
+  const s = (location || "").toLowerCase();
+  const has = (...ks: string[]) => ks.some((k) => s.includes(k));
+  if (has("united kingdom", "u.k", " uk", "england", "london", "scotland", "wales", "britain", "manchester", "edinburgh")) return { code: "GBP", symbol: "£" };
+  if (has("ireland", "dublin", "portugal", "lisbon", "porto", "spain", "madrid", "barcelona", "france", "paris", "germany", "berlin", "munich", "italy", "rome", "netherlands", "amsterdam", "euro", "europe")) return { code: "EUR", symbol: "€" };
+  if (has("united states", "u.s", " us", "usa", "america", "new york", "san francisco", "los angeles", "austin", "boston", "seattle", "chicago")) return { code: "USD", symbol: "$" };
+  if (has("canada", "toronto", "vancouver", "montreal")) return { code: "CAD", symbol: "$" };
+  if (has("australia", "sydney", "melbourne", "brisbane")) return { code: "AUD", symbol: "$" };
+  return { code: "USD", symbol: "$" };
+}
+
 // Cap table — equity blank to start, standard founder vesting + an option pool.
 export const CAP_TABLE = { pool: 10, vestingDefault: "4 yr · 1 yr cliff" };
 
@@ -755,6 +770,9 @@ export type VentureDraft = {
   team: { memberId: string; role: string; owns: string; networkAsset: string }[]; // who, what they own, the network they bring
   networkNote: string; // one line on the structural network asset (e.g. a city triangle)
   landscape: { name: string; type: string; size: string; description: string; differentiation: string }[]; // competitors / alternatives / partners / allies (max ~8)
+  currency: { code: string; symbol: string }; // financials currency, defaulted from the user's location
+  costs: string; // the cost / runway line that sits next to revenue
+  assumptions: { label: string; value: string; source: string }[]; // benchmark rows, each with an inline source
   // Click "Basics" — Customer, Advantage, Competition.
   basics: { customer: string; problem: string };
   advantage: { capability: string; insight: string; motivation: string };
@@ -788,6 +806,16 @@ export function makeVentureDraft(): VentureDraft {
       { memberId: "alex", role: "Product", owns: "Ships the vouching layer", networkAsset: "—" },
     ],
     networkNote: "The Lisbon–Dublin–London triangle is a structural network asset — three warm markets the team can reach in person.",
+    currency: { code: "GBP", symbol: "£" },
+    costs: "Lean burn: ~£12–15k/mo (two founders ramen + tooling). Ramen-profitable at ~£180–240k ARR — roughly 400–600 SME placements or subscriptions a year.",
+    assumptions: [
+      { label: "Cost per hire", value: "£4–6k typical agency fee employers already pay", source: "REC industry benchmarks" },
+      { label: "Willingness to pay", value: "Employers pay £4k+ per returner hire today", source: "Timewise / returnship programs" },
+      { label: "Gross margin", value: "~80% (software + light ops)", source: "Vertical-SaaS benchmark" },
+      { label: "Net revenue retention", value: "Placement is transactional; membership ~90% NRR", source: "Comparable membership models" },
+      { label: "CAC payback", value: "<6 months via warm community channels", source: "Community-led GTM benchmark" },
+      { label: "Valuation multiple", value: "4–8× ARR at seed for vertical SaaS / marketplace", source: "Seed comps, 2026" },
+    ],
     landscape: [
       { name: "LinkedIn", type: "Competitor", size: "1B+ users", description: "The default place to find and screen candidates — gap-bias baked into search and filters.", differentiation: "We make the gap legible with a human vouch; they surface scores, not warm signal — though native vouching is a real risk." },
       { name: "iRelaunch", type: "Alternative", size: "Niche", description: "Enterprise returnship programs + content for returners.", differentiation: "Candidate-first and warm-intro-led, not gated behind an employer program." },
@@ -854,6 +882,9 @@ export function draftFromVenture(v: Venture, cohort: Member[]): VentureDraft {
     team: d?.team?.length ? d.team : (cohort.length ? cohort.map((m) => ({ memberId: m.id, role: m.role ?? "", owns: m.brings ?? "", networkAsset: "" })) : base.team),
     networkNote: d?.networkNote ?? base.networkNote,
     landscape: d?.landscape?.length ? d.landscape : base.landscape,
+    currency: d?.currency ?? base.currency,
+    costs: d?.costs ?? base.costs,
+    assumptions: d?.assumptions?.length ? d.assumptions : base.assumptions,
     purpose: v.purpose,
     unique: v.unique,
     lenses: v.lenses && v.lenses.length ? v.lenses.map((l) => ({ ...l })) : base.lenses,
