@@ -41,6 +41,7 @@ import {
   type IntakeField,
   type IntakeQuestion,
   type IntakeSection,
+  type Lens,
   type Member,
   type NetworkNode,
   type OppEvaluation,
@@ -1938,6 +1939,25 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 // Magic Lenses — the venture's Approach, viewing it through each strategic angle.
+// Industry Insights — the strategic lenses as a 2-col accordion: the lens's
+// guiding question is the title; open it to read (and edit) the one-paragraph reframe.
+function InsightAccordion({ lenses, onReframe }: { lenses: Lens[]; onReframe: (id: string, text: string) => void }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {lenses.map((l) => (
+        <details key={l.id} className="group rounded-xl border border-slate-200 p-3">
+          <summary className="flex cursor-pointer list-none items-start gap-2">
+            <Icon name={l.icon} className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-dark" />
+            <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{l.question}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-300 transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <EditableArea value={l.reframe} onChange={(t) => onReframe(l.id, t)} className="mt-2 text-sm text-slate-600" placeholder="One paragraph that would change a decision." />
+        </details>
+      ))}
+    </div>
+  );
+}
+
 function LensCards({ lenses }: { lenses: NonNullable<Venture["lenses"]> }) {
   return (
     <div className="grid gap-2 sm:grid-cols-2">
@@ -2347,6 +2367,10 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
             <DotScore label="Clarity" value={venture.differentiation.clarity} onChange={(n) => setDiff({ clarity: n })} />
           </Section>
         </div>
+      </Part>
+
+      <Part label="Industry insights" hint="Sharpen the idea through structured lenses — open a question to read the angle.">
+        <InsightAccordion lenses={venture.lenses} onReframe={(id, text) => set("lenses", venture.lenses.map((l) => (l.id === id ? { ...l, reframe: text } : l)))} />
       </Part>
 
       {/* Relocating in later commits: Advantage -> Team, Competition -> Landscape, Market detail -> Financial Model, Principles -> TBD */}
