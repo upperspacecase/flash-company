@@ -28,6 +28,7 @@ import {
   YOU,
   makeVentureDraft,
   draftFromVenture,
+  hydrateDraft,
   memberById,
   mockOpportunityData,
   mockSynthesisData,
@@ -274,7 +275,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
     Object.fromEntries(VENTURE_DETAILS.commitments.map((c) => [c.memberId, c.recorded]))
   );
   const [checkin, setCheckin] = useState("Day 7");
-  const [venture, setVenture] = useState<VentureDraft>(() => (!live && seed?.draft) ? seed.draft : makeVentureDraft());
+  const [venture, setVenture] = useState<VentureDraft>(() => (!live && seed?.draft) ? hydrateDraft(seed.draft) : makeVentureDraft());
   // Publish state lives on the draft so it persists and the public /v page can read it.
   const published = !!venture.published;
   const publicUrl = live ? `flashco.org/v/${live.token}` : "flashco.org/v/demo";
@@ -355,7 +356,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   liveRef.current = live;
   useEffect(() => {
     if (!live || seededRef.current) return;
-    if (live.initialDraft) { setVenture(live.initialDraft); if (ventData?.[0]) setName(ventData[0].name); seededRef.current = true; }
+    if (live.initialDraft) { setVenture(hydrateDraft(live.initialDraft)); if (ventData?.[0]) setName(ventData[0].name); seededRef.current = true; }
     else if (ventData && ventData[0]) { setVenture(draftFromVenture(ventData[0], cohort)); setName(ventData[0].name); seededRef.current = true; }
   }, [live, ventData, cohort]);
   useEffect(() => {

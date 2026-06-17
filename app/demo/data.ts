@@ -867,6 +867,13 @@ export function makeVentureDraft(): VentureDraft {
   };
 }
 
+// Backfill a persisted (possibly older-shape) draft with current defaults so
+// new fields (team, landscape, currency, costs, assumptions, risks, hook,
+// market…) are always present and the editable idea page never crashes.
+export function hydrateDraft(d?: Partial<VentureDraft> | null): VentureDraft {
+  return { ...makeVentureDraft(), ...(d ?? {}) };
+}
+
 // Map a generated revenue pick onto a known model + its driver defaults (so the
 // revenue modeller's math stays valid), overriding any driver values the LLM gave.
 function seedRevenue(r: VentureDetail["revenue"]): VentureDraft["revenue"] {
