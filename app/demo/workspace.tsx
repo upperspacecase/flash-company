@@ -2021,12 +2021,31 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const CHANNELS = [{ key: "linkedin", label: "LinkedIn" }, { key: "dm", label: "DM" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }] as const;
 
-const VALIDATION_TARGETS = [
-  "Get 10 customer conversations this week",
-  "Collect 25 email signups on the landing page",
-  "Share the landing page in 3 relevant communities",
-  "Send the outreach to 20 prospects",
-  "Confirm the founding hypothesis with 5 clear yeses",
+const VALIDATION_TARGETS: { text: string; paid?: boolean }[] = [
+  { text: "Get 10 customer conversations this week" },
+  { text: "Send the outreach to 20 prospects" },
+  { text: "Share the free social card in 3 relevant communities" },
+  { text: "Collect 25 email signups on the landing page", paid: true },
+  { text: "Confirm the founding hypothesis with 5 clear yeses", paid: true },
+];
+
+// Generic questions to put to the target market — editable in the paid plan.
+const TARGET_QUESTIONS = [
+  "What do you do today when you hit this problem?",
+  "How much time or money does it cost you each month?",
+  "What have you already tried, and why did it fall short?",
+  "If this existed, what would have to be true for you to switch?",
+  "Who else feels this as sharply as you do?",
+];
+
+// The four weekly AI synthesis runs across the 30-day window (every Monday).
+const SYNTHESIS_WEEKS = ["Week 1 · Mon", "Week 2 · Mon", "Week 3 · Mon", "Week 4 · Mon"];
+
+// Example actions a synthesis run might surface — clearly illustrative, not measured.
+const SYNTHESIS_SUGGESTIONS = [
+  "Lead the landing page with employer intros — testers cared about that most.",
+  "Add a price anchor; people asked 'how much?' before booking.",
+  "Book 3 more calls with the segment that replied fastest.",
 ];
 
 // 30-day validation window — real (live) or persisted (demo).
@@ -2046,8 +2065,6 @@ function ValidationTimer({ endsAt }: { endsAt?: string }) {
 }
 
 function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail, publicUrl }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail; publicUrl?: string }) {
-  const [channel, setChannel] = useState<(typeof CHANNELS)[number]["key"]>("linkedin");
-  const v = VALIDATION;
   const deck = buildDeck(venture, name, detail);
   // Landing: editable + persisted (venture.landing), seeded from the venture.
   const landing = venture.landing ?? buildLanding(venture, detail);
@@ -2055,12 +2072,16 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
   const liveUrl = publicUrl ?? "flashco.app";
   const landingEditable = !gated;
   const setLanding = (patch: Partial<LandingCopy>) => onVenture((p) => ({ ...p, landing: { ...(p.landing ?? landing), ...patch } }));
+  // The 30-day plan is locked until the team unlocks it (demo: flips local state).
+  const [unlocked, setUnlocked] = useState(false);
+  const [unlockOpen, setUnlockOpen] = useState(false);
   // Suggested validation targets/tasks — editable + addable (local for now).
-  const [targets, setTargets] = useState(() => VALIDATION_TARGETS.map((t, i) => ({ id: `vt${i}`, text: t, done: false, suggested: true })));
+  const [targets, setTargets] = useState(() => VALIDATION_TARGETS.map((t, i) => ({ id: `vt${i}`, text: t.text, done: false, suggested: true, paid: !!t.paid })));
   const addId = useRef(0);
   const setTargetText = (id: string, text: string) => setTargets((ts) => ts.map((t) => (t.id === id ? { ...t, text } : t)));
   const toggleTarget = (id: string) => setTargets((ts) => ts.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
-  const addTarget = () => setTargets((ts) => [...ts, { id: `vt-add-${addId.current++}`, text: "", done: false, suggested: false }]);
+  const addTarget = () => setTargets((ts) => [...ts, { id: `vt-add-${addId.current++}`, text: "", done: false, suggested: false, paid: false }]);
+  const addActions = (texts: string[]) => setTargets((ts) => [...ts, ...texts.map((text) => ({ id: `vt-syn-${addId.current++}`, text, done: false, suggested: true, paid: false }))]);
   return (
     <Columns
       left={
@@ -2068,7 +2089,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
           <RailTitle>Steps</RailTitle>
           <div className="space-y-2.5">
             {[
-              { n: "1", t: "Share your idea", d: "Publish the landing page and put it in front of your network." },
+              { n: "1", t: "Share your idea", d: "Post the free assets and put them in front of your network." },
               { n: "2", t: "Gather feedback", d: "Send the outreach, collect signups and replies." },
               { n: "3", t: "Confirm your founding hypothesis", d: "Tick each clause as the evidence lands." },
             ].map((s) => (
@@ -2083,51 +2104,422 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
       }
       center={
         <Card className="p-6">
-          <CenterHead title={`Validate ${name}`} sub="Answer the six questions with real people before you build." />
+          <CenterHead title={`Validate ${name}`} sub="Free assets to start gathering signal — unlock the 30-day plan for the full toolkit." />
           <Section title="Validation targets &amp; tasks">
-            <p className="-mt-1 mb-3 text-xs text-slate-400">Suggested targets to hit and tasks to run — edit any, tick them off, or add your own.</p>
+            <p className="-mt-1 mb-3 text-xs text-slate-400">Suggested targets to hit and tasks to run — edit any, tick them off, or add your own. Some depend on the 30-day plan.</p>
             <div className="space-y-2">
-              {targets.map((t) => (
-                <div key={t.id} className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-2.5">
-                  <button type="button" onClick={() => toggleTarget(t.id)} aria-label={t.done ? "Mark not done" : "Mark done"} className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors ${t.done ? "border-orange bg-orange text-white" : "border-slate-300 text-transparent hover:border-orange"}`}><Icon name="check" className="h-3.5 w-3.5" /></button>
-                  <input value={t.text} onChange={(e) => setTargetText(t.id, e.target.value)} placeholder="A target or task…" className={`min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none ${t.done ? "text-slate-400 line-through" : "text-foreground"}`} />
-                  {t.suggested && <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Suggested</span>}
-                </div>
-              ))}
+              {targets.map((t) => {
+                const locked = t.paid && !unlocked;
+                return (
+                  <div key={t.id} className={`flex items-center gap-2.5 rounded-xl border p-2.5 ${locked ? "border-slate-200 bg-slate-50/70" : "border-slate-200"}`}>
+                    {locked ? (
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-300"><Icon name="lock" className="h-3.5 w-3.5" /></span>
+                    ) : (
+                      <button type="button" onClick={() => toggleTarget(t.id)} aria-label={t.done ? "Mark not done" : "Mark done"} className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors ${t.done ? "border-orange bg-orange text-white" : "border-slate-300 text-transparent hover:border-orange"}`}><Icon name="check" className="h-3.5 w-3.5" /></button>
+                    )}
+                    <input value={t.text} disabled={locked} onChange={(e) => setTargetText(t.id, e.target.value)} placeholder="A target or task…" className={`min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm focus:outline-none ${locked ? "text-slate-400" : `hover:border-slate-200 focus:border-orange focus:bg-white/5 ${t.done ? "text-slate-400 line-through" : "text-foreground"}`}`} />
+                    {locked ? <span className="shrink-0 rounded-full bg-orange-tint px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-dark">Plan</span> : t.suggested && <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Suggested</span>}
+                  </div>
+                );
+              })}
             </div>
             <button onClick={addTarget} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add target</button>
           </Section>
-          <div className="mt-6"><Section title="Founding hypothesis">
-            <p className="-mt-1 mb-3 text-xs text-slate-400">Each clause is a thing to prove — tick its scorecard check when the evidence lands.</p>
-            <HypothesisScorecard v={venture} onToggle={(k) => onVenture((p) => ({ ...p, scorecard: { ...p.scorecard, [k]: !p.scorecard[k] } }))} />
+
+          <div className="mt-7"><Section title="Free shareable assets">
+            <p className="-mt-1 mb-3 text-xs text-slate-400">Post these anywhere to start gathering interest — no plan needed.</p>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <SocialCard name={name} seedTitle={landing.headline} seedSubtitle={landing.subhead} />
+              <div className="space-y-4">
+                <DraftCopy label="Email" icon="doc" body={outreach.email} />
+                <DraftCopy label="WhatsApp" icon="message" body={outreach.whatsapp} />
+              </div>
+            </div>
           </Section></div>
 
-          <div className="mt-6"><ValidationScorecard published={published} /></div>
+          <div className="mt-8">
+            <PaidGate unlocked={unlocked} onUnlock={() => setUnlockOpen(true)}>
+              <div className="space-y-7">
+                <details className="group rounded-xl border border-slate-200" open>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3"><span className="text-xs font-bold uppercase tracking-wide text-slate-400">Founding hypothesis</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg></summary>
+                  <div className="border-t border-slate-100 p-4">
+                    <p className="-mt-1 mb-3 text-xs text-slate-400">Each clause is a thing to prove — tick its scorecard check when the evidence lands.</p>
+                    <HypothesisScorecard v={venture} onToggle={(k) => onVenture((p) => ({ ...p, scorecard: { ...p.scorecard, [k]: !p.scorecard[k] } }))} />
+                  </div>
+                </details>
 
-          <div className="mt-6"><Section title="Landing page">
-            <p className="-mt-1 mb-3 text-xs text-slate-400">The proven 5-part formula — value, how, visual, social proof, next step.</p>
-            <PublishBar published={published} onPublish={onPublish} url={liveUrl} gated={gated} />
-            <LandingHero name={name} landing={landing} editable={landingEditable} onChange={setLanding} url={liveUrl} />
-          </Section></div>
+                <Section title="Questions for target market(s)">
+                  <p className="-mt-1 mb-3 text-xs text-slate-400">What to ask in every conversation — edit any, or add your own.</p>
+                  <TargetQuestions seed={TARGET_QUESTIONS} />
+                </Section>
 
-          <div className="mt-6"><Section title="Pitch deck">
-            <p className="-mt-1 mb-3 text-xs text-slate-400">{deck.length} slides, YC seed-deck order — generated live from your venture outline, cap table, and revenue model.</p>
-            <DeckViewer slides={deck} name={name} />
-          </Section></div>
+                <Section title="Extended validation assets">
+                  <p className="-mt-1 mb-3 text-xs text-slate-400">Carousel, LinkedIn post, pitch deck and landing page — all editable, all in one place.</p>
+                  <div className="space-y-6">
+                    <div><SubHead>Instagram carousel</SubHead><IGCarousel name={name} slides={buildCarousel(deck)} /></div>
+                    <div><SubHead>LinkedIn post</SubHead><LinkedInPost name={name} seedHeadline={venture.differentiation.statement || venture.thesis} seedCopy={outreach.linkedin} /></div>
+                    <div><SubHead>Pitch deck</SubHead><p className="mb-2 text-xs text-slate-400">{deck.length} slides, YC seed-deck order — editable, seeded from your venture outline.</p><EditableDeck slides={deck} name={name} /></div>
+                    <div><SubHead>Landing page</SubHead><PublishBar published={published} onPublish={onPublish} url={liveUrl} gated={gated} /><LandingHero name={name} landing={landing} editable={landingEditable} onChange={setLanding} url={liveUrl} /></div>
+                  </div>
+                </Section>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <Section title="Outreach copy">
-              <div className="mb-3 flex flex-wrap gap-2">{CHANNELS.map((c) => <button key={c.key} onClick={() => setChannel(c.key)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${channel === c.key ? "bg-orange text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>{c.label}</button>)}</div>
-              <p className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{outreach[channel]}</p>
-            </Section>
-            <Section title="Feedback synthesis">
-            <p className="mb-2 text-xs text-slate-400">{v.feedbackNote}</p>
-            <p className="mb-2 text-sm text-slate-600">{v.sendTarget}</p>
-            <ul className="space-y-1.5">{v.feedbackEdits.map((e) => <li key={e} className="flex items-start gap-2 rounded-lg bg-slate-50 p-2.5 text-sm text-slate-700"><Icon name="refresh" className="mt-0.5 h-4 w-4 shrink-0 text-orange" />{e}</li>)}</ul>
-          </Section></div>
+                <Section title="Analytics"><AnalyticsPanel published={published} /></Section>
+
+                <Section title="Feedback synthesis"><FeedbackSynthesis onAddActions={addActions} /></Section>
+              </div>
+            </PaidGate>
+          </div>
+
+          <UnlockModal open={unlockOpen} onClose={() => setUnlockOpen(false)} onUnlock={() => { setUnlocked(true); setUnlockOpen(false); }} />
         </Card>
       }
     />
+  );
+}
+
+/* ------------------------------------------ validation: free + paid (30-day plan) */
+
+function SubHead({ children }: { children: React.ReactNode }) {
+  return <p className="mb-2 text-sm font-bold text-foreground">{children}</p>;
+}
+
+// Greys the 30-day plan until the team unlocks it, with an unlock overlay.
+function PaidGate({ unlocked, onUnlock, children }: { unlocked: boolean; onUnlock: () => void; children: React.ReactNode }) {
+  if (unlocked) return <>{children}</>;
+  return (
+    <div className="relative">
+      <div className="pointer-events-none select-none opacity-40 blur-[2px]" aria-hidden>{children}</div>
+      <div className="absolute inset-0 flex items-start justify-center">
+        <div className="sticky top-24 mt-20 w-full max-w-sm rounded-2xl border border-orange/30 bg-white p-6 text-center shadow-xl">
+          <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-orange-tint text-orange-dark"><Icon name="lock" className="h-5 w-5" /></span>
+          <p className="mt-3 text-lg font-bold tracking-tight text-foreground">30-day validation plan</p>
+          <p className="mt-1 text-sm text-slate-500">Founding hypothesis, target-market questions, extended assets, analytics, and weekly feedback synthesis.</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">$40 each <span className="font-normal text-slate-400">· or one person unlocks it for the whole team</span></p>
+          <button onClick={onUnlock} className="mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-orange px-4 text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="bolt" className="h-4 w-4" /> Unlock the plan</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UnlockModal({ open, onClose, onUnlock }: { open: boolean; onClose: () => void; onUnlock: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 cursor-default bg-black/50" />
+      <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-tint text-orange-dark"><Icon name="bolt" className="h-5 w-5" /></span>
+          <div><p className="text-lg font-bold tracking-tight text-foreground">Unlock the 30-day plan</p><p className="text-sm text-slate-500">Everything you need to validate, for the next 30 days.</p></div>
+        </div>
+        <ul className="mt-4 space-y-1.5 text-sm text-slate-600">
+          {["Founding hypothesis scorecard", "Questions for your target market", "Extended assets — carousel, LinkedIn, pitch deck, landing page", "Analytics — landing, link, and team metrics", "Weekly AI feedback synthesis"].map((f) => (
+            <li key={f} className="flex items-start gap-2"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-orange" />{f}</li>
+          ))}
+        </ul>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <button onClick={onUnlock} className="flex h-12 flex-col items-center justify-center rounded-xl bg-orange text-white transition-colors hover:bg-orange-dark"><span className="text-sm font-bold">Unlock for me</span><span className="text-[11px] text-white/80">$40</span></button>
+          <button onClick={onUnlock} className="flex h-12 flex-col items-center justify-center rounded-xl border border-orange/40 bg-orange-tint/40 text-orange-dark transition-colors hover:bg-orange-tint"><span className="text-sm font-bold">Unlock for the team</span><span className="text-[11px] text-orange-dark/80">$40 · everyone gets access</span></button>
+        </div>
+        <button onClick={onClose} className="mt-3 w-full text-center text-xs font-semibold text-slate-400 hover:text-slate-600">Maybe later</button>
+      </div>
+    </div>
+  );
+}
+
+// 1080×1350 (4:5) social card — editable title/subtitle + optional uploaded background.
+function SocialCard({ name, seedTitle, seedSubtitle }: { name: string; seedTitle: string; seedSubtitle: string }) {
+  const [title, setTitle] = useState(seedTitle);
+  const [subtitle, setSubtitle] = useState(seedSubtitle);
+  const [bg, setBg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) setBg(URL.createObjectURL(f));
+  };
+  return (
+    <div>
+      <div className="mx-auto w-full max-w-[16rem]">
+        <div className="relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-2xl border border-slate-200 shadow-sm" style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+          {!bg && <div className="absolute inset-0 bg-gradient-to-br from-orange via-orange-dark to-[#7a2900]" />}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          <div className="absolute left-4 top-4 flex items-center gap-1.5"><FlashMark className="h-4 w-4 text-white" /><span className="text-sm font-bold tracking-tight text-white">{name}</span></div>
+          <div className="relative p-4">
+            <textarea value={title} onChange={(e) => setTitle(e.target.value)} rows={2} placeholder="Title" className="w-full resize-none rounded-md border border-transparent bg-transparent text-2xl font-bold leading-tight tracking-tight text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none" />
+            <textarea value={subtitle} onChange={(e) => setSubtitle(e.target.value)} rows={2} placeholder="Subtitle" className="mt-1 w-full resize-none rounded-md border border-transparent bg-transparent text-sm leading-snug text-white/90 placeholder:text-white/50 focus:border-white/40 focus:outline-none" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-center gap-3">
+        <button onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-orange/50 hover:text-orange-dark"><Icon name="image" className="h-3.5 w-3.5" /> {bg ? "Change background" : "Upload background"}</button>
+        {bg && <button onClick={() => setBg(null)} className="text-xs font-semibold text-slate-400 hover:text-slate-600">Remove</button>}
+        <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+      </div>
+      <p className="mt-1 text-center text-[11px] text-slate-400">1080 × 1350 px · 4:5 portrait</p>
+    </div>
+  );
+}
+
+function DraftCopy({ label, icon, body }: { label: string; icon: IconName; body: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400"><Icon name={icon} className="h-3.5 w-3.5" /> {label} draft</p>
+      <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">{body}</p>
+    </div>
+  );
+}
+
+function TargetQuestions({ seed }: { seed: string[] }) {
+  const [qs, setQs] = useState(() => seed.map((text, i) => ({ id: `q${i}`, text })));
+  const idRef = useRef(0);
+  const set = (id: string, text: string) => setQs((q) => q.map((x) => (x.id === id ? { ...x, text } : x)));
+  const add = () => setQs((q) => [...q, { id: `q-add-${idRef.current++}`, text: "" }]);
+  const remove = (id: string) => setQs((q) => q.filter((x) => x.id !== id));
+  return (
+    <div>
+      <div className="space-y-2">
+        {qs.map((q, i) => (
+          <div key={q.id} className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-2.5">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-400">{i + 1}</span>
+            <input value={q.text} onChange={(e) => set(q.id, e.target.value)} placeholder="A question to ask…" className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
+            <button onClick={() => remove(q.id)} aria-label="Remove question" className="shrink-0 text-slate-300 hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
+          </div>
+        ))}
+      </div>
+      <button onClick={add} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add question</button>
+    </div>
+  );
+}
+
+// Simplified pitch deck as an editable IG carousel — up to 8 portrait slides.
+function IGCarousel({ name, slides }: { name: string; slides: { kicker: string; title: string; body: string }[] }) {
+  const [items, setItems] = useState(() => slides.slice(0, 8).map((s, i) => ({ id: `ig${i}`, ...s })));
+  const [i, setI] = useState(0);
+  const idRef = useRef(0);
+  const total = items.length;
+  const idx = Math.min(i, total - 1);
+  const cur = items[idx];
+  const go = (n: number) => setI((n + total) % total);
+  const set = (patch: Partial<typeof cur>) => setItems((xs) => xs.map((x) => (x.id === cur.id ? { ...x, ...patch } : x)));
+  const add = () => setItems((xs) => (xs.length >= 8 ? xs : [...xs, { id: `ig-add-${idRef.current++}`, kicker: "Slide", title: "", body: "" }]));
+  const remove = () => { setItems((xs) => (xs.length <= 1 ? xs : xs.filter((x) => x.id !== cur.id))); setI((n) => Math.max(0, n - 1)); };
+  return (
+    <div className="space-y-3">
+      <div className="relative mx-auto w-full max-w-[18rem]">
+        <div className="aspect-[4/5] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-orange-tint to-slate-100 shadow-sm">
+          <div className="flex h-full flex-col p-5">
+            <div className="flex shrink-0 items-center justify-between">
+              <div className="flex items-center gap-1.5"><FlashMark className="h-4 w-4 text-orange" /><span className="text-xs font-bold tracking-tight text-foreground">{name}</span></div>
+              <span className="text-[10px] font-bold tabular-nums text-slate-400">{idx + 1} / {total}</span>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col justify-center">
+              <input value={cur.kicker} onChange={(e) => set({ kicker: e.target.value })} placeholder="Kicker" className="w-full rounded-md border border-transparent bg-transparent text-[11px] font-bold uppercase tracking-[0.18em] text-orange-dark placeholder:text-orange-dark/40 hover:border-slate-200 focus:border-orange focus:outline-none" />
+              <textarea value={cur.title} onChange={(e) => set({ title: e.target.value })} rows={2} placeholder="Headline" className="mt-1 w-full resize-none rounded-md border border-transparent bg-transparent text-xl font-bold leading-tight tracking-tight text-foreground placeholder:text-slate-400 hover:border-slate-200 focus:border-orange focus:bg-white/40 focus:outline-none" />
+              <textarea value={cur.body} onChange={(e) => set({ body: e.target.value })} rows={3} placeholder="Supporting line" className="mt-2 w-full resize-none rounded-md border border-transparent bg-transparent text-sm leading-snug text-slate-600 placeholder:text-slate-400 hover:border-slate-200 focus:border-orange focus:bg-white/40 focus:outline-none" />
+            </div>
+          </div>
+        </div>
+        <button onClick={() => go(idx - 1)} aria-label="Previous slide" className="absolute left-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur hover:text-orange-dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m15 18-6-6 6-6" /></svg></button>
+        <button onClick={() => go(idx + 1)} aria-label="Next slide" className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur hover:text-orange-dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m9 18 6-6-6-6" /></svg></button>
+      </div>
+      <div className="flex items-center justify-center gap-3">
+        <button onClick={add} disabled={total >= 8} className="text-sm font-semibold text-orange-dark hover:underline disabled:text-slate-300 disabled:no-underline">+ Add slide</button>
+        <button onClick={remove} disabled={total <= 1} className="text-sm font-semibold text-slate-400 hover:text-slate-600 disabled:text-slate-300">Remove slide</button>
+      </div>
+    </div>
+  );
+}
+
+function LinkedInPost({ name, seedHeadline, seedCopy }: { name: string; seedHeadline: string; seedCopy: string }) {
+  const [headline, setHeadline] = useState(seedHeadline);
+  const [copy, setCopy] = useState(seedCopy);
+  const [bg, setBg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) setBg(URL.createObjectURL(f));
+  };
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div>
+        <div className="relative flex aspect-[1.91/1] flex-col justify-end overflow-hidden rounded-xl border border-slate-200 shadow-sm" style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+          {!bg && <div className="absolute inset-0 bg-gradient-to-br from-orange via-orange-dark to-[#7a2900]" />}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          <div className="absolute left-3 top-3 flex items-center gap-1.5"><FlashMark className="h-4 w-4 text-white" /><span className="text-xs font-bold tracking-tight text-white">{name}</span></div>
+          <textarea value={headline} onChange={(e) => setHeadline(e.target.value)} rows={2} placeholder="Image headline" className="relative m-3 resize-none rounded-md border border-transparent bg-transparent text-lg font-bold leading-tight tracking-tight text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none" />
+        </div>
+        <div className="mt-2 flex items-center gap-3">
+          <button onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-orange/50 hover:text-orange-dark"><Icon name="image" className="h-3.5 w-3.5" /> {bg ? "Change image" : "Upload image"}</button>
+          {bg && <button onClick={() => setBg(null)} className="text-xs font-semibold text-slate-400 hover:text-slate-600">Remove</button>}
+          <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+        </div>
+        <p className="mt-1 text-[11px] text-slate-400">1200 × 627 px</p>
+      </div>
+      <div>
+        <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Post copy</p>
+        <textarea value={copy} onChange={(e) => setCopy(e.target.value)} className="min-h-[10rem] w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700 focus:border-orange focus:bg-white/5 focus:outline-none" />
+      </div>
+    </div>
+  );
+}
+
+// Editable pitch deck — same slides as the read-only viewer, text-editable here.
+function EditableDeck({ slides, name }: { slides: DeckSlide[]; name: string }) {
+  const [items, setItems] = useState(() => slides.map((s, i) => ({
+    id: `dk${i}`,
+    label: s.label,
+    headline: s.headline,
+    points: s.points ?? (s.team ?? []).map((t) => `${memberById(t.memberId)?.name ?? "Founder"} — ${t.role}`),
+  })));
+  const [i, setI] = useState(0);
+  const total = items.length;
+  const idx = Math.min(i, total - 1);
+  const cur = items[idx];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const go = (n: number) => setI((n + total) % total);
+  const set = (patch: Partial<typeof cur>) => setItems((xs) => xs.map((x) => (x.id === cur.id ? { ...x, ...patch } : x)));
+  const setPoint = (pi: number, t: string) => set({ points: cur.points.map((p, n) => (n === pi ? t : p)) });
+  const addPoint = () => set({ points: [...cur.points, ""] });
+  const removePoint = (pi: number) => set({ points: cur.points.filter((_, n) => n !== pi) });
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <div className="aspect-[16/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white/5 shadow-sm">
+          <div className="flex h-full flex-col p-6 sm:p-8">
+            <div className="flex shrink-0 items-center justify-between">
+              <div className="flex items-center gap-2"><FlashMark className="h-4 w-4 text-orange" /><span className="text-sm font-bold tracking-tight text-foreground">{name}</span></div>
+              <span className="text-xs font-semibold tabular-nums text-slate-400">{pad(idx + 1)} / {pad(total)}</span>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col justify-center py-2">
+              <input value={cur.label} onChange={(e) => set({ label: e.target.value })} placeholder="Kicker" className="w-full rounded-md border border-transparent bg-transparent text-[11px] font-bold uppercase tracking-[0.18em] text-orange-dark placeholder:text-orange-dark/40 hover:border-slate-200 focus:border-orange focus:outline-none" />
+              <textarea value={cur.headline} onChange={(e) => set({ headline: e.target.value })} rows={2} placeholder="Headline" className="mt-1 w-full resize-none rounded-md border border-transparent bg-transparent text-2xl font-bold leading-tight tracking-tight text-foreground placeholder:text-slate-400 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
+              <div className="mt-3 space-y-1.5 overflow-auto">
+                {cur.points.map((p, pi) => (
+                  <div key={pi} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-orange" />
+                    <input value={p} onChange={(e) => setPoint(pi, e.target.value)} placeholder="Point" className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent text-[15px] text-slate-700 placeholder:text-slate-400 hover:border-slate-200 focus:border-orange focus:outline-none" />
+                    <button onClick={() => removePoint(pi)} aria-label="Remove point" className="shrink-0 text-slate-300 hover:text-slate-500"><Icon name="minus" className="h-3.5 w-3.5" /></button>
+                  </div>
+                ))}
+                <button onClick={addPoint} className="text-xs font-semibold text-orange-dark hover:underline">+ Add point</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button onClick={() => go(idx - 1)} aria-label="Previous slide" className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur hover:text-orange-dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m15 18-6-6 6-6" /></svg></button>
+        <button onClick={() => go(idx + 1)} aria-label="Next slide" className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm backdrop-blur hover:text-orange-dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m9 18 6-6-6-6" /></svg></button>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {items.map((s, n) => (
+          <button key={s.id} onClick={() => setI(n)} className={`flex shrink-0 flex-col rounded-lg border px-3 py-2 text-left transition-colors ${n === idx ? "border-orange bg-orange-tint/30 ring-1 ring-orange" : "border-slate-200 hover:border-orange/40"}`}>
+            <span className="text-[10px] font-bold tabular-nums text-slate-400">{pad(n + 1)}</span>
+            <span className={`max-w-[8rem] truncate text-xs font-semibold ${n === idx ? "text-orange-dark" : "text-slate-600"}`}>{s.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsPanel({ published }: { published: boolean }) {
+  const lm = VALIDATION.liveMetrics;
+  const [team, setTeam] = useState([
+    { id: "tm0", label: "Shares", value: "0" },
+    { id: "tm1", label: "Meetings booked", value: "0" },
+    { id: "tm2", label: "Sales made", value: "0" },
+  ]);
+  const idRef = useRef(0);
+  const set = (id: string, patch: Partial<{ label: string; value: string }>) => setTeam((t) => t.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  const add = () => setTeam((t) => [...t, { id: `tm-add-${idRef.current++}`, label: "", value: "0" }]);
+  const remove = (id: string) => setTeam((t) => t.filter((x) => x.id !== id));
+  const dash = (s: string) => (published ? s : "—");
+  return (
+    <div className="space-y-5">
+      <div>
+        <SubHead>Landing page</SubHead>
+        <div className="grid grid-cols-3 gap-2">
+          {[{ l: "Visitors", v: lm[0].value }, { l: "Signups", v: lm[1].value }, { l: "Conversion", v: lm[2].value }].map((m) => (
+            <div key={m.l} className="rounded-xl border border-slate-200 p-3"><p className="text-xs text-slate-500">{m.l}</p><p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{dash(m.v)}</p></div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <SubHead>Link clicks</SubHead>
+        <div className="grid grid-cols-3 gap-2">
+          {[{ l: "LinkedIn", v: "96" }, { l: "Email", v: "54" }, { l: "WhatsApp", v: "38" }].map((m) => (
+            <div key={m.l} className="rounded-xl border border-slate-200 p-3"><p className="flex items-center gap-1 text-xs text-slate-500"><Icon name="link" className="h-3 w-3" /> {m.l}</p><p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{dash(m.v)}</p></div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <SubHead>Team metrics</SubHead>
+        <p className="-mt-1 mb-2 text-xs text-slate-400">Added manually — track shares, meetings, sales, or anything custom.</p>
+        <div className="space-y-2">
+          {team.map((m) => (
+            <div key={m.id} className="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5">
+              <input value={m.label} onChange={(e) => set(m.id, { label: e.target.value })} placeholder="Metric" className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none" />
+              <input value={m.value} onChange={(e) => set(m.id, { value: e.target.value.replace(/[^0-9.]/g, "") })} className="w-20 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-orange focus:outline-none" />
+              <button onClick={() => remove(m.id)} aria-label="Remove metric" className="shrink-0 text-slate-300 hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
+            </div>
+          ))}
+        </div>
+        <button onClick={add} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add metric</button>
+      </div>
+      {!published && <p className="flex items-center gap-1.5 text-xs text-slate-400"><Icon name="bolt" className="h-3.5 w-3.5" /> Publish the landing page to start collecting live metrics.</p>}
+    </div>
+  );
+}
+
+function FeedbackSynthesis({ onAddActions }: { onAddActions: (texts: string[]) => void }) {
+  const [notes, setNotes] = useState<{ id: string; text: string }[]>([]);
+  const [draft, setDraft] = useState("");
+  const [files, setFiles] = useState<string[]>([]);
+  const [synthesized, setSynthesized] = useState(false);
+  const idRef = useRef(0);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const addNote = () => {
+    const t = draft.trim();
+    if (!t) return;
+    setNotes((n) => [...n, { id: `n${idRef.current++}`, text: t }]);
+    setDraft("");
+  };
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fs = Array.from(e.target.files ?? []).map((f) => f.name);
+    if (fs.length) setFiles((x) => [...x, ...fs]);
+  };
+  const run = () => { onAddActions(SYNTHESIS_SUGGESTIONS); setSynthesized(true); };
+  return (
+    <div className="space-y-5">
+      <div>
+        <SubHead>Add feedback</SubHead>
+        <div className="flex gap-2">
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNote(); } }} placeholder="Type a note from a conversation…" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-orange focus:outline-none" />
+          <button onClick={addNote} className="shrink-0 rounded-lg bg-orange px-3 py-2 text-sm font-bold text-white hover:bg-orange-dark">Add</button>
+        </div>
+        <button onClick={() => fileRef.current?.click()} className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-orange-dark hover:underline"><Icon name="doc" className="h-4 w-4" /> Upload transcript</button>
+        <input ref={fileRef} type="file" multiple accept=".txt,.md,.pdf,.docx" onChange={onFile} className="hidden" />
+        {(notes.length > 0 || files.length > 0) && (
+          <ul className="mt-3 space-y-1.5">
+            {notes.map((n) => <li key={n.id} className="flex items-start gap-2 rounded-lg bg-slate-50 p-2.5 text-sm text-slate-700"><Icon name="message" className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />{n.text}</li>)}
+            {files.map((f, i) => <li key={`f${i}`} className="flex items-center gap-2 rounded-lg bg-slate-50 p-2.5 text-sm text-slate-700"><Icon name="doc" className="h-4 w-4 shrink-0 text-slate-400" />{f}</li>)}
+          </ul>
+        )}
+      </div>
+      <div>
+        <SubHead>Weekly synthesis</SubHead>
+        <p className="-mt-1 mb-2 text-xs text-slate-400">Flash reads every note and transcript each Monday for four weeks, then drops suggested actions into your targets up top.</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {SYNTHESIS_WEEKS.map((w, i) => (
+            <div key={w} className={`rounded-xl border p-2.5 text-center ${i === 0 ? "border-orange/40 bg-orange-tint/20" : "border-slate-200"}`}>
+              <p className="text-[11px] font-semibold text-slate-500">{w}</p>
+              <p className={`mt-0.5 text-xs font-bold ${i === 0 ? "text-orange-dark" : "text-slate-400"}`}>{i === 0 ? "Next up" : "Scheduled"}</p>
+            </div>
+          ))}
+        </div>
+        <button onClick={run} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-orange/40 bg-orange-tint/30 px-4 py-2 text-sm font-bold text-orange-dark hover:bg-orange-tint"><Icon name="sparkle" className="h-4 w-4" /> Preview a synthesis (example)</button>
+        {synthesized && <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-500"><Icon name="check" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange" /> Added {SYNTHESIS_SUGGESTIONS.length} example suggested actions to your targets up top. Real runs use your actual feedback.</p>}
+      </div>
+    </div>
   );
 }
 
@@ -2886,6 +3278,11 @@ function buildDeck(v: VentureDraft, name: string, detail?: VentureDetail): DeckS
     { kind: "team", label: "Team", headline: "The founding team", team },
     { kind: "ask", label: "The ask", headline: "Run the pilot, hit the day-30 gate.", points: fin ? fin.rows.slice(0, 3).map((r) => `${r.label}: ${r.value}`) : ["First pilot cohort.", "Warm intros pre-lined.", "Day-30 go/no-go."] },
   ];
+}
+
+// The IG carousel is a simplified pitch deck — one editable portrait slide per deck slide.
+function buildCarousel(deck: DeckSlide[]): { kicker: string; title: string; body: string }[] {
+  return deck.slice(0, 8).map((s) => ({ kicker: s.label, title: s.headline, body: s.points?.[0] ?? "" }));
 }
 
 function buildLanding(v: VentureDraft, detail?: VentureDetail): LandingCopy {
