@@ -960,7 +960,7 @@ function IntakeNav({ curSi, answeredIn, cohort = COHORT, youId = YOU, othersProg
   return (
     <div className="hidden space-y-4 lg:block">
       <IntakeDeadline endsAt={windowEndsAt} />
-      <RailTitle>Your intake</RailTitle>
+      <RailTitle>Steps</RailTitle>
       <p className="px-1 text-xs text-slate-400">Four sections, one question at a time. Your answers stay anonymous and are presented as a team.</p>
       <div className="space-y-1.5">
         {INTAKE.map((s, i) => {
@@ -1667,6 +1667,14 @@ function RankList({ items, onItems, addLabel }: { items: Votable[]; onItems: (v:
 
 /* ------------------------------------------- 2b. Opportunity (spaces → research → birth) */
 
+const OPP_FRAMEWORK = [
+  { label: "Real Problem", weight: "25%", desc: "Is this a genuine problem people actually have? Are people already spending money or effort to solve it? Is the market growing? How often do people experience this problem? How painful is it when it happens?" },
+  { label: "Founder Fit", weight: "20%", desc: "Are you the right team? Do you have unique insight, market access or genuine obsession with this problem?" },
+  { label: "Right Moment", weight: "15%", desc: "Are external conditions aligned? Is there a technology shift, regulatory change, cultural trend, or capital flow that makes now the right moment?" },
+  { label: "Flash Proof", weight: "25%", desc: "Can we prove this works quickly and cheaply — before we build anything serious? Can we test the core idea with a landing page, a phone call, and a spreadsheet? Can we get 10 customer conversations in the first week?" },
+  { label: "Benefits & Impact", weight: "15%", desc: "Does this create clear, measurable value for users? (Time saved, money made, stress reduced, lives saved, health improved, etc.)" },
+];
+
 function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT, youId = YOU }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[]; youId?: string }) {
   // Guard against opportunity data persisted under the pre-evaluation shape —
   // fall back to the authored mock so old seeds don't crash the step.
@@ -1676,13 +1684,12 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
   // Order anchors to the agent's ranking by total score; the loud CTA is the top.
   const ranked = [...od.spaces].sort((a, b) => oppTotal(b.evaluation) - oppTotal(a.evaluation));
   const topId = ranked[0]?.id;
-  // Editable evaluations (hybrid nudge) + your excitement (the one decision).
+  // Editable evaluations (scores + notes) + your excitement (the one decision).
   const [evals, setEvals] = useState<Record<string, OppEvaluation>>(() => Object.fromEntries(od.spaces.map((s) => [s.id, { ...s.evaluation }])));
   const [conviction, setConviction] = useState<Record<string, number>>({});
-  const [adjusting, setAdjusting] = useState<Record<string, boolean>>({});
-  const [openOverview, setOpenOverview] = useState<Record<string, boolean>>({});
   const setC = (id: string, n: number) => setConviction((c) => ({ ...c, [id]: n }));
-  const setScore = (id: string, key: keyof OppEvaluation, val: number) => setEvals((e) => ({ ...e, [id]: { ...e[id], [key]: { ...e[id][key], score: val } } }));
+  const setScore = (id: string, key: keyof OppEvaluation, val: number) => setEvals((e) => ({ ...e, [id]: { ...e[id], [key]: { ...e[id][key], score: Math.max(0, Math.min(10, val)) } } }));
+  const setNote = (id: string, key: keyof OppEvaluation, note: string) => setEvals((e) => ({ ...e, [id]: { ...e[id], [key]: { ...e[id][key], note } } }));
   const allRated = od.spaces.length > 0 && od.spaces.every((s) => (conviction[s.id] ?? 0) > 0);
   const pick = [...od.spaces].sort((a, b) => (conviction[b.id] ?? 0) - (conviction[a.id] ?? 0))[0];
   const pickTitle = pick && (conviction[pick.id] ?? 0) > 0 ? pick.title : "—";
@@ -1700,14 +1707,8 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
     <Columns
       left={
         <div className="space-y-4">
-          <RailTitle>Stages</RailTitle>
-          {[
-            { t: "Scored opportunities", d: "Distinct, scored and ranked from your consensus.", n: "1" },
-            { t: "Rate excitement", d: "How excited you'd be to build each — 1 to 10.", n: "2" },
-          ].map((s) => (
-            <Card key={s.t}><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{s.n}</span><div><p className="text-sm font-bold text-foreground">{s.t}</p><p className="text-xs text-slate-500">{s.d}</p></div></div></Card>
-          ))}
-          <Card className="bg-orange-tint/20"><p className="text-sm text-slate-600"><span className="font-semibold text-foreground">Decided by the team.</span> The score ranks them; each of you rates how excited you&rsquo;d be to build — the team&rsquo;s excitement narrows to one.</p></Card>
+          <RailTitle>Steps</RailTitle>
+          <Card><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">1</span><div><p className="text-sm font-bold text-foreground">Rate Opportunities</p><p className="text-xs text-slate-500">How excited you&rsquo;d be to build each opportunity — 1 to 10. The team&rsquo;s excitement narrows to one idea.</p></div></div></Card>
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
             <RailTitle>Your top pick</RailTitle>
             <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-3"><p className="text-sm font-semibold text-foreground">{pickTitle}</p>{pick && pickTitle !== "—" && <p className="mt-1 text-xs text-slate-500">{pick.customer}</p>}</div>
@@ -1721,20 +1722,29 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
           <Card className="p-5">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Opportunities</h1>
             <p className="mt-1 text-slate-500">Distinct opportunities you could build, scored and ranked. The one input you give is how excited you&rsquo;d be to build each — the team&rsquo;s excitement narrows to one.</p>
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Evaluation framework</p>
+              <p className="mt-1 text-sm text-slate-500">Each opportunity is generated and scored on this weighted criteria:</p>
+              <div className="mt-3 space-y-2.5">
+                {OPP_FRAMEWORK.map((c) => (
+                  <div key={c.label}>
+                    <p className="text-sm font-semibold text-foreground">{c.label} <span className="font-normal text-slate-400">({c.weight})</span></p>
+                    <p className="mt-0.5 text-sm text-slate-500">{c.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </Card>
 
           <div className="space-y-3">
-            {ranked.map((s, i) => {
+            {ranked.map((s) => {
               const ev = evals[s.id] ?? s.evaluation;
               const total = oppTotal(ev);
               const band = oppBand(total);
               const isTop = s.id === topId;
-              const adj = !!adjusting[s.id];
-              const ov = !!openOverview[s.id];
               return (
                 <div key={s.id} className={`rounded-2xl border p-4 transition-colors ${isTop ? "border-orange ring-1 ring-orange/30" : "border-slate-200"}`}>
-                  <div className="flex items-start gap-3">
-                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isTop ? "bg-orange text-white" : "bg-slate-100 text-slate-500"}`}>{i + 1}</span>
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-lg font-bold tracking-tight text-foreground">{s.title}</p>
@@ -1748,41 +1758,30 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
                     </div>
                   </div>
 
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Evaluation</p>
-                      <button onClick={() => setAdjusting((a) => ({ ...a, [s.id]: !a[s.id] }))} className="text-xs font-semibold text-orange-dark hover:underline">{adj ? "Done" : "Adjust scores"}</button>
-                    </div>
-                    <div className="mt-2 space-y-2.5">
-                      {OPP_CRITERIA.map((c) => {
-                        const sc = ev[c.key];
-                        return (
-                          <div key={c.key}>
-                            <div className="flex items-center justify-between gap-2 text-xs">
-                              <span className="font-semibold text-slate-500">{c.label} <span className="font-normal text-slate-400">{Math.round(c.weight * 100)}%</span></span>
-                              {adj
-                                ? <ScoreStepper score={sc.score} onChange={(v) => setScore(s.id, c.key, v)} />
-                                : <span className="font-bold tabular-nums text-foreground">{sc.score}/10</span>}
-                            </div>
-                            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange" style={{ width: `${sc.score * 10}%` }} /></div>
-                            <p className="mt-0.5 text-[11px] text-slate-400">{sc.note}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                    <div><p className="text-sm font-semibold text-foreground">Problem</p><p className="mt-0.5 text-sm text-slate-400">{s.problem}</p></div>
+                    <div><p className="text-sm font-semibold text-foreground">Solution</p><p className="mt-0.5 text-sm text-slate-400">{s.solution}</p></div>
+                    <div><p className="text-sm font-semibold text-foreground">Market</p><p className="mt-0.5 text-sm text-slate-400">{s.market}</p></div>
                   </div>
 
-                  <button onClick={() => setOpenOverview((o) => ({ ...o, [s.id]: !o[s.id] }))} className="mt-3 flex w-full items-center gap-1.5 border-t border-slate-100 pt-3 text-xs font-semibold text-slate-500 hover:text-orange">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={`h-3.5 w-3.5 transition-transform ${ov ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
-                    Overview — problem, solution &amp; market
-                  </button>
-                  {ov && (
-                    <dl className="mt-2 space-y-2 text-xs">
-                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Problem</dt><dd className="mt-0.5 text-slate-600">{s.problem}</dd></div>
-                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Solution</dt><dd className="mt-0.5 text-slate-600">{s.solution}</dd></div>
-                      <div><dt className="font-semibold uppercase tracking-wide text-slate-400">Market</dt><dd className="mt-0.5 text-slate-600">{s.market}</dd></div>
-                    </dl>
-                  )}
+                  <div className="mt-4">
+                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">Evaluation</p>
+                    <table className="w-full text-sm">
+                      <thead><tr className="text-left text-[11px] font-bold uppercase tracking-wide text-slate-400"><th className="pb-1.5 pr-3">Criteria</th><th className="pb-1.5 pr-3">Score</th><th className="pb-1.5">Notes</th></tr></thead>
+                      <tbody>
+                        {OPP_CRITERIA.map((c) => {
+                          const sc = ev[c.key];
+                          return (
+                            <tr key={c.key} className="border-t border-slate-100 align-top">
+                              <td className="whitespace-nowrap py-2 pr-3 font-semibold text-slate-500">{c.label}</td>
+                              <td className="py-2 pr-3"><span className="inline-flex items-center gap-0.5"><input inputMode="numeric" value={sc.score} onChange={(e) => setScore(s.id, c.key, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)} className="w-11 rounded-md border border-slate-200 px-1.5 py-1 text-right text-sm tabular-nums focus:border-orange focus:outline-none" /><span className="text-xs text-slate-400">/10</span></span></td>
+                              <td className="py-2"><input value={sc.note} onChange={(e) => setNote(s.id, c.key, e.target.value)} placeholder="Why this score" className="-mx-1 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-400 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:text-foreground focus:outline-none" /></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
 
                   <div className="mt-3 border-t border-slate-100 pt-3"><ConvictionScale value={conviction[s.id] ?? 0} onChange={(n) => setC(s.id, n)} /></div>
                 </div>
@@ -2066,7 +2065,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
     <Columns
       left={
         <div className="space-y-4">
-          <RailTitle>How it works</RailTitle>
+          <RailTitle>Steps</RailTitle>
           <div className="space-y-2.5">
             {[
               { n: "1", t: "Share your idea", d: "Publish the landing page and put it in front of your network." },
