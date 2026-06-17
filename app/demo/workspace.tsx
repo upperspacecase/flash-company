@@ -1393,13 +1393,13 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
 
           <Part label="Focus" hint="Rank what matters most — your order, and your teammates', sets the team's focus.">
             <div className="space-y-3">
-              <ConfirmItem title="Lived problems" hint="Tap to award 1st, 2nd, 3rd place." open={open.problems} onToggle={() => toggleOpen("problems")} confirmed={confirmed.problems} onConfirm={() => confirmSection("problems")}>
+              <ConfirmItem title="Lived problems" hint="Tap to award 1st, 2nd, 3rd place." open={open.problems} onToggle={() => toggleOpen("problems")} confirmed={confirmed.problems} onConfirm={() => confirmSection("problems")} canConfirm={problems.some((p) => p.rank != null)} confirmHint="Award a place to confirm">
                 <RankList items={problems} onItems={setProblems} addLabel="problem" />
               </ConfirmItem>
-              <ConfirmItem title="Insights" hint="Tap to award 1st, 2nd, 3rd place." open={open.obsessions} onToggle={() => toggleOpen("obsessions")} confirmed={confirmed.obsessions} onConfirm={() => confirmSection("obsessions")}>
+              <ConfirmItem title="Insights" hint="Tap to award 1st, 2nd, 3rd place." open={open.obsessions} onToggle={() => toggleOpen("obsessions")} confirmed={confirmed.obsessions} onConfirm={() => confirmSection("obsessions")} canConfirm={obsessions.some((p) => p.rank != null)} confirmHint="Award a place to confirm">
                 <RankList items={obsessions} onItems={setObsessions} addLabel="insight" />
               </ConfirmItem>
-              <ConfirmItem title="Potential target markets" hint="Tap to award 1st, 2nd, 3rd place." open={open.markets} onToggle={() => toggleOpen("markets")} confirmed={confirmed.markets} onConfirm={() => confirmSection("markets")}>
+              <ConfirmItem title="Potential target markets" hint="Tap to award 1st, 2nd, 3rd place." open={open.markets} onToggle={() => toggleOpen("markets")} confirmed={confirmed.markets} onConfirm={() => confirmSection("markets")} canConfirm={markets.some((p) => p.rank != null)} confirmHint="Award a place to confirm">
                 <RankList items={markets} onItems={setMarkets} addLabel="market" />
               </ConfirmItem>
             </div>
@@ -1418,7 +1418,7 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
 }
 
 // A confirmable, collapsible Team item: add / edit / confirm. No delete or veto.
-function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, children }: { title: string; hint?: string; open: boolean; onToggle: () => void; confirmed?: boolean; onConfirm?: () => void; children: React.ReactNode }) {
+function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, canConfirm = true, confirmHint, children }: { title: string; hint?: string; open: boolean; onToggle: () => void; confirmed?: boolean; onConfirm?: () => void; canConfirm?: boolean; confirmHint?: string; children: React.ReactNode }) {
   // The open, not-yet-confirmed section is "the action to take" — orange outline.
   const active = open && !confirmed;
   return (
@@ -1435,8 +1435,9 @@ function ConfirmItem({ title, hint, open, onToggle, confirmed, onConfirm, childr
         <div className="border-t border-slate-100 p-4">
           {children}
           {onConfirm && (
-            <div className="mt-4 flex justify-end">
-              <button onClick={onConfirm} className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-6 py-3 text-sm font-bold transition-colors ${confirmed ? "bg-orange/20 text-orange-dark" : "bg-orange text-white hover:opacity-90"}`}><Icon name={confirmed ? "check" : "thumb"} className="h-4 w-4" />{confirmed ? "Confirmed" : "Confirm"}</button>
+            <div className="mt-4 flex items-center justify-end gap-3">
+              {!confirmed && !canConfirm && confirmHint && <span className="text-xs text-slate-400">{confirmHint}</span>}
+              <button onClick={onConfirm} disabled={!confirmed && !canConfirm} className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-6 py-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${confirmed ? "bg-orange/20 text-orange-dark" : "bg-orange text-white hover:opacity-90"}`}><Icon name={confirmed ? "check" : "thumb"} className="h-4 w-4" />{confirmed ? "Confirmed" : "Confirm"}</button>
             </div>
           )}
         </div>
