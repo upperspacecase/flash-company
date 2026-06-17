@@ -1966,7 +1966,10 @@ function InsightAccordion({ lenses, onReframe }: { lenses: Lens[]; onReframe: (i
         <details key={l.id} className="group rounded-xl border border-slate-200 p-3">
           <summary className="flex cursor-pointer list-none items-start gap-2">
             <Icon name={l.icon} className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-dark" />
-            <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{l.question}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] font-bold uppercase tracking-wide text-orange-dark">{l.name}</span>
+              <span className="block text-sm font-semibold text-foreground">{l.question}</span>
+            </span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-300 transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
           <EditableArea value={l.reframe} onChange={(t) => onReframe(l.id, t)} className="mt-2 text-sm text-slate-600" placeholder="One paragraph that would change a decision." />
