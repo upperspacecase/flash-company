@@ -430,19 +430,19 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 0:
         return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} resumeUrl={resumeUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} isHost={live ? live.isHost : true} windowEndsAt={live?.windowEndsAt} />;
       case 1:
-        return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} windowEndsAt={live?.windowEndsAt} />;
+        return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} windowEndsAt={live?.windowEndsAt} persist={!live} />;
       case 2:
         return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} youId={youId} data={synthesisData} status={live ? status : null} />;
       case 3:
         if (live && !oppData)
           return <GeneratingState title="Finding your opportunities" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into opportunities to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
-        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} youId={youId} />;
+        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} youId={youId} persist={!live} />;
       case 4:
         if (live && !ventData && !ratingsReady)
           return <GeneratingState title="Choosing your idea" sub="Waiting for everyone to rate their excitement — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
         return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
-        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} />;
+        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} persist={!live} />;
     }
   };
 
@@ -850,11 +850,11 @@ function isAnswered(v: unknown): boolean {
 // Flattened question flow with section markers, for the conversational intake.
 const INTAKE_FLOW = INTAKE.flatMap((s, si) => s.questions.map((q, qi) => ({ q, si, title: s.title, blurb: s.blurb, first: qi === 0 })));
 
-function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId = YOU, othersProgress, windowEndsAt }: { onNext: () => void; onSubmit?: (answers: Record<string, unknown>) => void; initialAnswers?: Record<string, unknown>; cohort?: Member[]; youId?: string; othersProgress?: (id: string) => number; windowEndsAt?: string }) {
-  const [step, setStep] = useState(0);
-  const [reached, setReached] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, unknown>>(initialAnswers ?? {});
-  const [voiceMode, setVoiceMode] = useState<Record<string, boolean>>({});
+function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId = YOU, othersProgress, windowEndsAt, persist = false }: { onNext: () => void; onSubmit?: (answers: Record<string, unknown>) => void; initialAnswers?: Record<string, unknown>; cohort?: Member[]; youId?: string; othersProgress?: (id: string) => number; windowEndsAt?: string; persist?: boolean }) {
+  const [step, setStep] = usePersistedState("flash_intake_step", 0, persist);
+  const [reached, setReached] = usePersistedState("flash_intake_reached", 0, persist);
+  const [answers, setAnswers] = usePersistedState<Record<string, unknown>>("flash_intake_answers", initialAnswers ?? {}, persist);
+  const [voiceMode, setVoiceMode] = usePersistedState<Record<string, boolean>>("flash_intake_voice", {}, persist);
   const [submitted, setSubmitted] = useState(false);
   const done = step >= INTAKE_FLOW.length;
   // Persist this member's intake (complete) the moment they finish — synthesis
@@ -1471,6 +1471,27 @@ function NetworkList({ cohort = COHORT, nodes, onNodes, kind, icon, addLabel }: 
 // demo countdown stays consistent across reloads instead of resetting. Computes
 // on the client (hydration-safe). Returns remaining whole seconds, or null
 // before mount.
+// Keeps a component's input state across tab switches (and reloads) by mirroring
+// it to localStorage. With `enabled` false it's a plain useState (used in live
+// mode, where progress is persisted server-side instead).
+function usePersistedState<T>(key: string, initial: T, enabled = true): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [state, setState] = useState<T>(initial);
+  const loaded = useRef(false);
+  useEffect(() => {
+    if (!enabled) { loaded.current = true; return; }
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw != null) setState(JSON.parse(raw) as T);
+    } catch { /* private mode / bad json */ }
+    loaded.current = true;
+  }, [key, enabled]);
+  useEffect(() => {
+    if (!enabled || !loaded.current) return;
+    try { localStorage.setItem(key, JSON.stringify(state)); } catch { /* private mode */ }
+  }, [key, enabled, state]);
+  return [state, setState];
+}
+
 function useDeadline(endsAt: string | undefined, durationMs: number, key: string): number | null {
   const [now, setNow] = useState<number | null>(null);
   const [end, setEnd] = useState<number | null>(null);
@@ -1675,7 +1696,7 @@ const OPP_FRAMEWORK = [
   { label: "Benefits & Impact", weight: "15%", desc: "Does this create clear, measurable value for users? (Time saved, money made, stress reduced, lives saved, health improved, etc.)" },
 ];
 
-function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT, youId = YOU }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[]; youId?: string }) {
+function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT, youId = YOU, persist = false }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[]; youId?: string; persist?: boolean }) {
   // Guard against opportunity data persisted under the pre-evaluation shape —
   // fall back to the authored mock so old seeds don't crash the step.
   const raw = data ?? mockOpportunityData();
@@ -1685,9 +1706,11 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
   const ranked = [...od.spaces].sort((a, b) => oppTotal(b.evaluation) - oppTotal(a.evaluation));
   const topId = ranked[0]?.id;
   // Editable evaluations (scores + notes) + your excitement (the one decision).
-  const [evals, setEvals] = useState<Record<string, OppEvaluation>>(() => Object.fromEntries(od.spaces.map((s) => [s.id, { ...s.evaluation }])));
-  const [conviction, setConviction] = useState<Record<string, number>>({});
+  const [evals, setEvals] = usePersistedState<Record<string, OppEvaluation>>("flash_opp_evals", Object.fromEntries(od.spaces.map((s) => [s.id, { ...s.evaluation }])), persist);
+  const [conviction, setConviction] = usePersistedState<Record<string, number>>("flash_opp_conviction", {}, persist);
+  const [convictionNote, setConvictionNote] = usePersistedState<Record<string, string>>("flash_opp_note", {}, persist);
   const setC = (id: string, n: number) => setConviction((c) => ({ ...c, [id]: n }));
+  const setCN = (id: string, note: string) => setConvictionNote((c) => ({ ...c, [id]: note }));
   const setScore = (id: string, key: keyof OppEvaluation, val: number) => setEvals((e) => ({ ...e, [id]: { ...e[id], [key]: { ...e[id][key], score: Math.max(0, Math.min(10, val)) } } }));
   const setNote = (id: string, key: keyof OppEvaluation, note: string) => setEvals((e) => ({ ...e, [id]: { ...e[id], [key]: { ...e[id][key], note } } }));
   const allRated = od.spaces.length > 0 && od.spaces.every((s) => (conviction[s.id] ?? 0) > 0);
@@ -1743,48 +1766,57 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
               const band = oppBand(total);
               const isTop = s.id === topId;
               return (
-                <div key={s.id} className={`rounded-2xl border p-4 transition-colors ${isTop ? "border-orange ring-1 ring-orange/30" : "border-slate-200"}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-lg font-bold tracking-tight text-foreground">{s.title}</p>
-                        {isTop && <span className="shrink-0 rounded-full bg-orange-tint px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-dark">Top ranked</span>}
+                <details key={s.id} className={`group rounded-2xl border transition-colors ${isTop ? "border-orange ring-1 ring-orange/30" : "border-slate-200"}`} open={isTop}>
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
+                    <div className="flex min-w-0 flex-1 items-start gap-2">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-lg font-bold tracking-tight text-foreground">{s.title}</p>
+                          {isTop && <span className="shrink-0 rounded-full bg-orange-tint px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-dark">Top ranked</span>}
+                          {conviction[s.id] ? <span className="shrink-0 rounded-full bg-orange/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-dark">Rated {conviction[s.id]}/10</span> : null}
+                        </div>
+                        <p className="mt-0.5 text-sm text-slate-600">{s.hook}</p>
                       </div>
-                      <p className="mt-0.5 text-sm text-slate-600">{s.hook}</p>
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-2xl font-extrabold tabular-nums leading-none text-foreground">{total.toFixed(1)}<span className="text-sm font-bold text-slate-400">/10</span></p>
                       <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${bandClass(band)}`}>{band}</span>
                     </div>
-                  </div>
+                  </summary>
 
-                  <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-                    <div><p className="text-sm font-semibold text-foreground">Problem</p><p className="mt-0.5 text-sm text-slate-400">{s.problem}</p></div>
-                    <div><p className="text-sm font-semibold text-foreground">Solution</p><p className="mt-0.5 text-sm text-slate-400">{s.solution}</p></div>
-                    <div><p className="text-sm font-semibold text-foreground">Market</p><p className="mt-0.5 text-sm text-slate-400">{s.market}</p></div>
-                  </div>
+                  <div className="border-t border-slate-100 p-4">
+                    <div className="space-y-2">
+                      <div><p className="text-sm font-semibold text-foreground">Problem</p><p className="mt-0.5 text-sm text-slate-400">{s.problem}</p></div>
+                      <div><p className="text-sm font-semibold text-foreground">Solution</p><p className="mt-0.5 text-sm text-slate-400">{s.solution}</p></div>
+                      <div><p className="text-sm font-semibold text-foreground">Market</p><p className="mt-0.5 text-sm text-slate-400">{s.market}</p></div>
+                    </div>
 
-                  <div className="mt-4">
-                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">Evaluation</p>
-                    <table className="w-full text-sm">
-                      <thead><tr className="text-left text-[11px] font-bold uppercase tracking-wide text-slate-400"><th className="pb-1.5 pr-3">Criteria</th><th className="pb-1.5 pr-3">Score</th><th className="pb-1.5">Notes</th></tr></thead>
-                      <tbody>
-                        {OPP_CRITERIA.map((c) => {
-                          const sc = ev[c.key];
-                          return (
-                            <tr key={c.key} className="border-t border-slate-100 align-top">
-                              <td className="whitespace-nowrap py-2 pr-3 font-semibold text-slate-500">{c.label}</td>
-                              <td className="py-2 pr-3"><span className="inline-flex items-center gap-0.5"><input inputMode="numeric" value={sc.score} onChange={(e) => setScore(s.id, c.key, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)} className="w-11 rounded-md border border-slate-200 px-1.5 py-1 text-right text-sm tabular-nums focus:border-orange focus:outline-none" /><span className="text-xs text-slate-400">/10</span></span></td>
-                              <td className="py-2"><input value={sc.note} onChange={(e) => setNote(s.id, c.key, e.target.value)} placeholder="Why this score" className="-mx-1 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-400 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:text-foreground focus:outline-none" /></td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                    <div className="mt-4">
+                      <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">Evaluation</p>
+                      <table className="w-full text-sm">
+                        <thead><tr className="text-left text-[11px] font-bold uppercase tracking-wide text-slate-400"><th className="pb-1.5 pr-3">Score type</th><th className="pb-1.5 pr-3">Score</th><th className="pb-1.5">Notes / justification</th></tr></thead>
+                        <tbody>
+                          {OPP_CRITERIA.map((c) => {
+                            const sc = ev[c.key];
+                            return (
+                              <tr key={c.key} className="border-t border-slate-100 align-top">
+                                <td className="whitespace-nowrap py-2 pr-3 font-semibold text-slate-500">{c.label}</td>
+                                <td className="py-2 pr-3"><span className="inline-flex items-center gap-0.5"><input inputMode="numeric" value={sc.score} onChange={(e) => setScore(s.id, c.key, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)} className="w-11 rounded-md border border-slate-200 px-1.5 py-1 text-right text-sm tabular-nums focus:border-orange focus:outline-none" /><span className="text-xs text-slate-400">/10</span></span></td>
+                                <td className="py-2"><input value={sc.note} onChange={(e) => setNote(s.id, c.key, e.target.value)} placeholder="Why this score" className="-mx-1 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-400 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:text-foreground focus:outline-none" /></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
 
-                  <div className="mt-3 border-t border-slate-100 pt-3"><ConvictionScale value={conviction[s.id] ?? 0} onChange={(n) => setC(s.id, n)} /></div>
-                </div>
+                    <div className="mt-4 border-t border-slate-100 pt-3">
+                      <ConvictionScale value={conviction[s.id] ?? 0} onChange={(n) => setC(s.id, n)} />
+                      <textarea value={convictionNote[s.id] ?? ""} onChange={(e) => setCN(s.id, e.target.value)} rows={2} placeholder="Explain your level of excitement (optional)" className="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:bg-white/5 focus:outline-none" />
+                    </div>
+                  </div>
+                </details>
               );
             })}
           </div>
@@ -1824,12 +1856,17 @@ function ConvictionScale({ value, onChange }: { value: number; onChange: (n: num
       <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">How excited to build this?</span>
       <div className="flex items-center gap-2">
         <div className="flex gap-0.5">
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <button key={n} type="button" onClick={() => onChange(n)} aria-label={`Excitement ${n} of 10`}
-              className={`h-7 w-6 rounded-sm text-[10px] font-bold transition-colors ${value >= n ? (n >= 6 ? "bg-orange text-white" : "bg-amber-300 text-amber-900") : "bg-slate-100 text-slate-300 hover:bg-slate-200"}`}>
-              {n}
-            </button>
-          ))}
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
+            const filled = value >= n;
+            const alpha = 0.12 + (n - 1) * (0.88 / 9);
+            return (
+              <button key={n} type="button" onClick={() => onChange(n)} aria-label={`Excitement ${n} of 10`}
+                style={filled ? { backgroundColor: `rgba(255, 85, 0, ${alpha})` } : undefined}
+                className={`h-7 w-6 rounded-sm text-[10px] font-bold transition-colors ${filled ? (n >= 6 ? "text-white" : "text-orange-dark") : "bg-slate-100 text-slate-300 hover:bg-slate-200"}`}>
+                {n}
+              </button>
+            );
+          })}
         </div>
         <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold ${value ? "bg-orange/20 text-orange-dark" : "bg-orange text-white"}`}>
           {value ? <><Icon name="check" className="h-4 w-4" />{value}/10</> : "Rate"}
@@ -2064,7 +2101,7 @@ function ValidationTimer({ endsAt }: { endsAt?: string }) {
   );
 }
 
-function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail, publicUrl }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail; publicUrl?: string }) {
+function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail, publicUrl, persist = false }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail; publicUrl?: string; persist?: boolean }) {
   const deck = buildDeck(venture, name, detail);
   // Landing: editable + persisted (venture.landing), seeded from the venture.
   const landing = venture.landing ?? buildLanding(venture, detail);
@@ -2073,10 +2110,10 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
   const landingEditable = !gated;
   const setLanding = (patch: Partial<LandingCopy>) => onVenture((p) => ({ ...p, landing: { ...(p.landing ?? landing), ...patch } }));
   // The 30-day plan is locked until the team unlocks it (demo: flips local state).
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = usePersistedState("flash_val_unlocked", false, persist);
   const [unlockOpen, setUnlockOpen] = useState(false);
   // Suggested validation targets/tasks — editable + addable (local for now).
-  const [targets, setTargets] = useState(() => VALIDATION_TARGETS.map((t, i) => ({ id: `vt${i}`, text: t.text, done: false, suggested: true, paid: !!t.paid })));
+  const [targets, setTargets] = usePersistedState("flash_val_targets", VALIDATION_TARGETS.map((t, i) => ({ id: `vt${i}`, text: t.text, done: false, suggested: true, paid: !!t.paid })), persist);
   const addId = useRef(0);
   const setTargetText = (id: string, text: string) => setTargets((ts) => ts.map((t) => (t.id === id ? { ...t, text } : t)));
   const toggleTarget = (id: string) => setTargets((ts) => ts.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
@@ -2129,7 +2166,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
           <div className="mt-7"><Section title="Free shareable assets">
             <p className="-mt-1 mb-3 text-xs text-slate-400">Post these anywhere to start gathering interest — no plan needed.</p>
             <div className="grid gap-5 lg:grid-cols-2">
-              <SocialCard name={name} seedTitle={landing.headline} seedSubtitle={landing.subhead} />
+              <SocialCard name={name} seedTitle={landing.headline} seedSubtitle={landing.subhead} persist={persist} />
               <div className="space-y-4">
                 <DraftCopy label="Email" icon="doc" body={outreach.email} />
                 <DraftCopy label="WhatsApp" icon="message" body={outreach.whatsapp} />
@@ -2150,22 +2187,22 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
 
                 <Section title="Questions for target market(s)">
                   <p className="-mt-1 mb-3 text-xs text-slate-400">What to ask in every conversation — edit any, or add your own.</p>
-                  <TargetQuestions seed={TARGET_QUESTIONS} />
+                  <TargetQuestions seed={TARGET_QUESTIONS} persist={persist} />
                 </Section>
 
                 <Section title="Extended validation assets">
                   <p className="-mt-1 mb-3 text-xs text-slate-400">Carousel, LinkedIn post, pitch deck and landing page — all editable, all in one place.</p>
                   <div className="space-y-6">
-                    <div><SubHead>Instagram carousel</SubHead><IGCarousel name={name} slides={buildCarousel(deck)} /></div>
-                    <div><SubHead>LinkedIn post</SubHead><LinkedInPost name={name} seedHeadline={venture.differentiation.statement || venture.thesis} seedCopy={outreach.linkedin} /></div>
-                    <div><SubHead>Pitch deck</SubHead><p className="mb-2 text-xs text-slate-400">{deck.length} slides, YC seed-deck order — editable, seeded from your venture outline.</p><EditableDeck slides={deck} name={name} /></div>
+                    <div><SubHead>Instagram carousel</SubHead><IGCarousel name={name} slides={buildCarousel(deck)} persist={persist} /></div>
+                    <div><SubHead>LinkedIn post</SubHead><LinkedInPost name={name} seedHeadline={venture.differentiation.statement || venture.thesis} seedCopy={outreach.linkedin} persist={persist} /></div>
+                    <div><SubHead>Pitch deck</SubHead><p className="mb-2 text-xs text-slate-400">{deck.length} slides, YC seed-deck order — editable, seeded from your venture outline.</p><EditableDeck slides={deck} name={name} persist={persist} /></div>
                     <div><SubHead>Landing page</SubHead><PublishBar published={published} onPublish={onPublish} url={liveUrl} gated={gated} /><LandingHero name={name} landing={landing} editable={landingEditable} onChange={setLanding} url={liveUrl} /></div>
                   </div>
                 </Section>
 
-                <Section title="Analytics"><AnalyticsPanel published={published} /></Section>
+                <Section title="Analytics"><AnalyticsPanel published={published} persist={persist} /></Section>
 
-                <Section title="Feedback synthesis"><FeedbackSynthesis onAddActions={addActions} /></Section>
+                <Section title="Feedback synthesis"><FeedbackSynthesis onAddActions={addActions} persist={persist} /></Section>
               </div>
             </PaidGate>
           </div>
@@ -2228,9 +2265,9 @@ function UnlockModal({ open, onClose, onUnlock }: { open: boolean; onClose: () =
 }
 
 // 1080×1350 (4:5) social card — editable title/subtitle + optional uploaded background.
-function SocialCard({ name, seedTitle, seedSubtitle }: { name: string; seedTitle: string; seedSubtitle: string }) {
-  const [title, setTitle] = useState(seedTitle);
-  const [subtitle, setSubtitle] = useState(seedSubtitle);
+function SocialCard({ name, seedTitle, seedSubtitle, persist = false }: { name: string; seedTitle: string; seedSubtitle: string; persist?: boolean }) {
+  const [title, setTitle] = usePersistedState("flash_social_title", seedTitle, persist);
+  const [subtitle, setSubtitle] = usePersistedState("flash_social_subtitle", seedSubtitle, persist);
   const [bg, setBg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2269,8 +2306,8 @@ function DraftCopy({ label, icon, body }: { label: string; icon: IconName; body:
   );
 }
 
-function TargetQuestions({ seed }: { seed: string[] }) {
-  const [qs, setQs] = useState(() => seed.map((text, i) => ({ id: `q${i}`, text })));
+function TargetQuestions({ seed, persist = false }: { seed: string[]; persist?: boolean }) {
+  const [qs, setQs] = usePersistedState("flash_target_questions", seed.map((text, i) => ({ id: `q${i}`, text })), persist);
   const idRef = useRef(0);
   const set = (id: string, text: string) => setQs((q) => q.map((x) => (x.id === id ? { ...x, text } : x)));
   const add = () => setQs((q) => [...q, { id: `q-add-${idRef.current++}`, text: "" }]);
@@ -2292,8 +2329,8 @@ function TargetQuestions({ seed }: { seed: string[] }) {
 }
 
 // Simplified pitch deck as an editable IG carousel — up to 8 portrait slides.
-function IGCarousel({ name, slides }: { name: string; slides: { kicker: string; title: string; body: string }[] }) {
-  const [items, setItems] = useState(() => slides.slice(0, 8).map((s, i) => ({ id: `ig${i}`, ...s })));
+function IGCarousel({ name, slides, persist = false }: { name: string; slides: { kicker: string; title: string; body: string }[]; persist?: boolean }) {
+  const [items, setItems] = usePersistedState("flash_ig_carousel", slides.slice(0, 8).map((s, i) => ({ id: `ig${i}`, ...s })), persist);
   const [i, setI] = useState(0);
   const idRef = useRef(0);
   const total = items.length;
@@ -2330,9 +2367,9 @@ function IGCarousel({ name, slides }: { name: string; slides: { kicker: string; 
   );
 }
 
-function LinkedInPost({ name, seedHeadline, seedCopy }: { name: string; seedHeadline: string; seedCopy: string }) {
-  const [headline, setHeadline] = useState(seedHeadline);
-  const [copy, setCopy] = useState(seedCopy);
+function LinkedInPost({ name, seedHeadline, seedCopy, persist = false }: { name: string; seedHeadline: string; seedCopy: string; persist?: boolean }) {
+  const [headline, setHeadline] = usePersistedState("flash_li_headline", seedHeadline, persist);
+  const [copy, setCopy] = usePersistedState("flash_li_copy", seedCopy, persist);
   const [bg, setBg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2364,13 +2401,13 @@ function LinkedInPost({ name, seedHeadline, seedCopy }: { name: string; seedHead
 }
 
 // Editable pitch deck — same slides as the read-only viewer, text-editable here.
-function EditableDeck({ slides, name }: { slides: DeckSlide[]; name: string }) {
-  const [items, setItems] = useState(() => slides.map((s, i) => ({
+function EditableDeck({ slides, name, persist = false }: { slides: DeckSlide[]; name: string; persist?: boolean }) {
+  const [items, setItems] = usePersistedState("flash_deck", slides.map((s, i) => ({
     id: `dk${i}`,
     label: s.label,
     headline: s.headline,
     points: s.points ?? (s.team ?? []).map((t) => `${memberById(t.memberId)?.name ?? "Founder"} — ${t.role}`),
-  })));
+  })), persist);
   const [i, setI] = useState(0);
   const total = items.length;
   const idx = Math.min(i, total - 1);
@@ -2421,13 +2458,13 @@ function EditableDeck({ slides, name }: { slides: DeckSlide[]; name: string }) {
   );
 }
 
-function AnalyticsPanel({ published }: { published: boolean }) {
+function AnalyticsPanel({ published, persist = false }: { published: boolean; persist?: boolean }) {
   const lm = VALIDATION.liveMetrics;
-  const [team, setTeam] = useState([
+  const [team, setTeam] = usePersistedState("flash_team_metrics", [
     { id: "tm0", label: "Shares", value: "0" },
     { id: "tm1", label: "Meetings booked", value: "0" },
     { id: "tm2", label: "Sales made", value: "0" },
-  ]);
+  ], persist);
   const idRef = useRef(0);
   const set = (id: string, patch: Partial<{ label: string; value: string }>) => setTeam((t) => t.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   const add = () => setTeam((t) => [...t, { id: `tm-add-${idRef.current++}`, label: "", value: "0" }]);
@@ -2470,10 +2507,10 @@ function AnalyticsPanel({ published }: { published: boolean }) {
   );
 }
 
-function FeedbackSynthesis({ onAddActions }: { onAddActions: (texts: string[]) => void }) {
-  const [notes, setNotes] = useState<{ id: string; text: string }[]>([]);
+function FeedbackSynthesis({ onAddActions, persist = false }: { onAddActions: (texts: string[]) => void; persist?: boolean }) {
+  const [notes, setNotes] = usePersistedState<{ id: string; text: string }[]>("flash_feedback_notes", [], persist);
   const [draft, setDraft] = useState("");
-  const [files, setFiles] = useState<string[]>([]);
+  const [files, setFiles] = usePersistedState<string[]>("flash_feedback_files", [], persist);
   const [synthesized, setSynthesized] = useState(false);
   const idRef = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
