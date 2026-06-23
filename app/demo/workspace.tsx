@@ -1747,7 +1747,7 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
             <p className="mt-1 text-slate-500">Distinct opportunities you could build, scored and ranked. The one input you give is how excited you&rsquo;d be to build each — the team&rsquo;s excitement narrows to one.</p>
             <div className="mt-4 border-t border-slate-100 pt-4">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Evaluation framework</p>
-              <p className="mt-1 text-sm text-slate-500">Each opportunity is generated and scored on this weighted criteria:</p>
+              <p className="mt-1 text-sm text-slate-500">Each opportunity is generated and scored with weighted criteria:</p>
               <div className="mt-3 space-y-2.5">
                 {OPP_FRAMEWORK.map((c) => (
                   <div key={c.label}>
@@ -1793,9 +1793,9 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
                     </div>
 
                     <div className="mt-4">
-                      <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">Evaluation</p>
+                      <p className="mb-1.5 text-sm font-semibold text-foreground">Evaluation</p>
                       <table className="w-full text-sm">
-                        <thead><tr className="text-left text-[11px] font-bold uppercase tracking-wide text-slate-400"><th className="pb-1.5 pr-3">Score type</th><th className="pb-1.5 pr-3">Score</th><th className="pb-1.5">Notes / justification</th></tr></thead>
+                        <thead><tr className="text-left text-[11px] font-bold uppercase tracking-wide text-slate-400"><th className="pb-1.5 pr-3"></th><th className="pb-1.5 pr-3">Score</th><th className="pb-1.5">Notes / justification</th></tr></thead>
                         <tbody>
                           {OPP_CRITERIA.map((c) => {
                             const sc = ev[c.key];
@@ -1803,7 +1803,7 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
                               <tr key={c.key} className="border-t border-slate-100 align-top">
                                 <td className="whitespace-nowrap py-2 pr-3 font-semibold text-slate-500">{c.label}</td>
                                 <td className="py-2 pr-3"><span className="inline-flex items-center gap-0.5"><input inputMode="numeric" value={sc.score} onChange={(e) => setScore(s.id, c.key, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)} className="w-11 rounded-md border border-slate-200 px-1.5 py-1 text-right text-sm tabular-nums focus:border-orange focus:outline-none" /><span className="text-xs text-slate-400">/10</span></span></td>
-                                <td className="py-2"><input value={sc.note} onChange={(e) => setNote(s.id, c.key, e.target.value)} placeholder="Why this score" className="-mx-1 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-400 hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:text-foreground focus:outline-none" /></td>
+                                <td className="py-2"><textarea value={sc.note} onChange={(e) => setNote(s.id, c.key, e.target.value)} placeholder="Why this score" rows={1} className="-mx-1 w-full min-w-0 resize-none rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm leading-snug text-slate-400 [field-sizing:content] hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:text-foreground focus:outline-none" /></td>
                               </tr>
                             );
                           })}
