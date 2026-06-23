@@ -441,7 +441,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 4:
         if (live && !ventData && !ratingsReady)
           return <GeneratingState title="Choosing your idea" sub="Waiting for everyone to rate their excitement — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
-        return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
+        return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} youId={youId} status={live ? status : null} windowEndsAt={live?.windowEndsAt} onNext={() => advance(5)} />;
       default:
         return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} persist={!live} teamSize={cohort.length} />;
     }
@@ -945,13 +945,13 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   );
 }
 
-function IntakeDeadline({ endsAt }: { endsAt?: string }) {
+function IntakeDeadline({ endsAt, label = "left to submit" }: { endsAt?: string; label?: string }) {
   const s = useDeadline(endsAt, 48 * 3600 * 1000, "flash_invite_deadline");
   const p = (n: number) => String(n).padStart(2, "0");
   return (
     <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-bold tabular-nums text-amber-700">
       <Icon name="clock" className="h-4 w-4 shrink-0" />
-      {s === null ? "··:··:··" : s <= 0 ? "Window closed" : <span>{p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)} <span className="font-semibold text-amber-600">left to submit</span></span>}
+      {s === null ? "··:··:··" : s <= 0 ? "Window closed" : <span>{p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)} <span className="font-semibold text-amber-600">{label}</span></span>}
     </div>
   );
 }
@@ -1913,7 +1913,7 @@ function ErrorState({ title, sub, onRetry }: { title: string; sub: string; onRet
   );
 }
 
-function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, stage = "", name, onName, venture, onVenture, recorded, onRecord, onNext, cohort = [] }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; stage?: string; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; cohort?: Member[] }) {
+function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, stage = "", name, onName, venture, onVenture, recorded, onRecord, onNext, cohort = [], youId = YOU, status, windowEndsAt }: { plan: "free" | "full"; live?: boolean; ventures?: Venture[]; error?: boolean; onRetry?: () => void; stage?: string; name: string; onName: (n: string) => void; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; recorded: Record<string, boolean>; onRecord: (id: string) => void; onNext: () => void; cohort?: Member[]; youId?: string; status?: MemberStatus[] | null; windowEndsAt?: string }) {
   // Live: building the venture in steps (or a failure with a retry).
   if (live && (!ventures || ventures.length === 0)) {
     const stageSub: Record<string, string> = {
@@ -1934,15 +1934,37 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, s
   // The venture page is open to see and edit for everyone — only Validation is gated.
   const editable = isChosen;
   const chosenName = live ? (list.find((x) => x.recommended)?.name ?? "the top venture") : VENTURE_DETAILS.name;
+  // Each person's progress through the idea review — call, edits, confirm.
+  const REVIEW_TOTAL = 3;
+  const reviewDone = (id: string) => {
+    const st = status?.find((s) => s.id === id);
+    if (st) return st.rated ? REVIEW_TOTAL : 0;
+    return Math.round(demoPace(cohort, id) * REVIEW_TOTAL);
+  };
   return (
-    <div className="space-y-5">
-      <div>
-        <RailTitle>Your idea</RailTitle>
-        <p className="mt-1 text-xs text-slate-400">Born from the opportunity your team chose — see it, edit it, carry it into validation.</p>
-      </div>
-
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <section className="min-w-0 flex-1">
+    <Columns
+      left={
+        <div className="space-y-4">
+          <RailTitle>Steps</RailTitle>
+          <Card>
+            <div className="flex items-center gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">1</span>
+              <div>
+                <p className="text-sm font-bold text-foreground">Review Idea</p>
+                <p className="text-xs text-slate-500">Have a group call, make final edits, then confirm for validation.</p>
+              </div>
+            </div>
+          </Card>
+          <IntakeDeadline endsAt={windowEndsAt} label="left to confirm" />
+          <TeamProgress cohort={cohort} youId={youId} total={REVIEW_TOTAL} done={reviewDone} />
+        </div>
+      }
+      center={
+        <div className="space-y-5">
+          <div>
+            <RailTitle>Your idea</RailTitle>
+            <p className="mt-1 text-xs text-slate-400">Born from the opportunity your team chose — see it, edit it, carry it into validation.</p>
+          </div>
           <Card className="p-6">
             <CenterHead title={editable ? name : v.name} sub="One-sentence thesis, scored — what, for whom, why now." right={editable ? (
               <span className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500"><Icon name="bolt" className="h-3.5 w-3.5 text-orange" /> rename<input value={name} onChange={(e) => onName(e.target.value)} className="ml-1 w-24 border-b border-slate-300 bg-transparent text-foreground focus:border-orange focus:outline-none" /></span>
@@ -1984,9 +2006,9 @@ function VenturesPhase({ plan, live = false, ventures, error = false, onRetry, s
               </>
             )}
           </Card>
-        </section>
-      </div>
-    </div>
+        </div>
+      }
+    />
   );
 }
 
@@ -2010,7 +2032,7 @@ function InsightAccordion({ lenses, onReframe }: { lenses: Lens[]; onReframe: (i
             </span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-300 transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
-          <EditableArea value={l.reframe} onChange={(t) => onReframe(l.id, t)} className="mt-2 text-sm text-slate-600" placeholder="One paragraph that would change a decision." />
+          <EditableArea value={l.reframe} onChange={(t) => onReframe(l.id, t)} className="mt-2 text-sm text-slate-600 [field-sizing:content]" placeholder="One paragraph that would change a decision." />
         </details>
       ))}
     </div>
@@ -2829,7 +2851,7 @@ function LabeledBox({ label, value, onChange, placeholder }: { label: string; va
   return (
     <div>
       <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
-      <div className="rounded-xl border border-slate-200 p-3"><EditableArea value={value} onChange={onChange} rows={3} placeholder={placeholder} className="text-sm text-foreground" /></div>
+      <div className="rounded-xl border border-slate-200 p-3"><EditableArea value={value} onChange={onChange} rows={3} placeholder={placeholder} className="text-sm text-foreground [field-sizing:content]" /></div>
     </div>
   );
 }
@@ -2870,26 +2892,22 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
         <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-orange-dark">Hook</p>
           <p className="text-[11px] italic text-slate-400">One sentence — what it is, for whom, why now.</p>
-          <EditableArea value={venture.hook} onChange={(v) => set("hook", v)} className="mt-1 text-base font-semibold text-foreground" placeholder="One sentence." />
+          <EditableArea value={venture.hook} onChange={(v) => set("hook", v)} className="mt-1 text-base font-semibold text-foreground [field-sizing:content]" placeholder="One sentence." />
         </div>
         <div className="rounded-xl border border-orange/30 bg-orange-tint/20 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-orange-dark">North star</p>
           <p className="text-[11px] italic text-slate-400">The one-line why.</p>
-          <EditableArea value={venture.purpose} onChange={(v) => set("purpose", v)} className="mt-1 text-foreground" />
+          <EditableArea value={venture.purpose} onChange={(v) => set("purpose", v)} className="mt-1 text-foreground [field-sizing:content]" />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <LabeledBox label="Customer" value={venture.basics.customer} onChange={(v) => setBasics({ customer: v })} placeholder="Who exactly, which markets, what triggers the pain?" />
-          <LabeledBox label="Problem" value={venture.basics.problem} onChange={(v) => setBasics({ problem: v })} placeholder="The mechanism — and why existing solutions fail." />
+          <div className="space-y-3">
+            <LabeledBox label="Problem" value={venture.basics.problem} onChange={(v) => setBasics({ problem: v })} placeholder="The mechanism — and why existing solutions fail." />
+            <ProblemBreakdown problem={venture.problem} set={setProblem} />
+          </div>
         </div>
         <LabeledBox label="Solution" value={venture.differentiation.statement} onChange={(v) => setDiff({ statement: v })} placeholder="The mechanism + the core insight. Not a feature list." />
         <LabeledBox label="Market" value={venture.market} onChange={(v) => set("market", v)} placeholder="Headline numbers only — full sources live in the Financial Model." />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ProblemBreakdown problem={venture.problem} set={setProblem} />
-          <Section title="Clarity">
-            <p className="-mt-1 mb-2 text-xs text-slate-400">How sharply the differentiation lands.</p>
-            <DotScore label="Clarity" value={venture.differentiation.clarity} onChange={(n) => setDiff({ clarity: n })} />
-          </Section>
-        </div>
       </Part>
 
       <Part label="Industry insights" hint="Sharpen the idea through structured lenses — open a question to read the angle.">
@@ -2946,6 +2964,10 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
         {venture.landscape.length < 8 && <button onClick={addLandRow} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add row</button>}
       </Part>
 
+      <Part label="Market" hint="The full market read and its sources.">
+        {detail && detail.market.length ? <MarketFindings findings={detail.market} /> : <MarketReport />}
+      </Part>
+
       <Part label="Financial model" hint="Which way could this make money — and does any of it hold up? Figures in your currency.">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-slate-500">Currency</span>
@@ -2974,8 +2996,6 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
             </table>
           </div>
         </Section>
-
-        <Section title="Market"><p className="-mt-1 mb-2 text-xs text-slate-400">The full market read and its sources.</p>{detail && detail.market.length ? <MarketFindings findings={detail.market} /> : <MarketReport />}</Section>
       </Part>
 
       <Part label="Risks" hint="The real risks — each with a testable plan, not a reassurance.">
@@ -2995,9 +3015,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
         <button onClick={addRiskRow} className="mt-2 text-sm font-semibold text-orange-dark hover:underline">+ Add risk</button>
       </Part>
 
-      <Section title="Principles"><PrinciplesEditor principles={venture.principles} onChange={(p) => set("principles", p)} /></Section>
-
-      <div className="flex justify-end"><PrimaryBtn label="Lock it & validate" onClick={onNext} icon="target" /></div>
+      <div className="flex justify-end"><PrimaryBtn label="Confirm Idea & Validate" onClick={onNext} icon="target" /></div>
     </div>
   );
 }
@@ -3070,25 +3088,6 @@ function MarketReport() {
   );
 }
 
-function PrinciplesEditor({ principles, onChange }: { principles: string[]; onChange: (p: string[]) => void }) {
-  const setAt = (i: number, val: string) => onChange(principles.map((x, idx) => (idx === i ? val : x)));
-  return (
-    <div className="rounded-xl border border-slate-200 p-4">
-      <p className="-mt-1 mb-3 text-xs text-slate-400">Turn your differentiation into operating rules — e.g. Google&rsquo;s &ldquo;Faster is better than slower.&rdquo;</p>
-      <div className="space-y-2">
-        {principles.map((p, i) => (
-          <div key={i} className="flex items-start gap-2">
-            <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-orange" />
-            <input value={p} onChange={(e) => setAt(i, e.target.value)} placeholder="A rule your team will live by" className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-foreground focus:border-orange focus:outline-none" />
-            <button onClick={() => onChange(principles.filter((_, idx) => idx !== i))} aria-label="Remove principle" className="mt-1.5 shrink-0 text-slate-300 hover:text-slate-500"><Icon name="minus" className="h-4 w-4" /></button>
-          </div>
-        ))}
-      </div>
-      <button onClick={() => onChange([...principles, ""])} className="mt-3 text-sm font-semibold text-orange-dark hover:underline">+ Add a principle</button>
-    </div>
-  );
-}
-
 function ApproachOptions({ chosen, onPick, options = APPROACH_OPTIONS }: { chosen: string; onPick: (id: string) => void; options?: ApproachOption[] }) {
   return (
     <div>
@@ -3128,7 +3127,7 @@ function ProblemBreakdown({ problem, set }: { problem: VentureDraft["problem"]; 
         </div>
         <div className="mt-4">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">What do they pay to solve it now?</p>
-          <EditableArea value={problem.payNow} onChange={(val) => set({ payNow: val })} className="mt-1 text-sm text-foreground" />
+          <EditableArea value={problem.payNow} onChange={(val) => set({ payNow: val })} className="mt-1 text-sm text-foreground [field-sizing:content]" />
         </div>
       </div>
     </Section>
