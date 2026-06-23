@@ -2885,11 +2885,6 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
 
         <RevenueBreakdown revenue={venture.revenue} onChange={(r) => set("revenue", r)} sym={venture.currency.symbol} />
 
-        <Section title="Cost &amp; runway">
-          <p className="-mt-1 mb-2 text-xs text-slate-400">The cost side next to revenue — what it takes to run, and where it turns ramen-profitable.</p>
-          <LabeledBox label="Cost &amp; runway" value={venture.costs} onChange={(v) => set("costs", v)} placeholder="Monthly burn, and the revenue that makes it ramen-profitable." />
-        </Section>
-
         <Section title="Assumptions &amp; sources">
           <p className="-mt-1 mb-2 text-xs text-slate-400">Every benchmark carries an inline source — no uncited ranges.</p>
           <div className="overflow-x-auto rounded-xl border border-slate-200">
