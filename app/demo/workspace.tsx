@@ -1273,7 +1273,7 @@ function MultiSelectControl({ value, onChange, options, allowOther }: { value: M
       <div className="flex flex-wrap gap-2">
         {items.map((o) => { const on = value.sel.includes(o); return <button key={o} onClick={() => toggle(o)} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-orange bg-orange text-white" : "border-slate-200 text-slate-600 hover:border-orange/50"}`}>{o}</button>; })}
       </div>
-      {allowOther && value.sel.includes("Other") && <input value={value.other} onChange={(e) => onChange({ ...value, other: e.target.value })} placeholder="Tell us more" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-orange focus:outline-none" />}
+      {allowOther && value.sel.length > 0 && <input value={value.other} onChange={(e) => onChange({ ...value, other: e.target.value })} placeholder="Tell us more" className="mt-2 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-orange focus:outline-none" />}
     </div>
   );
 }
