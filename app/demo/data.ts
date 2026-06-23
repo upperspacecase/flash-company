@@ -9,7 +9,7 @@ export type IconName =
   | "image" | "doc" | "laptop" | "store" | "building" | "target" | "check"
   | "star" | "clock" | "calendar" | "scale" | "chart" | "thumb" | "lock"
   | "play" | "coins" | "message" | "minus" | "send" | "pause" | "refresh"
-  | "copy" | "shield" | "heart" | "comment";
+  | "copy" | "shield" | "heart" | "comment" | "download";
 
 export const AGENT_NAME = "Flash";
 export const TAGLINE = "Build together. Start clearly.";

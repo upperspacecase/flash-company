@@ -163,6 +163,7 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
     shield: "M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z",
     heart: "M12 21s-7-4.6-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6C19 16.4 12 21 12 21z",
     comment: "M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z",
+    download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4|M7 10l5 5 5-5|M12 15V3",
   };
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
@@ -2141,7 +2142,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
       }
       center={
         <Card className="p-6">
-          <CenterHead title={`Validate ${name}`} sub="Free assets to start gathering signal — unlock the 30-day plan for the full toolkit." />
+          <CenterHead title={`Validate ${name}`} sub="Start with some free assets to gather interest for your idea — unlock the full validation toolkit to make the most of your next 30 days." />
           <Section title="Validation targets &amp; tasks">
             <p className="-mt-1 mb-3 text-xs text-slate-400">Suggested targets to hit and tasks to run — edit any, tick them off, or add your own. Some depend on the 30-day plan.</p>
             <div className="space-y-2">
@@ -2274,33 +2275,122 @@ function SocialCard({ name, seedTitle, seedSubtitle, persist = false }: { name: 
     const f = e.target.files?.[0];
     if (f) setBg(URL.createObjectURL(f));
   };
+  // Render the card to a 1080×1350 canvas and download it as PNG (no extra deps).
+  const downloadImage = () => {
+    const W = 1080, H = 1350;
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const FONT = "ui-sans-serif, system-ui, -apple-system, sans-serif";
+    const pad = Math.round(W * 0.0625);
+    const wrap = (text: string, font: string, maxW: number) => {
+      ctx.font = font;
+      const lines: string[] = [];
+      for (const para of text.split("\n")) {
+        let line = "";
+        for (const word of para.split(/\s+/).filter(Boolean)) {
+          const test = line ? `${line} ${word}` : word;
+          if (line && ctx.measureText(test).width > maxW) { lines.push(line); line = word; }
+          else line = test;
+        }
+        if (line) lines.push(line);
+      }
+      return lines;
+    };
+    const paint = (img?: HTMLImageElement) => {
+      if (img) {
+        const scale = Math.max(W / img.width, H / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+      } else {
+        const g = ctx.createLinearGradient(0, 0, W, H);
+        g.addColorStop(0, "#ff5500"); g.addColorStop(0.5, "#ff7a33"); g.addColorStop(1, "#7a2900");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      }
+      const overlay = ctx.createLinearGradient(0, H, 0, 0);
+      overlay.addColorStop(0, "rgba(0,0,0,0.7)"); overlay.addColorStop(0.5, "rgba(0,0,0,0.1)"); overlay.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = overlay; ctx.fillRect(0, 0, W, H);
+
+      const brandSize = Math.round(W * 14 / 256);
+      ctx.font = `700 ${brandSize}px ${FONT}`;
+      ctx.fillStyle = "#fff";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(name, pad, pad + brandSize);
+
+      const maxW = W - pad * 2;
+      const titleSize = Math.round(W * 24 / 256), subSize = Math.round(W * 14 / 256);
+      const titleFont = `700 ${titleSize}px ${FONT}`, subFont = `400 ${subSize}px ${FONT}`;
+      const titleLH = Math.round(titleSize * 1.15), subLH = Math.round(subSize * 1.4);
+      const gap = Math.round(W * 4 / 256);
+      const titleLines = title ? wrap(title, titleFont, maxW) : [];
+      const subLines = subtitle ? wrap(subtitle, subFont, maxW) : [];
+      const totalH = titleLines.length * titleLH + (subLines.length ? gap : 0) + subLines.length * subLH;
+      let y = H - pad - totalH;
+      ctx.font = titleFont; ctx.fillStyle = "#fff";
+      for (const ln of titleLines) { y += titleLH; ctx.fillText(ln, pad, y); }
+      if (subLines.length) y += gap;
+      ctx.font = subFont; ctx.fillStyle = "rgba(255,255,255,0.9)";
+      for (const ln of subLines) { y += subLH; ctx.fillText(ln, pad, y); }
+
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${name.toLowerCase().replace(/\s+/g, "-")}-social.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, "image/png");
+    };
+    if (bg) {
+      const img = new Image();
+      img.onload = () => paint(img);
+      img.src = bg;
+    } else {
+      paint();
+    }
+  };
   return (
     <div>
       <div className="mx-auto w-full max-w-[16rem]">
         <div className="relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-2xl border border-slate-200 shadow-sm" style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
           {!bg && <div className="absolute inset-0 bg-gradient-to-br from-orange via-orange-dark to-[#7a2900]" />}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-          <div className="absolute left-4 top-4 flex items-center gap-1.5"><FlashMark className="h-4 w-4 text-white" /><span className="text-sm font-bold tracking-tight text-white">{name}</span></div>
+          <div className="absolute left-4 top-4 flex items-center gap-1.5"><span className="text-sm font-bold tracking-tight text-white">{name}</span></div>
           <div className="relative p-4">
             <textarea value={title} onChange={(e) => setTitle(e.target.value)} rows={2} placeholder="Title" className="w-full resize-none rounded-md border border-transparent bg-transparent text-2xl font-bold leading-tight tracking-tight text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none" />
             <textarea value={subtitle} onChange={(e) => setSubtitle(e.target.value)} rows={2} placeholder="Subtitle" className="mt-1 w-full resize-none rounded-md border border-transparent bg-transparent text-sm leading-snug text-white/90 placeholder:text-white/50 focus:border-white/40 focus:outline-none" />
           </div>
         </div>
       </div>
-      <div className="mt-2 flex items-center justify-center gap-3">
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
         <button onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-orange/50 hover:text-orange-dark"><Icon name="image" className="h-3.5 w-3.5" /> {bg ? "Change background" : "Upload background"}</button>
+        <button onClick={downloadImage} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-orange/50 hover:text-orange-dark"><Icon name="download" className="h-3.5 w-3.5" /> Download image</button>
         {bg && <button onClick={() => setBg(null)} className="text-xs font-semibold text-slate-400 hover:text-slate-600">Remove</button>}
         <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
       </div>
       <p className="mt-1 text-center text-[11px] text-slate-400">1080 × 1350 px · 4:5 portrait</p>
+      <p className="text-center text-[11px] text-slate-400">Sized for Instagram post or WhatsApp attachment</p>
     </div>
   );
 }
 
 function DraftCopy({ label, icon, body }: { label: string; icon: IconName; body: string }) {
+  const [copied, setCopied] = useState(false);
+  const copyText = () => {
+    navigator.clipboard.writeText(body).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400"><Icon name={icon} className="h-3.5 w-3.5" /> {label} draft</p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400"><Icon name={icon} className="h-3.5 w-3.5" /> {label} draft</p>
+        <button onClick={copyText} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-orange/50 hover:text-orange-dark"><Icon name={copied ? "check" : "copy"} className="h-3 w-3" /> {copied ? "Copied" : "Copy text"}</button>
+      </div>
       <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">{body}</p>
     </div>
   );
