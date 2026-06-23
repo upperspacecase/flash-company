@@ -433,17 +433,17 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} windowEndsAt={live?.windowEndsAt} persist={!live} />;
       case 2:
-        return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} youId={youId} data={synthesisData} status={live ? status : null} />;
+        return <SynthesisPhase onConfirm={confirmSynthesis} cohort={cohort} youId={youId} data={synthesisData} status={live ? status : null} windowEndsAt={live?.windowEndsAt} />;
       case 3:
         if (live && !oppData)
           return <GeneratingState title="Finding your opportunities" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into opportunities to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
-        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} youId={youId} persist={!live} />;
+        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} youId={youId} persist={!live} windowEndsAt={live?.windowEndsAt} />;
       case 4:
         if (live && !ventData && !ratingsReady)
           return <GeneratingState title="Choosing your idea" sub="Waiting for everyone to rate their excitement — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
         return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} youId={youId} status={live ? status : null} windowEndsAt={live?.windowEndsAt} onNext={() => advance(5)} />;
       default:
-        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} persist={!live} teamSize={cohort.length} />;
+        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} persist={!live} teamSize={cohort.length} windowEndsAt={live?.windowEndsAt} />;
     }
   };
 
@@ -945,13 +945,15 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   );
 }
 
+// Persistent 48-hour sprint-window countdown shown at the top of every section's
+// left sidebar. Shares the deadline (flash_invite_deadline) with the invite window.
 function IntakeDeadline({ endsAt, label = "left to submit" }: { endsAt?: string; label?: string }) {
   const s = useDeadline(endsAt, 48 * 3600 * 1000, "flash_invite_deadline");
   const p = (n: number) => String(n).padStart(2, "0");
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-bold tabular-nums text-amber-700">
+    <div className="flex items-center gap-2 rounded-xl bg-orange px-3 py-2.5 text-sm font-bold tabular-nums text-white">
       <Icon name="clock" className="h-4 w-4 shrink-0" />
-      {s === null ? "··:··:··" : s <= 0 ? "Window closed" : <span>{p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)} <span className="font-semibold text-amber-600">{label}</span></span>}
+      {s === null ? "··:··:··" : s <= 0 ? "Window closed" : <span>{p(Math.floor(s / 3600))}:{p(Math.floor((s % 3600) / 60))}:{p(s % 60)} <span className="font-semibold text-white/80">{label}</span></span>}
     </div>
   );
 }
@@ -1297,7 +1299,7 @@ function RankedControl({ value, onChange, options }: { value: RankedVal; onChang
 
 /* ----------------------------------------------------- 2. Synthesis */
 
-function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; youId?: string; data?: SynthesisData; status?: MemberStatus[] | null }) {
+function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status, windowEndsAt }: { onConfirm: (data: SynthesisData) => void; cohort?: Member[]; youId?: string; data?: SynthesisData; status?: MemberStatus[] | null; windowEndsAt?: string }) {
   const d = data ?? mockSynthesisData();
   const [energy, setEnergy] = useState<Record<string, number[]>>(() => Object.fromEntries(cohort.map((m) => [m.id, [...(d.skillEnergy[m.id] ?? SKILLS.map(() => 3))]])));
   const [shown, setShown] = useState<Record<string, boolean>>(() => ({ team: true, ...Object.fromEntries(cohort.map((m) => [m.id, true])) }));
@@ -1354,6 +1356,7 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
     <Columns
       left={
         <div className="space-y-4">
+          <IntakeDeadline endsAt={windowEndsAt} label="left in your sprint" />
           <RailTitle>Steps</RailTitle>
           {[
             { t: "Review input", d: "All three intakes read.", done: true, count: null as string | null },
@@ -1697,7 +1700,7 @@ const OPP_FRAMEWORK = [
   { label: "Benefits & Impact", weight: "15%", desc: "Does this create clear, measurable value for users? (Time saved, money made, stress reduced, lives saved, health improved, etc.)" },
 ];
 
-function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT, youId = YOU, persist = false }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[]; youId?: string; persist?: boolean }) {
+function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHORT, youId = YOU, persist = false, windowEndsAt }: { onNext: () => void; data?: OpportunityData; onSubmitRatings?: (ratings: Record<string, number>) => void; status?: MemberStatus[] | null; cohort?: Member[]; youId?: string; persist?: boolean; windowEndsAt?: string }) {
   // Guard against opportunity data persisted under the pre-evaluation shape —
   // fall back to the authored mock so old seeds don't crash the step.
   const raw = data ?? mockOpportunityData();
@@ -1731,6 +1734,7 @@ function OpportunityPhase({ onNext, data, onSubmitRatings, status, cohort = COHO
     <Columns
       left={
         <div className="space-y-4">
+          <IntakeDeadline endsAt={windowEndsAt} label="left in your sprint" />
           <RailTitle>Steps</RailTitle>
           <Card><div className="flex items-center gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">1</span><div><p className="text-sm font-bold text-foreground">Rate Opportunities</p><p className="text-xs text-slate-500">How excited you&rsquo;d be to build each opportunity — 1 to 10. The team&rsquo;s excitement narrows to one idea.</p></div></div></Card>
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/5 p-5">
@@ -2124,7 +2128,7 @@ function ValidationTimer({ endsAt }: { endsAt?: string }) {
   );
 }
 
-function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail, publicUrl, persist = false, teamSize = 1 }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail; publicUrl?: string; persist?: boolean; teamSize?: number }) {
+function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail, publicUrl, persist = false, teamSize = 1, windowEndsAt }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail; publicUrl?: string; persist?: boolean; teamSize?: number; windowEndsAt?: string }) {
   const deck = buildDeck(venture, name, detail);
   // Landing: editable + persisted (venture.landing), seeded from the venture.
   const landing = venture.landing ?? buildLanding(venture, detail);
@@ -2145,6 +2149,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
     <Columns
       left={
         <div className="space-y-4">
+          <IntakeDeadline endsAt={windowEndsAt} label="left in your sprint" />
           <RailTitle>Steps</RailTitle>
           <div className="space-y-2.5">
             {[
