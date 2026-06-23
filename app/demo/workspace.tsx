@@ -443,7 +443,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
           return <GeneratingState title="Choosing your idea" sub="Waiting for everyone to rate their excitement — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
         return <VenturesPhase plan={plan} live={!!live} ventures={ventData ?? undefined} error={live ? ventError : false} stage={ventStage} onRetry={retryVentures} name={name} onName={setName} venture={venture} onVenture={setVenture} recorded={recorded} onRecord={(id) => setRecorded((r) => ({ ...r, [id]: !r[id] }))} cohort={cohort} onNext={() => advance(5)} />;
       default:
-        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} persist={!live} />;
+        return <ValidationPhase name={name} venture={venture} onVenture={setVenture} checkin={checkin} onCheckin={setCheckin} published={published} onPublish={(p) => setVenture((vd) => ({ ...vd, published: p, landing: p ? (vd.landing ?? buildLanding(vd, ventData?.[0]?.detail)) : vd.landing }))} gated={isFree} detail={ventData?.[0]?.detail} publicUrl={publicUrl} persist={!live} teamSize={cohort.length} />;
     }
   };
 
@@ -2102,7 +2102,7 @@ function ValidationTimer({ endsAt }: { endsAt?: string }) {
   );
 }
 
-function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail, publicUrl, persist = false }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail; publicUrl?: string; persist?: boolean }) {
+function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, published, onPublish, gated = false, detail, publicUrl, persist = false, teamSize = 1 }: { name: string; venture: VentureDraft; onVenture: React.Dispatch<React.SetStateAction<VentureDraft>>; checkin: string; onCheckin: (d: string) => void; published: boolean; onPublish: (p: boolean) => void; gated?: boolean; detail?: VentureDetail; publicUrl?: string; persist?: boolean; teamSize?: number }) {
   const deck = buildDeck(venture, name, detail);
   // Landing: editable + persisted (venture.landing), seeded from the venture.
   const landing = venture.landing ?? buildLanding(venture, detail);
@@ -2112,7 +2112,6 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
   const setLanding = (patch: Partial<LandingCopy>) => onVenture((p) => ({ ...p, landing: { ...(p.landing ?? landing), ...patch } }));
   // The 30-day plan is locked until the team unlocks it (demo: flips local state).
   const [unlocked, setUnlocked] = usePersistedState("flash_val_unlocked", false, persist);
-  const [unlockOpen, setUnlockOpen] = useState(false);
   // Suggested validation targets/tasks — editable + addable (local for now).
   const [targets, setTargets] = usePersistedState("flash_val_targets", VALIDATION_TARGETS.map((t, i) => ({ id: `vt${i}`, text: t.text, done: false, suggested: true, paid: !!t.paid })), persist);
   const addId = useRef(0);
@@ -2176,7 +2175,7 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
           </Section></div>
 
           <div className="mt-8">
-            <PaidGate unlocked={unlocked} onUnlock={() => setUnlockOpen(true)}>
+            <PaidGate unlocked={unlocked} onUnlock={() => setUnlocked(true)} teamSize={teamSize}>
               <div className="space-y-7">
                 <details className="group rounded-xl border border-slate-200" open>
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3"><span className="text-xs font-bold uppercase tracking-wide text-slate-400">Founding hypothesis</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg></summary>
@@ -2207,8 +2206,6 @@ function ValidationPhase({ name, venture, onVenture, checkin, onCheckin, publish
               </div>
             </PaidGate>
           </div>
-
-          <UnlockModal open={unlockOpen} onClose={() => setUnlockOpen(false)} onUnlock={() => { setUnlocked(true); setUnlockOpen(false); }} />
         </Card>
       }
     />
@@ -2222,44 +2219,29 @@ function SubHead({ children }: { children: React.ReactNode }) {
 }
 
 // Greys the 30-day plan until the team unlocks it, with an unlock overlay.
-function PaidGate({ unlocked, onUnlock, children }: { unlocked: boolean; onUnlock: () => void; children: React.ReactNode }) {
+function PaidGate({ unlocked, onUnlock, teamSize, children }: { unlocked: boolean; onUnlock: () => void; teamSize: number; children: React.ReactNode }) {
   if (unlocked) return <>{children}</>;
+  const perShare = 40;
+  const features = ["Hypothesis Scorecard", "Landing Page", "Pitch Deck", "Extended Social Media assets", "Analytics Dashboard", "Weekly AI feedback synthesis"];
   return (
     <div className="relative">
       <div className="pointer-events-none select-none opacity-40 blur-[2px]" aria-hidden>{children}</div>
       <div className="absolute inset-0 flex items-start justify-center">
-        <div className="sticky top-24 mt-20 w-full max-w-sm rounded-2xl border border-orange/30 bg-white p-6 text-center shadow-xl">
-          <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-orange-tint text-orange-dark"><Icon name="lock" className="h-5 w-5" /></span>
-          <p className="mt-3 text-lg font-bold tracking-tight text-foreground">30-day validation plan</p>
-          <p className="mt-1 text-sm text-slate-500">Founding hypothesis, target-market questions, extended assets, analytics, and weekly feedback synthesis.</p>
-          <p className="mt-3 text-sm font-semibold text-foreground">$40 each <span className="font-normal text-slate-400">· or one person unlocks it for the whole team</span></p>
-          <button onClick={onUnlock} className="mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-orange px-4 text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="bolt" className="h-4 w-4" /> Unlock the plan</button>
+        <div className="sticky top-24 mt-20 w-full max-w-md rounded-2xl border border-orange/30 bg-white p-6 shadow-xl">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-tint text-orange-dark"><Icon name="lock" className="h-5 w-5" /></span>
+            <p className="text-base font-bold tracking-tight text-foreground">Give your idea the best chance over the next 30 days with:</p>
+          </div>
+          <ul className="mt-4 space-y-1.5 text-sm text-slate-600">
+            {features.map((f) => (
+              <li key={f} className="flex items-start gap-2"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-orange" />{f}</li>
+            ))}
+          </ul>
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            <button onClick={onUnlock} className="flex h-12 flex-col items-center justify-center rounded-xl bg-orange text-white transition-colors hover:bg-orange-dark"><span className="text-sm font-bold">Unlock my share</span><span className="text-[11px] text-white/80">${perShare} · I get access</span></button>
+            <button onClick={onUnlock} className="flex h-12 flex-col items-center justify-center rounded-xl border border-orange/40 bg-orange-tint/40 text-orange-dark transition-colors hover:bg-orange-tint"><span className="text-sm font-bold">Unlock for the team</span><span className="text-[11px] text-orange-dark/80">${perShare * teamSize} · everyone gets access</span></button>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function UnlockModal({ open, onClose, onUnlock }: { open: boolean; onClose: () => void; onUnlock: () => void }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 cursor-default bg-black/50" />
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-tint text-orange-dark"><Icon name="bolt" className="h-5 w-5" /></span>
-          <div><p className="text-lg font-bold tracking-tight text-foreground">Unlock the 30-day plan</p><p className="text-sm text-slate-500">Everything you need to validate, for the next 30 days.</p></div>
-        </div>
-        <ul className="mt-4 space-y-1.5 text-sm text-slate-600">
-          {["Founding hypothesis scorecard", "Questions for your target market", "Extended assets — carousel, LinkedIn, pitch deck, landing page", "Analytics — landing, link, and team metrics", "Weekly AI feedback synthesis"].map((f) => (
-            <li key={f} className="flex items-start gap-2"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-orange" />{f}</li>
-          ))}
-        </ul>
-        <div className="mt-5 grid gap-2 sm:grid-cols-2">
-          <button onClick={onUnlock} className="flex h-12 flex-col items-center justify-center rounded-xl bg-orange text-white transition-colors hover:bg-orange-dark"><span className="text-sm font-bold">Unlock for me</span><span className="text-[11px] text-white/80">$40</span></button>
-          <button onClick={onUnlock} className="flex h-12 flex-col items-center justify-center rounded-xl border border-orange/40 bg-orange-tint/40 text-orange-dark transition-colors hover:bg-orange-tint"><span className="text-sm font-bold">Unlock for the team</span><span className="text-[11px] text-orange-dark/80">$40 · everyone gets access</span></button>
-        </div>
-        <button onClick={onClose} className="mt-3 w-full text-center text-xs font-semibold text-slate-400 hover:text-slate-600">Maybe later</button>
       </div>
     </div>
   );
