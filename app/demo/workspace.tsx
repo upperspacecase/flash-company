@@ -492,7 +492,181 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
         )}
       </main>
       </div>
+      <FeedbackWidget screen={PHASES[phase].label} token={live?.token} memberId={live?.meId} />
     </div>
+  );
+}
+
+// Downscale a picked image to a JPEG data URL (max edge `max`px) so screenshots
+// stay small enough to store inline with the feedback row.
+function downscaleImage(file: File, max: number, quality: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no canvas context"));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+type FeedbackKind = "idea" | "request" | "bug" | "feedback";
+const FEEDBACK_KINDS: { id: FeedbackKind; label: string }[] = [
+  { id: "idea", label: "Idea" },
+  { id: "request", label: "Request" },
+  { id: "bug", label: "Bug" },
+  { id: "feedback", label: "Feedback" },
+];
+
+// Persistent feedback affordance: a floating button on every screen that opens a
+// pop-up to send an idea / request / bug / general note, with an optional
+// screenshot. Records the screen it was sent from. Visible in /dashboard.
+function FeedbackWidget({ screen, token, memberId }: { screen: string; token?: string; memberId?: string }) {
+  const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<FeedbackKind>("idea");
+  const [message, setMessage] = useState("");
+  const [image, setImage] = useState<string | null>(null);
+  const [imgError, setImgError] = useState<string | null>(null);
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const reset = () => {
+    setKind("idea");
+    setMessage("");
+    setImage(null);
+    setImgError(null);
+    setState("idle");
+  };
+  const close = () => { setOpen(false); reset(); };
+
+  const onPick = async (file: File | undefined) => {
+    if (!file) return;
+    setImgError(null);
+    try {
+      const dataUrl = await downscaleImage(file, 1600, 0.72);
+      if (dataUrl.length > 2_800_000) { setImgError("That image is too large — try a smaller screenshot."); return; }
+      setImage(dataUrl);
+    } catch {
+      setImgError("Couldn't read that image.");
+    }
+  };
+
+  const submit = async () => {
+    if (!message.trim() || state === "sending") return;
+    setState("sending");
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, message: message.trim(), screen, path: window.location.pathname, token, memberId, image }),
+      });
+      if (!res.ok) throw new Error();
+      setState("sent");
+      setTimeout(close, 1400);
+    } catch {
+      setState("error");
+    }
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        aria-label="Send feedback"
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-orange px-4 py-3 text-sm font-bold text-white shadow-lg transition-colors hover:bg-orange-dark"
+      >
+        <Icon name="message" className="h-4 w-4" /> Feedback
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+          <button type="button" aria-label="Close" onClick={close} className="absolute inset-0 cursor-default bg-black/60" />
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Feedback</p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">Tell us what you think</h2>
+                <p className="mt-1 text-xs text-slate-400">From {screen}</p>
+              </div>
+              <button onClick={close} aria-label="Close" className="text-slate-400 transition-colors hover:text-slate-600">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="h-5 w-5"><path d="M6 6l12 12M18 6 6 18" /></svg>
+              </button>
+            </div>
+
+            {state === "sent" ? (
+              <div className="flex flex-col items-center gap-2 py-10 text-center">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-orange text-white"><Icon name="check" className="h-5 w-5" /></span>
+                <p className="text-sm font-semibold text-foreground">Thanks — we got it.</p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {FEEDBACK_KINDS.map((k) => (
+                    <button
+                      key={k.id}
+                      onClick={() => setKind(k.id)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${kind === k.id ? "bg-orange text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                    >
+                      {k.label}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={5}
+                  autoFocus
+                  placeholder="Share an idea, request a feature, or report a bug…"
+                  className="w-full resize-y rounded-xl border border-slate-200 bg-white p-3 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:outline-none"
+                />
+
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void onPick(e.target.files?.[0]); e.target.value = ""; }} />
+                {image ? (
+                  <div className="relative inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image} alt="Attachment preview" className="max-h-32 rounded-lg border border-slate-200" />
+                    <button onClick={() => setImage(null)} aria-label="Remove image" className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-white shadow">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" className="h-3.5 w-3.5"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs font-semibold text-slate-500 transition-colors hover:border-orange hover:text-orange-dark">
+                    <Icon name="image" className="h-4 w-4" /> Attach a screenshot
+                  </button>
+                )}
+                {imgError && <p className="text-xs text-red-600">{imgError}</p>}
+
+                <div className="flex items-center justify-between pt-1">
+                  {state === "error" ? <span className="text-xs text-red-600">Couldn&rsquo;t send — try again.</span> : <span />}
+                  <button
+                    onClick={submit}
+                    disabled={!message.trim() || state === "sending"}
+                    className="inline-flex items-center gap-2 rounded-xl bg-orange px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:opacity-40"
+                  >
+                    {state === "sending" ? "Sending…" : "Send"} <Icon name="send" className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

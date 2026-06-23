@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import type { PromptView } from "@/lib/prompts";
+import type { FeedbackRow } from "@/lib/db";
 
-// Admin tabs: the existing signups analytics, plus an editor for every LLM
-// step's system prompt — edited live, saved to the DB, used on the next run.
-export function DashboardTabs({ analytics, prompts }: { analytics: React.ReactNode; prompts: PromptView[] }) {
-  const [tab, setTab] = useState<"signups" | "prompts">("signups");
-  const tabs: [typeof tab, string][] = [["signups", "Signups"], ["prompts", "LLM prompts"]];
+// Admin tabs: the existing signups analytics, an editor for every LLM step's
+// system prompt (edited live, saved to the DB, used on the next run), and the
+// in-app feedback users have submitted.
+export function DashboardTabs({ analytics, prompts, feedback }: { analytics: React.ReactNode; prompts: PromptView[]; feedback: FeedbackRow[] }) {
+  const [tab, setTab] = useState<"signups" | "prompts" | "feedback">("signups");
+  const tabs: [typeof tab, string][] = [["signups", "Signups"], ["feedback", `Feedback${feedback.length ? ` (${feedback.length})` : ""}`], ["prompts", "LLM prompts"]];
   return (
     <div className="mt-8">
       <div className="flex gap-1 border-b border-white/10">
@@ -21,7 +23,44 @@ export function DashboardTabs({ analytics, prompts }: { analytics: React.ReactNo
           </button>
         ))}
       </div>
-      {tab === "signups" ? <div className="mt-6">{analytics}</div> : <Prompts initial={prompts} />}
+      {tab === "signups" && <div className="mt-6">{analytics}</div>}
+      {tab === "feedback" && <FeedbackList items={feedback} />}
+      {tab === "prompts" && <Prompts initial={prompts} />}
+    </div>
+  );
+}
+
+const KIND_STYLE: Record<string, string> = {
+  idea: "bg-sky-500/15 text-sky-300",
+  request: "bg-violet-500/15 text-violet-300",
+  bug: "bg-red-500/15 text-red-300",
+  feedback: "bg-emerald-500/15 text-emerald-300",
+};
+
+function FeedbackList({ items }: { items: FeedbackRow[] }) {
+  if (items.length === 0) {
+    return <p className="mt-6 rounded-xl border border-white/10 bg-white/5 px-5 py-8 text-sm text-white/40">No feedback yet.</p>;
+  }
+  return (
+    <div className="mt-6 space-y-3">
+      {items.map((f) => (
+        <div key={f.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className={`rounded-full px-2 py-0.5 font-bold capitalize ${KIND_STYLE[f.kind] ?? "bg-white/10 text-white/70"}`}>{f.kind}</span>
+            {f.screen && <span className="rounded-full bg-white/10 px-2 py-0.5 font-medium text-white/60">{f.screen}</span>}
+            {f.path && <span className="font-mono text-white/30">{f.path}</span>}
+            <span className="ml-auto text-white/40">{new Date(f.created_at).toLocaleString()}</span>
+          </div>
+          <p className="mt-3 whitespace-pre-wrap text-sm text-white/85">{f.message}</p>
+          {f.image && (
+            <a href={f.image} target="_blank" rel="noreferrer" className="mt-3 inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={f.image} alt="Feedback screenshot" className="max-h-48 rounded-lg border border-white/10" />
+            </a>
+          )}
+          {f.member_id && <p className="mt-3 font-mono text-[11px] text-white/30">member {f.member_id}{f.team_token ? ` · team ${f.team_token}` : ""}</p>}
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { UserButton } from "@clerk/nextjs";
-import { ensureSchema, getSql } from "@/lib/db";
+import { ensureSchema, getSql, getRecentFeedback, type FeedbackRow } from "@/lib/db";
 import { getAllPrompts } from "@/lib/prompts";
 import { DashboardTabs } from "./tabs";
 
@@ -21,19 +21,22 @@ export default async function Dashboard() {
   let visits = 0;
   let signups30 = 0;
   let recent: { email: string; created_at: string }[] = [];
+  let feedback: FeedbackRow[] = [];
   try {
     await ensureSchema();
     const sql = getSql();
-    const [s, v, s30, r] = await Promise.all([
+    const [s, v, s30, r, fb] = await Promise.all([
       sql`SELECT count(*)::int AS count FROM signups`,
       sql`SELECT count(*)::int AS count FROM visits`,
       sql`SELECT count(*)::int AS count FROM signups WHERE created_at > now() - interval '30 days'`,
       sql`SELECT email, created_at FROM signups ORDER BY created_at DESC LIMIT 12`,
+      getRecentFeedback(50),
     ]);
     signups = s[0].count;
     visits = v[0].count;
     signups30 = s30[0].count;
     recent = r as { email: string; created_at: string }[];
+    feedback = fb;
   } catch {
     dbError = true;
   }
@@ -60,6 +63,7 @@ export default async function Dashboard() {
 
         <DashboardTabs
           prompts={prompts}
+          feedback={feedback}
           analytics={
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

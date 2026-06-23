@@ -113,6 +113,20 @@ export function ensureSchema() {
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT`;
       // Email for notifications (captured in intake; optional).
       await sql`ALTER TABLE members ADD COLUMN IF NOT EXISTS email TEXT`;
+      // In-app feedback from the persistent widget: idea / request / bug / general,
+      // tagged with the screen it was sent from and an optional screenshot stored
+      // inline as a downscaled data URL. Surfaced in the admin dashboard.
+      await sql`CREATE TABLE IF NOT EXISTS feedback (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        kind TEXT NOT NULL,
+        message TEXT NOT NULL,
+        screen TEXT,
+        path TEXT,
+        team_token TEXT,
+        member_id TEXT,
+        image TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
     })().catch((e) => {
       schemaReady = null;
       throw e;
@@ -426,4 +440,43 @@ export async function deletePromptOverride(key: string): Promise<void> {
   await ensureSchema();
   const sql = getSql();
   await sql`DELETE FROM prompts WHERE key = ${key}`;
+}
+
+/* ------------------------------------------------------ in-app feedback */
+
+export type FeedbackRow = {
+  id: number;
+  kind: string;
+  message: string;
+  screen: string | null;
+  path: string | null;
+  team_token: string | null;
+  member_id: string | null;
+  image: string | null;
+  created_at: string;
+};
+
+export async function saveFeedback(f: {
+  kind: string;
+  message: string;
+  screen?: string | null;
+  path?: string | null;
+  teamToken?: string | null;
+  memberId?: string | null;
+  image?: string | null;
+}): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  await sql`
+    INSERT INTO feedback (kind, message, screen, path, team_token, member_id, image)
+    VALUES (${f.kind}, ${f.message}, ${f.screen ?? null}, ${f.path ?? null}, ${f.teamToken ?? null}, ${f.memberId ?? null}, ${f.image ?? null})`;
+}
+
+export async function getRecentFeedback(limit = 50): Promise<FeedbackRow[]> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, kind, message, screen, path, team_token, member_id, image, created_at
+    FROM feedback ORDER BY created_at DESC LIMIT ${limit}`;
+  return (rows as FeedbackRow[]).map((r) => ({ ...r, created_at: String(r.created_at) }));
 }
