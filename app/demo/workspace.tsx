@@ -768,7 +768,37 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
     });
   };
   return (
-    <div className="mx-auto max-w-3xl space-y-12 py-4">
+    <Columns
+      left={
+        <div className="space-y-4">
+          <RailTitle>Invite</RailTitle>
+          <IntakeDeadline endsAt={windowEndsAt} label="left to accept" />
+          <div className="rounded-xl border border-slate-200 p-3">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">Invite link</p>
+            <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
+              <code className="min-w-0 flex-1 truncate text-xs text-slate-600">{inviteUrl}</code>
+              <button onClick={copyLink} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-orange px-2 py-1 text-[11px] font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3 w-3" /> {copied ? "Copied" : "Copy"}</button>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 p-3">
+            <div className="mb-2 flex items-baseline justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Accepted</p>
+              <span className="text-[11px] tabular-nums text-slate-400">{acceptedCount} of {members.length}</span>
+            </div>
+            <ul className="space-y-1.5">
+              {members.filter((m) => m.accepted).map((m) => (
+                <li key={m.id} className="flex items-center gap-2 text-sm">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                  <span className="truncate font-semibold text-foreground">{m.name}{m.id === youId && <span className="font-normal text-slate-400"> (you)</span>}</span>
+                </li>
+              ))}
+              {acceptedCount === 0 && <li className="text-xs text-slate-400">No one yet — share the link.</li>}
+            </ul>
+          </div>
+        </div>
+      }
+      center={
+      <div className="mx-auto max-w-3xl space-y-12 py-4">
       {/* 1 · Accept invite — host kick-off / teammate accept (hidden once you're in) */}
       {!accepted && (
         <section className="rounded-2xl border border-orange bg-white/5 p-6">
@@ -885,7 +915,9 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
       )}
 
       {payOpen && <PaymentModal onClose={() => setPayOpen(false)} onPaid={() => { setPayOpen(false); onAccept(); }} payment={payment} />}
-    </div>
+      </div>
+      }
+    />
   );
 }
 
