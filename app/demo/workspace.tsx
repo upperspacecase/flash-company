@@ -1393,13 +1393,13 @@ function SynthesisPhase({ onConfirm, cohort = COHORT, youId = YOU, data, status 
 
           <Part label="Focus" hint="Rank what matters most — your order, and your teammates', sets the team's focus.">
             <div className="space-y-3">
-              <ConfirmItem title="Lived problems" hint="Tap to award 1st, 2nd, 3rd place." open={open.problems} onToggle={() => toggleOpen("problems")} confirmed={confirmed.problems} onConfirm={() => confirmSection("problems")} canConfirm={problems.some((p) => p.rank != null)} confirmHint="Award a place to confirm">
+              <ConfirmItem title="Lived problems" hint="Tap to award 1st, 2nd, 3rd place." open={open.problems} onToggle={() => toggleOpen("problems")} confirmed={confirmed.problems} onConfirm={() => confirmSection("problems")} canConfirm={problems.filter((p) => p.rank != null).length >= Math.min(RANK_PLACES, problems.length)} confirmHint="Award 1st, 2nd and 3rd place to confirm">
                 <RankList items={problems} onItems={setProblems} addLabel="problem" />
               </ConfirmItem>
-              <ConfirmItem title="Insights" hint="Tap to award 1st, 2nd, 3rd place." open={open.obsessions} onToggle={() => toggleOpen("obsessions")} confirmed={confirmed.obsessions} onConfirm={() => confirmSection("obsessions")} canConfirm={obsessions.some((p) => p.rank != null)} confirmHint="Award a place to confirm">
+              <ConfirmItem title="Insights" hint="Tap to award 1st, 2nd, 3rd place." open={open.obsessions} onToggle={() => toggleOpen("obsessions")} confirmed={confirmed.obsessions} onConfirm={() => confirmSection("obsessions")} canConfirm={obsessions.filter((p) => p.rank != null).length >= Math.min(RANK_PLACES, obsessions.length)} confirmHint="Award 1st, 2nd and 3rd place to confirm">
                 <RankList items={obsessions} onItems={setObsessions} addLabel="insight" />
               </ConfirmItem>
-              <ConfirmItem title="Potential target markets" hint="Tap to award 1st, 2nd, 3rd place." open={open.markets} onToggle={() => toggleOpen("markets")} confirmed={confirmed.markets} onConfirm={() => confirmSection("markets")} canConfirm={markets.some((p) => p.rank != null)} confirmHint="Award a place to confirm">
+              <ConfirmItem title="Potential target markets" hint="Tap to award 1st, 2nd, 3rd place." open={open.markets} onToggle={() => toggleOpen("markets")} confirmed={confirmed.markets} onConfirm={() => confirmSection("markets")} canConfirm={markets.filter((p) => p.rank != null).length >= Math.min(RANK_PLACES, markets.length)} confirmHint="Award 1st, 2nd and 3rd place to confirm">
                 <RankList items={markets} onItems={setMarkets} addLabel="market" />
               </ConfirmItem>
             </div>
