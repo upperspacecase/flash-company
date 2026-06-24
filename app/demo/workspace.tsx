@@ -718,12 +718,12 @@ function Countdown({ endsAt }: { endsAt: string }) {
 function Header({ phase, onJump, unlocked }: { phase: number; onJump: (n: number) => void; unlocked: (i: number) => boolean }) {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-black/85 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-[1500px] items-center gap-4 px-5 py-3">
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col items-start gap-2 px-5 py-3 sm:flex-row sm:items-center sm:gap-4">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-orange"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg>
           <span className="text-lg font-bold tracking-tight text-foreground">Flash Company</span>
         </Link>
-        <ol className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto">
+        <ol className="flex w-full min-w-0 items-center justify-start gap-1 overflow-x-auto sm:w-auto sm:flex-1 sm:justify-center">
           {PHASES.map((p, i) => {
             const active = i === phase;
             const done = i < phase;
