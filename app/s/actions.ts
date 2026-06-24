@@ -155,10 +155,9 @@ export async function confirmAccept(sessionId: string, identity?: Identity): Pro
 export async function saveIntake(answers: Record<string, unknown>, complete: boolean): Promise<void> {
   const m = await currentMember();
   if (!m) return;
-  const name = typeof answers?.name === "string" ? (answers.name as string) : undefined;
-  const email = typeof answers?.email === "string" ? (answers.email as string) : undefined;
-  await upsertIntake(m.id, m.team_id, answers, complete, { name, email });
-  if (complete) await notifyTeammateFinished(m.team_id, m.id, name);
+  // Name and email are captured at accept time; the intake no longer carries them.
+  await upsertIntake(m.id, m.team_id, answers, complete, {});
+  if (complete) await notifyTeammateFinished(m.team_id, m.id, m.name ?? undefined);
 }
 
 // Nudge the teammates still working when someone finishes their input.
@@ -206,8 +205,9 @@ export async function runSynthesis(force = false): Promise<SynthesisData> {
   }
 
   const intakes = await getTeamIntakes(m.team_id);
+  const nameById = new Map(members.map((x) => [x.id, x.name]));
   const data = await synthesizeTeam(
-    intakes.map((r) => ({ memberId: r.member_id, answers: (r.answers ?? {}) as Record<string, unknown> })),
+    intakes.map((r) => ({ memberId: r.member_id, name: nameById.get(r.member_id) ?? undefined, answers: (r.answers ?? {}) as Record<string, unknown> })),
   );
   await saveSynthesis(m.team_id, data);
   await notifySynthesisReady(m.team_id);

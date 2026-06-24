@@ -1100,9 +1100,8 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
   const update = (id: string, value: unknown) => setAnswers((a) => ({ ...a, [id]: value }));
   const answeredIn = (s: IntakeSection) => s.questions.filter((q) => isAnswered(answers[q.id])).length;
   const curSi = cur ? cur.si : INTAKE.length - 1;
-  const canSend = !!cur && (isAnswered(answers[cur.q.id]) || cur.q.field.kind === "slider") && (cur.q.id !== "email" || emailValid(asStr(answers.email)));
+  const canSend = !!cur && (isAnswered(answers[cur.q.id]) || cur.q.field.kind === "slider");
   const goNext = () => { setReached((r) => Math.max(r, step + 1)); setStep((s) => s + 1); };
-  const emailErr = cur?.q.id === "email" && asStr(answers.email).trim().length > 0 && !emailValid(asStr(answers.email));
   // The 1-6 question-section stepper (mobile only — desktop uses the side nav).
   const stepper = (
     <div className="mb-4 flex items-center lg:hidden">
@@ -1152,7 +1151,6 @@ function InputPhase({ onNext, onSubmit, initialAnswers, cohort = COHORT, youId =
                 <div className="mt-5">
                   <Composer key={cur.q.id} q={cur.q} value={answers[cur.q.id]} onChange={(v) => update(cur.q.id, v)} voice={isVoice(cur.q.id)} onVoice={() => setVoiceMode((m) => ({ ...m, [cur.q.id]: !m[cur.q.id] }))} canSend={canSend} onSend={goNext} onBack={step > 0 ? () => setStep((s) => Math.max(0, s - 1)) : undefined} />
                 </div>
-                {emailErr && <p className="mt-2 text-xs font-semibold text-red-500">Enter a valid email address.</p>}
               </div>
             </div>
           ) : null}

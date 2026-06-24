@@ -90,13 +90,12 @@ const ROLE_OPTIONS = ["Founder/CEO", "CTO/Technical lead", "Product manager", "D
 const INDUSTRY_OPTIONS = ["Tech/Startup", "Real estate", "Agriculture", "Creative/Design", "Health/Wellness", "Education", "Finance", "Hospitality", "Environmental"];
 const PUT_IN_OPTIONS = ["Money", "Tools", "Audience", "Introductions", "Space/Equipment"];
 
-// Every free-text question accepts a voice note except the name.
+// Most free-text questions accept a voice note. Name and email are collected up
+// front when you accept the invite, so the intake skips them.
 export const INTAKE: IntakeSection[] = [
   {
     id: "identity", title: "Who you are", blurb: "The basics — who you are and where you're based.",
     questions: [
-      { id: "name", q: "What's your name?", field: { kind: "short", placeholder: "Your name" } },
-      { id: "email", q: "What's your email?", help: "So we can ping you when your synthesis is ready and your teammates finish. No spam.", field: { kind: "short", placeholder: "you@email.com" } },
       { id: "location", q: "Where's your homebase?", help: "City, region, exact spot, multiple locations.", field: { kind: "location", placeholder: "Where are you based?" } },
       { id: "otherLocations", q: "Have any other locations shaped who you are?", help: "Optional. Where you grew up, studied, worked, explored over the years.", optional: true, field: { kind: "short", placeholder: "e.g. Lisbon, rural Otago, Berlin" } },
       { id: "languages", q: "What languages do you speak fluently?", field: { kind: "multiSelect", options: LANGUAGES, allowOther: true } },

@@ -17,7 +17,7 @@ export function getAnthropic() {
   return new Anthropic();
 }
 
-export type IntakeRecord = { memberId: string; answers: Record<string, unknown> };
+export type IntakeRecord = { memberId: string; name?: string; answers: Record<string, unknown> };
 
 const ICONS = ["group", "alert", "minus", "sparkle", "chart", "heart", "target", "bolt", "link", "scale", "star", "thumb"] as const;
 
@@ -144,7 +144,7 @@ export async function synthesizeTeam(intakes: IntakeRecord[]): Promise<Synthesis
 
   // Short keys for the model; map back to real ids afterwards.
   const labelled = intakes.map((rec, i) => {
-    const name = (rec.answers?.["name"] as string) || `Member ${i + 1}`;
+    const name = rec.name || (rec.answers?.["name"] as string) || `Member ${i + 1}`;
     return { key: `m${i}`, id: rec.memberId, name, text: renderIntake(rec.answers ?? {}) };
   });
   const keyToId = new Map(labelled.map((m) => [m.key, m.id]));
