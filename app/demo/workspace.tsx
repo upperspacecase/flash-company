@@ -3179,15 +3179,15 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
           <table className="w-full min-w-[46rem] text-sm">
             <thead>
               <tr className="bg-slate-50 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                <th className="p-3">Name</th><th className="p-3">Type</th><th className="p-3">Size</th><th className="p-3">Description</th><th className="p-3">Your differentiation</th>
+                <th className="sticky left-0 z-20 min-w-[10rem] border-r border-slate-200 bg-slate-50 p-3">Name</th><th className="p-3">Type</th><th className="min-w-[8rem] p-3">Size</th><th className="p-3">Description</th><th className="p-3">Your differentiation</th>
               </tr>
             </thead>
             <tbody>
               {venture.landscape.map((r, i) => (
                 <tr key={i} className="border-t border-slate-100 align-top">
-                  <td className="p-2"><input value={r.name} onChange={(e) => setLandRow(i, { name: e.target.value })} placeholder="Name" className={teamInput} /></td>
+                  <td className="sticky left-0 z-10 min-w-[10rem] border-r border-slate-200 bg-slate-50 p-2"><input value={r.name} onChange={(e) => setLandRow(i, { name: e.target.value })} placeholder="Name" className={teamInput} /></td>
                   <td className="p-2"><select value={r.type} onChange={(e) => setLandRow(i, { type: e.target.value })} className="rounded-md border border-slate-200 bg-transparent px-1.5 py-1 text-xs font-semibold text-foreground focus:border-orange focus:outline-none">{["Competitor", "Alternative", "Partner", "Ally"].map((t) => <option key={t} value={t}>{t}</option>)}</select></td>
-                  <td className="p-2"><input value={r.size} onChange={(e) => setLandRow(i, { size: e.target.value })} placeholder="Size" className={teamInput} /></td>
+                  <td className="min-w-[8rem] p-2"><input value={r.size} onChange={(e) => setLandRow(i, { size: e.target.value })} placeholder="Size" className={teamInput} /></td>
                   <td className="min-w-[12rem] p-2"><textarea value={r.description} onChange={(e) => setLandRow(i, { description: e.target.value })} placeholder="What they do" rows={2} className={`${teamInput} resize-y leading-snug [field-sizing:content]`} /></td>
                   <td className="min-w-[12rem] p-2"><textarea value={r.differentiation} onChange={(e) => setLandRow(i, { differentiation: e.target.value })} placeholder="Be honest — or say you're not differentiated" rows={2} className={`${teamInput} resize-y leading-snug [field-sizing:content]`} /></td>
                 </tr>
