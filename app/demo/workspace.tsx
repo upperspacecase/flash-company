@@ -3075,7 +3075,7 @@ function EditableArea({ value, onChange, className = "", rows = 2, placeholder }
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       placeholder={placeholder}
-      className={`-mx-1.5 w-full resize-y rounded-md border border-transparent bg-transparent px-1.5 py-1 leading-snug hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none ${className}`}
+      className={`-mx-1.5 w-full resize-none rounded-md border border-transparent bg-transparent px-1.5 py-1 leading-snug hover:border-slate-200 focus:border-orange focus:bg-white/5 focus:outline-none ${className}`}
     />
   );
 }
