@@ -3220,7 +3220,7 @@ function RichVentureDetail({ venture, onVenture, recorded, onRecord, onNext, det
                 {venture.assumptions.map((a, i) => (
                   <tr key={i} className="border-t border-slate-100 align-top">
                     <td className="p-2"><input value={a.label} onChange={(e) => setAssumption(i, { label: e.target.value })} placeholder="Assumption" className={teamInput} /></td>
-                    <td className="min-w-[12rem] p-2"><input value={a.value} onChange={(e) => setAssumption(i, { value: e.target.value })} placeholder="Value" className={teamInput} /></td>
+                    <td className="min-w-[12rem] p-2"><textarea value={a.value} onChange={(e) => setAssumption(i, { value: e.target.value })} rows={2} placeholder="Value" className={`${teamInput} resize-y leading-snug [field-sizing:content]`} /></td>
                     <td className="p-2"><input value={a.source} onChange={(e) => setAssumption(i, { source: e.target.value })} placeholder="Source" className={`${teamInput} italic text-slate-500`} /></td>
                   </tr>
                 ))}
