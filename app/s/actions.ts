@@ -151,6 +151,8 @@ export async function createAcceptCheckout(): Promise<{ clientSecret: string; se
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded_page",
     mode: "payment",
+    // Let buyers redeem promo codes (e.g. FLASH50, FLASH100TY) at checkout.
+    allow_promotion_codes: true,
     line_items: [
       {
         price_data: {
