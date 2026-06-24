@@ -34,7 +34,7 @@ import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
 import { advanceVenture, type VentureBuildState } from "@/lib/ventures";
 import { emailConfigured, sendEmail, invitedToStartInputEmail, synthesisReadyEmail, teammateFinishedEmail } from "@/lib/email";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, paymentConfigured } from "@/lib/stripe";
 import { PRICE, type OpportunityData, type SynthesisData, type Venture, type VentureDraft } from "@/app/demo/data";
 
 const COOKIE = "fc_member";
@@ -68,31 +68,64 @@ export async function createTeam(): Promise<void> {
   redirect(`/s/${team.token}`);
 }
 
-// A real person opens the invite link: become a member of this team (if not
-// already), set the cookie. Called by JoinGate on first visit.
-export async function joinTeam(token: string): Promise<void> {
-  const team = await getTeamByToken(token);
-  if (!team) return;
-  const existing = await currentMember();
-  if (existing && existing.team_id === team.id) return;
-  const roster = await getTeamMembers(team.id);
-  if (roster.length >= 3) return; // Flash is full (capped at 3)
-  const member = await createMemberRow(team.id, false);
-  await setMemberCookie(member.id);
-}
-
 type Identity = { name?: string; email?: string };
 
-// No-charge / free path: persist the name + email from the gate, mark accepted,
-// and (on the acceptance that forms the team) email both members.
+// A Flash holds three people: the host (seat one) plus up to two teammates.
+const TEAM_CAP = 3;
+export type JoinResult = "ok" | "full" | "notfound";
+
+// A real person opens the invite link and enters their name + email. A seat is
+// keyed to the email, not the click: re-entering the same email re-binds to the
+// existing row (any device, lost cookie), so the link stays the one working link
+// for the whole Flash and repeat clicks never burn seats. When no buy-in will be
+// charged (free plan, or Stripe not configured), entering the email is the
+// acceptance — claim and accept in one step; otherwise the seat is held and the
+// teammate pays at the in-app gate.
+export async function joinTeam(token: string, identity: { name: string; email: string }): Promise<JoinResult> {
+  const team = await getTeamByToken(token);
+  if (!team) return "notfound";
+  const existing = await currentMember();
+  if (existing && existing.team_id === team.id) return "ok"; // already in this team
+  const roster = await getTeamMembers(team.id);
+  const email = identity.email.trim().toLowerCase();
+  const noCharge = team.plan === "free" || !paymentConfigured();
+
+  // Reclaim the seat for this email if it's already in the Flash.
+  const mine = roster.find((m) => !m.is_host && (m.email ?? "").toLowerCase() === email);
+  if (mine) {
+    await setMemberCookie(mine.id);
+    if (noCharge) await acceptMember(mine, identity);
+    return "ok";
+  }
+
+  // Capacity is counted by people, not rows: the host holds one seat and
+  // teammates are counted by distinct email. Full only at TEAM_CAP-1 teammates.
+  const teammateEmails = new Set(roster.filter((m) => !m.is_host && m.email).map((m) => m.email!.toLowerCase()));
+  if (teammateEmails.size >= TEAM_CAP - 1) return "full";
+
+  const member = await createMemberRow(team.id, false);
+  await setMemberIdentity(member.id, identity);
+  await setMemberCookie(member.id);
+  if (noCharge) await acceptMember(member, identity);
+  return "ok";
+}
+
+// Persist the name + email, mark accepted, and (on the acceptance that forms the
+// team) email both members. Shared by the free join, the in-app accept, and the
+// paid confirm so there's one acceptance path.
+async function acceptMember(member: MemberRow, identity?: Identity): Promise<void> {
+  if (identity) await setMemberIdentity(member.id, identity);
+  if (!member.accepted) {
+    await setMemberAccepted(member.id);
+    await maybeNotifyTeamFormed(member.team_id);
+  }
+}
+
+// In-app accept (the host's gate, and the paid plan's pre-payment gate).
 export async function acceptInvite(identity?: Identity): Promise<void> {
   const m = await currentMember();
   if (!m) return;
-  if (identity) await setMemberIdentity(m.id, identity);
-  if (!m.accepted) {
-    await setMemberAccepted(m.id);
-    await maybeNotifyTeamFormed(m.team_id);
-  }
+  await acceptMember(m, identity);
 }
 
 // The team "forms" the moment a second person accepts. At that transition, email
@@ -143,12 +176,8 @@ export async function confirmAccept(sessionId: string, identity?: Identity): Pro
   const session = await stripe.checkout.sessions.retrieve(sessionId);
   const paid = session.payment_status === "paid" || session.payment_status === "no_payment_required";
   if (!paid) return false;
-  if (identity) await setMemberIdentity(m.id, identity);
   await setMemberPayment(m.id, sessionId, session.payment_status);
-  if (!m.accepted) {
-    await setMemberAccepted(m.id);
-    await maybeNotifyTeamFormed(m.team_id);
-  }
+  await acceptMember(m, identity);
   return true;
 }
 

@@ -131,7 +131,7 @@ function liveCohort(status: { id: string; name: string | null; accepted: boolean
 
 /* ---------------------------------------------------------------- icons */
 
-function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
+export function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
   const D: Record<IconName, string> = {
     people: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M22 21v-2a4 4 0 0 0-3-3.87|M16 3.13A4 4 0 0 1 16 11",
     group: "M17 21v-2a4 4 0 0 0-3-3.87|M7 21v-2a4 4 0 0 1 3-3.87|M12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6|M5 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5|M19 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5",
@@ -1067,7 +1067,7 @@ function asRanked(v: unknown): RankedVal {
 function isVoiceable(f: IntakeField): boolean {
   return (f.kind === "short" || f.kind === "long") && !!f.voice;
 }
-const emailValid = (v: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());
+export const emailValid = (v: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());
 function isAnswered(v: unknown): boolean {
   if (v == null) return false;
   if (typeof v === "string") return v.trim().length > 0;

@@ -20,20 +20,6 @@ export const dynamic = "force-dynamic";
 // server actions dispatched from this page — give them room past the default.
 export const maxDuration = 800;
 
-// A Flash is capped at three people.
-const TEAM_CAP = 3;
-
-function FlashFull() {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-black px-6 text-center text-white">
-      <div className="max-w-sm">
-        <p className="text-lg font-bold">This Flash is full</p>
-        <p className="mt-2 text-sm text-white/60">A Flash is capped at three people and this one&rsquo;s complete. Ask whoever invited you to start another.</p>
-      </div>
-    </main>
-  );
-}
-
 export default async function Page({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const team = await getTeamByToken(token);
@@ -43,12 +29,13 @@ export default async function Page({ params }: { params: Promise<{ token: string
   const meId = c.get("fc_member")?.value;
   const me = meId ? await getMemberRow(meId) : null;
 
-  // No member for this browser+team yet → join (sets cookie) then re-render,
-  // unless the Flash is already full (capped at 3).
+  // No member for this browser+team yet → show the join gate. It claims a seat by
+  // email (reclaiming an existing one if this person already joined), so the cap
+  // is enforced there, per person, rather than per click.
   if (!me || me.team_id !== team.id) {
     const roster = await getTeamMembers(team.id);
-    if (roster.length >= TEAM_CAP) return <FlashFull />;
-    return <JoinGate token={token} />;
+    const inviterName = roster.find((m) => m.is_host)?.name ?? null;
+    return <JoinGate token={token} plan={team.plan === "free" ? "free" : "full"} inviterName={inviterName} />;
   }
 
   const [members, myIntake, synth, opp, vents, draft] = await Promise.all([
