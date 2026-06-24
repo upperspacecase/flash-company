@@ -46,6 +46,19 @@ export function synthesisReadyEmail(token: string, memberId: string): { subject:
   };
 }
 
+// Sent to both members the moment the first other person accepts — the team has
+// formed, so invite each of them to start their input.
+export function invitedToStartInputEmail(token: string, memberId: string): { subject: string; html: string } {
+  return {
+    subject: "Your Flash team is forming — start your input",
+    html: shell(
+      `<p>Someone just accepted your invite — your Flash is live.</p>
+       <p>Add your input now. It takes about 90 minutes, and synthesis runs the moment everyone's input is in.</p>`,
+      { href: resumeUrl(token, memberId), label: "Start your input" },
+    ),
+  };
+}
+
 export function teammateFinishedEmail(token: string, memberId: string, name: string, done: number, total: number): { subject: string; html: string } {
   const left = total - done;
   return {

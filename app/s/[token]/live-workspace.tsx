@@ -38,9 +38,9 @@ export function LiveWorkspace(props: LiveProps) {
     paymentEnabled: props.paymentEnabled,
     payment: {
       onCreateCheckout: async () => createAcceptCheckout(),
-      onConfirmPayment: async (sessionId) => confirmAccept(sessionId),
+      onConfirmPayment: async (sessionId, identity) => confirmAccept(sessionId, identity),
     },
-    onAccept: async () => { await acceptInvite(); },
+    onAccept: async (identity) => { await acceptInvite(identity); },
     onSaveIntake: async (answers, complete) => { await saveIntake(answers, complete); },
     onRunSynthesis: async (force) => runSynthesis(force),
     onConfirmSynthesis: async (data) => { await confirmSynthesis(data); },

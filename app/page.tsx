@@ -64,8 +64,8 @@ function EmailCapture({ note }: { note?: string }) {
           aria-label="Email address"
           className="h-12 rounded-md border border-white/20 bg-white/5 px-4 text-sm text-white placeholder:text-white/35 focus:border-accent focus:outline-none sm:flex-1"
         />
-        <button type="submit" disabled={status === "loading"} className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-6 text-sm font-semibold text-black transition-colors hover:bg-accent/90 disabled:opacity-60">
-          {status === "loading" ? "…" : "Start a Flash"}
+        <button type="submit" disabled={status === "loading"} className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-accent px-6 text-sm font-semibold text-black transition-colors hover:bg-accent/90 disabled:opacity-60">
+          {status === "loading" ? "…" : <><svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.5L13 2Z" /></svg> Start a Flash</>}
         </button>
       </form>
       {status === "error" ? (

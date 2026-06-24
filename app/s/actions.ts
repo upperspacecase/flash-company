@@ -10,6 +10,7 @@ import {
   getMemberRow,
   getTeamMembers,
   setMemberAccepted,
+  setMemberIdentity,
   upsertIntake,
   getTeamIntakes,
   getSynthesis,
@@ -32,7 +33,7 @@ import { consensusItems, ratingOrder } from "@/lib/consensus";
 import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
 import { advanceVenture, type VentureBuildState } from "@/lib/ventures";
-import { emailConfigured, sendEmail, synthesisReadyEmail, teammateFinishedEmail } from "@/lib/email";
+import { emailConfigured, sendEmail, invitedToStartInputEmail, synthesisReadyEmail, teammateFinishedEmail } from "@/lib/email";
 import { getStripe } from "@/lib/stripe";
 import { PRICE, type OpportunityData, type SynthesisData, type Venture, type VentureDraft } from "@/app/demo/data";
 
@@ -80,9 +81,32 @@ export async function joinTeam(token: string): Promise<void> {
   await setMemberCookie(member.id);
 }
 
-export async function acceptInvite(): Promise<void> {
+type Identity = { name?: string; email?: string };
+
+// No-charge / free path: persist the name + email from the gate, mark accepted,
+// and (on the acceptance that forms the team) email both members.
+export async function acceptInvite(identity?: Identity): Promise<void> {
   const m = await currentMember();
-  if (m) await setMemberAccepted(m.id);
+  if (!m) return;
+  if (identity) await setMemberIdentity(m.id, identity);
+  if (!m.accepted) {
+    await setMemberAccepted(m.id);
+    await maybeNotifyTeamFormed(m.team_id);
+  }
+}
+
+// The team "forms" the moment a second person accepts. At that transition, email
+// both of them inviting them to start their input.
+async function maybeNotifyTeamFormed(teamId: string): Promise<void> {
+  if (!emailConfigured()) return;
+  const [team, members] = await Promise.all([getTeamById(teamId), getTeamMembers(teamId)]);
+  if (!team) return;
+  const accepted = members.filter((x) => x.accepted);
+  if (accepted.length !== 2) return;
+  await Promise.all(accepted.filter((x) => x.email).map((x) => {
+    const { subject, html } = invitedToStartInputEmail(team.token, x.id);
+    return sendEmail(x.email, subject, html);
+  }));
 }
 
 // Real payment (only used when Stripe keys are set). Charge the buy-in now via
@@ -112,15 +136,19 @@ export async function createAcceptCheckout(): Promise<{ clientSecret: string; se
 }
 
 // Server-verify the payment, then mark accepted. Don't trust the client.
-export async function confirmAccept(sessionId: string): Promise<boolean> {
+export async function confirmAccept(sessionId: string, identity?: Identity): Promise<boolean> {
   const m = await currentMember();
   if (!m) return false;
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.retrieve(sessionId);
   const paid = session.payment_status === "paid" || session.payment_status === "no_payment_required";
   if (!paid) return false;
+  if (identity) await setMemberIdentity(m.id, identity);
   await setMemberPayment(m.id, sessionId, session.payment_status);
-  await setMemberAccepted(m.id);
+  if (!m.accepted) {
+    await setMemberAccepted(m.id);
+    await maybeNotifyTeamFormed(m.team_id);
+  }
   return true;
 }
 

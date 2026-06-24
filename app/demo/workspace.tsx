@@ -67,10 +67,13 @@ const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null;
 
+// Name + email captured on the accept/pay gate before someone joins the team.
+export type Identity = { name: string; email: string };
+
 // Inline payment handlers, present only in live mode with Stripe keys set.
 export type LivePayment = {
   onCreateCheckout: () => Promise<{ clientSecret: string; sessionId: string }>;
-  onConfirmPayment: (sessionId: string) => Promise<boolean>;
+  onConfirmPayment: (sessionId: string, identity: Identity) => Promise<boolean>;
 };
 
 // Live wiring passed in by the real /s/[token] flow. Absent in the demo.
@@ -89,7 +92,7 @@ export type LiveCtx = {
   isHost: boolean;
   paymentEnabled: boolean;
   payment: LivePayment;
-  onAccept: () => Promise<void>;
+  onAccept: (identity: Identity) => Promise<void>;
   onSaveIntake: (answers: Record<string, unknown>, complete: boolean) => Promise<void>;
   onRunSynthesis: (force?: boolean) => Promise<SynthesisData>;
   onConfirmSynthesis: (data: SynthesisData) => Promise<void>;
@@ -374,8 +377,8 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
     i === 0 || (accepted && i <= reached && (i !== 2 || teamReady));
   const advance = (i: number) => { setReached((r) => Math.max(r, i)); setPhase(i); };
 
-  const accept = async () => {
-    if (live) await live.onAccept();
+  const accept = async (identity: Identity) => {
+    if (live) await live.onAccept(identity);
     setAccepted(true);
     setReached((r) => Math.max(r, 1));
   };
@@ -754,12 +757,17 @@ const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "target", title: "The venture only you can build", text: "Narrow to the one idea your team is uniquely placed to start, complete with the plan and the assets to share it openly with your network." },
 ];
 
-function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false, isHost = false, windowEndsAt }: { plan: "free" | "full"; accepted: boolean; onAccept: () => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean; isHost?: boolean; windowEndsAt?: string }) {
+function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false, isHost = false, windowEndsAt }: { plan: "free" | "full"; accepted: boolean; onAccept: (identity: Identity) => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean; isHost?: boolean; windowEndsAt?: string }) {
   const [payOpen, setPayOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const isFree = plan === "free";
-  const handleAccept = () => (isFree ? onAccept() : setPayOpen(true));
+  const identity: Identity = { name: name.trim(), email: email.trim() };
+  const identityValid = identity.name.length > 0 && emailValid(identity.email);
+  const handleStart = () => { if (!identityValid) return; isFree ? onAccept(identity) : setPayOpen(true); };
   const acceptedCount = members.filter((m) => m.accepted).length;
+  const teamFormed = acceptedCount >= 2; // the first other person has accepted
   const copyLink = () => {
     const full = inviteUrl.startsWith("http") ? inviteUrl : `https://${inviteUrl}`;
     navigator.clipboard.writeText(full).then(() => {
@@ -767,163 +775,176 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
       setTimeout(() => setCopied(false), 2000);
     });
   };
-  return (
-    <Columns
-      left={
-        <div className="space-y-4">
-          <RailTitle>Invite</RailTitle>
-          <IntakeDeadline endsAt={windowEndsAt} label="left to accept" />
-          <div className="rounded-xl border border-slate-200 p-3">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">Invite link</p>
-            <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
-              <code className="min-w-0 flex-1 truncate text-xs text-slate-600">{inviteUrl}</code>
-              <button onClick={copyLink} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-orange px-2 py-1 text-[11px] font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3 w-3" /> {copied ? "Copied" : "Copy"}</button>
-            </div>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-3">
-            <div className="mb-2 flex items-baseline justify-between">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Accepted</p>
-              <span className="text-[11px] tabular-nums text-slate-400">{acceptedCount} of {members.length}</span>
-            </div>
-            <ul className="space-y-1.5">
-              {members.filter((m) => m.accepted).map((m) => (
-                <li key={m.id} className="flex items-center gap-2 text-sm">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                  <span className="truncate font-semibold text-foreground">{m.name}{m.id === youId && <span className="font-normal text-slate-400"> (you)</span>}</span>
-                </li>
-              ))}
-              {acceptedCount === 0 && <li className="text-xs text-slate-400">No one yet — share the link.</li>}
-            </ul>
-          </div>
-        </div>
-      }
-      center={
-      <div className="mx-auto max-w-3xl space-y-12 py-4">
-      {/* 1 · Accept invite — host kick-off / teammate accept (hidden once you're in) */}
-      {!accepted && (
-        <section className="rounded-2xl border border-orange bg-white/5 p-6">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-foreground">{isHost ? "You started this Flash" : "Accept your invite"}</p>
-              <p className="mt-1 text-sm text-slate-500">{isHost ? `Your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Free to start — invite up to three and run a single session." : `${PRICE.currency}${PRICE.perPerson} buy-in per person, charged when you accept.`)}</p>
-            </div>
-            {!isFree && <p className="shrink-0 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
-          </div>
-          <div className="mt-5">
-            {expired
-              ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
-              : <PrimaryBtn label={isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept invite to get started"} onClick={handleAccept} icon={isFree ? "bolt" : "coins"} />}
-          </div>
+
+  // Pre-payment gate: enter your name + email, then pay. Nothing else of the
+  // invite page shows until you're in.
+  if (!accepted) {
+    return (
+      <div className="mx-auto max-w-xl space-y-8 py-4">
+        <section>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
+          <h1 className="mt-3 text-3xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-4xl">{isHost ? "You started this Flash" : "You’re invited to a Flash"}</h1>
+          <p className="mt-3 text-slate-600">{isHost ? `Add your details and your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Add your details to join — free to start." : `Add your details and your ${PRICE.currency}${PRICE.perPerson} buy-in books your spot on the team.`)}</p>
         </section>
-      )}
-
-      {/* 3 · Hero */}
-      <section>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
-        <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">Ever wonder what you and <span className="text-orange">two</span> <span className="text-orange">friends</span> could start?</h1>
-        <p className="mt-5 text-lg leading-relaxed text-slate-600">
-          Invite two people to a 48-hour structured ideation process that maps your combined skills, networks, and insights into an idea worth sharing.
-        </p>
-      </section>
-
-      {/* 4 · How it works */}
-      <section>
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">How it works</h2>
-        <p className="mt-1 text-sm text-slate-500">About 90 minutes of your time each, spread across a 48-hour window.</p>
-        <div className="mt-4 grid gap-5 sm:grid-cols-3">
-          {HOW_STEPS.map((s) => (
-            <div key={s.title}>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-tint text-orange"><Icon name={s.icon} className="h-4 w-4" /></span>
-              <p className="mt-3 text-sm font-bold text-foreground">{s.title}</p>
-              <p className="mt-1 text-sm leading-relaxed text-slate-500">{s.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 4b · The process — purpose of each step and how it flows */}
-      <section>
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">The process</h2>
-        <p className="mt-1 text-sm text-slate-500">Six steps over the 48 hours — each one feeds the next.</p>
-        <ol className="mt-4 space-y-3">
-          {PROCESS.map((s, i) => (
-            <li key={s.label} className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{i + 1}</span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground">{s.label}</p>
-                <p className="mt-0.5 text-sm leading-relaxed text-slate-500">{s.text}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* Invite your team — share link + 48h accept window */}
-      <section>
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Invite your team</h2>
-        <p className="mt-1 text-sm text-slate-500">Up to three people. Share a link — no app, no account.</p>
-        <div className="mt-4 rounded-xl border border-slate-200 p-4">
-          <p className="mb-2 text-sm font-bold text-foreground">Shareable link</p>
-          <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-orange"><Icon name="link" className="h-4 w-4" /></span>
-            <code className="min-w-0 flex-1 truncate text-sm text-slate-600">{inviteUrl}</code>
-            <button onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md bg-orange px-3 py-1.5 text-xs font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}</button>
-          </div>
-          <p className="mt-2 text-xs text-slate-400">{INVITE.note}</p>
-        </div>
-        <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700">
-          <Icon name="clock" className="h-4 w-4" /> <InviteCountdown endsAt={windowEndsAt} /> left for invitations to be accepted
-        </div>
-      </section>
-
-      {/* 5 · Who's accepted */}
-      <section>
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Who&rsquo;s accepted</h2>
-          <span className="text-xs text-slate-400">{acceptedCount} of {members.length} in</span>
-        </div>
-        <ul className="mt-4 space-y-2.5">
-          {members.map((m) => {
-            const isYou = m.id === youId;
-            const has = m.accepted;
-            return (
-              <li key={m.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-                <Avatar m={m} />
-                <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{m.name} {isYou && <span className="text-xs font-normal text-slate-400">(you)</span>}</p><p className="truncate text-xs text-slate-500">{m.role}{m.brings ? ` · ${m.brings}` : ""}</p></div>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${has ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{has ? "Accepted" : "Pending"}</span>
-              </li>
-            );
-          })}
-        </ul>
-        <p className="mt-3 text-xs text-slate-400">{INVITE.forms}</p>
-      </section>
-
-      {/* You're in — start your input (shown once accepted), under Who's accepted */}
-      {accepted && (
         <section className="rounded-2xl border border-orange bg-white/5 p-6">
-          <p className="flex items-center gap-2 text-lg font-bold text-foreground"><Icon name="check" className="h-5 w-5 text-orange" /> You&rsquo;re in.</p>
-          <p className="mt-1.5 text-sm text-slate-600">Start your input now — synthesis runs once your whole team&rsquo;s input is in.</p>
-          <div className="mt-5"><PrimaryBtn label="Start your input" onClick={onStart} icon="bolt" /></div>
-          {resumeUrl && (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-white/5 p-3">
-              <p className="text-xs font-bold text-foreground">Your resume link</p>
-              <p className="mt-0.5 text-xs text-slate-500">Bookmark this to pick up where you left off — on any device.</p>
-              <code className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{resumeUrl}</code>
+          {!isFree && <p className="mb-4 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
+          {expired ? (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
+          ) : (
+            <div className="space-y-4">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">Your name</span>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="h-12 w-full rounded-xl border border-slate-200 bg-white/5 px-4 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:outline-none" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">Your email</span>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="h-12 w-full rounded-xl border border-slate-200 bg-white/5 px-4 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:outline-none" />
+                <span className="mt-1 block text-xs text-slate-400">We’ll email you the moment your team forms.</span>
+              </label>
+              <button onClick={handleStart} disabled={!identityValid} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange px-6 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:cursor-not-allowed disabled:opacity-50">
+                {isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : (isFree ? "Accept & start" : `Pay ${PRICE.currency}${PRICE.perPerson} & accept`)}
+                <Icon name={isFree ? "bolt" : "coins"} className="h-4 w-4" />
+              </button>
             </div>
           )}
         </section>
-      )}
-
-      {payOpen && <PaymentModal onClose={() => setPayOpen(false)} onPaid={() => { setPayOpen(false); onAccept(); }} payment={payment} />}
+        {payOpen && <PaymentModal onClose={() => setPayOpen(false)} onPaid={() => { setPayOpen(false); onAccept(identity); }} payment={payment} identity={identity} />}
       </div>
+    );
+  }
+
+  // Post-payment: the full invite page. Share link + countdown + who's accepted +
+  // the start-input CTA live in the left rail; the kick-off content stays centre.
+  return (
+    <Columns
+      left={<InviteRail inviteUrl={inviteUrl} resumeUrl={resumeUrl} windowEndsAt={windowEndsAt} teamFormed={teamFormed} members={members} youId={youId} acceptedCount={acceptedCount} onStart={onStart} copied={copied} onCopy={copyLink} />}
+      center={
+        <div className="space-y-12">
+          {/* Hero */}
+          <section>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
+            <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl">Ever wonder what you and <span className="text-orange">two</span> <span className="text-orange">friends</span> could start?</h1>
+            <p className="mt-5 text-lg leading-relaxed text-slate-600">
+              Invite two people to a 48-hour structured ideation process that maps your combined skills, networks, and insights into an idea worth sharing.
+            </p>
+          </section>
+
+          {/* How it works */}
+          <section>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">How it works</h2>
+            <p className="mt-1 text-sm text-slate-500">About 90 minutes of your time each, spread across a 48-hour window.</p>
+            <div className="mt-4 grid gap-5 sm:grid-cols-3">
+              {HOW_STEPS.map((s) => (
+                <div key={s.title}>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-tint text-orange"><Icon name={s.icon} className="h-4 w-4" /></span>
+                  <p className="mt-3 text-sm font-bold text-foreground">{s.title}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{s.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* The process — purpose of each step and how it flows */}
+          <section>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">The process</h2>
+            <p className="mt-1 text-sm text-slate-500">Six steps over the 48 hours — each one feeds the next.</p>
+            <ol className="mt-4 space-y-3">
+              {PROCESS.map((s, i) => (
+                <li key={s.label} className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-tint text-xs font-bold text-orange-dark">{i + 1}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground">{s.label}</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-slate-500">{s.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          {/* Who's accepted */}
+          <section>
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Who&rsquo;s accepted</h2>
+              <span className="text-xs text-slate-400">{acceptedCount} of {members.length} in</span>
+            </div>
+            <ul className="mt-4 space-y-2.5">
+              {members.map((m) => {
+                const isYou = m.id === youId;
+                const has = m.accepted;
+                return (
+                  <li key={m.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                    <Avatar m={m} />
+                    <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{m.name} {isYou && <span className="text-xs font-normal text-slate-400">(you)</span>}</p><p className="truncate text-xs text-slate-500">{m.role}{m.brings ? ` · ${m.brings}` : ""}</p></div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${has ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{has ? "Accepted" : "Pending"}</span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-3 text-xs text-slate-400">{INVITE.forms}</p>
+          </section>
+        </div>
       }
     />
   );
 }
 
+// Left rail on the invite page (post-payment): the 48-hour accept countdown, the
+// shareable link, who's accepted, and — once the first other person accepts — the
+// Start-input CTA.
+function InviteRail({ inviteUrl, resumeUrl, windowEndsAt, teamFormed, members, youId, acceptedCount, onStart, copied, onCopy }: { inviteUrl: string; resumeUrl?: string; windowEndsAt?: string; teamFormed: boolean; members: Member[]; youId: string; acceptedCount: number; onStart: () => void; copied: boolean; onCopy: () => void }) {
+  return (
+    <div className="space-y-4">
+      <RailTitle>Invite</RailTitle>
+      <IntakeDeadline endsAt={windowEndsAt} label="left to accept" />
+      <div className="rounded-xl border border-slate-200 p-3">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">Invite link</p>
+        <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
+          <code className="min-w-0 flex-1 truncate text-xs text-slate-600">{inviteUrl}</code>
+          <button onClick={onCopy} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-orange px-2 py-1 text-[11px] font-bold text-white"><Icon name={copied ? "check" : "copy"} className="h-3 w-3" /> {copied ? "Copied" : "Copy"}</button>
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">{INVITE.note}</p>
+      </div>
+      <div className="rounded-xl border border-slate-200 p-3">
+        <div className="mb-2 flex items-baseline justify-between">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Accepted</p>
+          <span className="text-[11px] tabular-nums text-slate-400">{acceptedCount} of {members.length}</span>
+        </div>
+        <ul className="space-y-1.5">
+          {members.filter((m) => m.accepted).map((m) => (
+            <li key={m.id} className="flex items-center gap-2 text-sm">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+              <span className="truncate font-semibold text-foreground">{m.name}{m.id === youId && <span className="font-normal text-slate-400"> (you)</span>}</span>
+            </li>
+          ))}
+          {acceptedCount === 0 && <li className="text-xs text-slate-400">No one yet — share the link.</li>}
+        </ul>
+      </div>
+      {teamFormed ? (
+        <div className="rounded-xl border border-orange bg-orange-tint/30 p-4">
+          <p className="flex items-center gap-2 text-sm font-bold text-foreground"><Icon name="check" className="h-4 w-4 text-orange" /> Your team&rsquo;s forming</p>
+          <p className="mt-1 text-xs text-slate-500">Start your input — synthesis runs once everyone&rsquo;s input is in.</p>
+          <button onClick={onStart} className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-orange px-4 text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="bolt" className="h-4 w-4" /> Start input</button>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-slate-200 p-4">
+          <p className="text-sm font-bold text-foreground">Waiting for your team</p>
+          <p className="mt-1 text-xs text-slate-500">Share your link above. Once someone accepts, you&rsquo;ll both get an email and can start your input.</p>
+        </div>
+      )}
+      {resumeUrl && (
+        <div className="rounded-xl border border-slate-200 p-3">
+          <p className="text-xs font-bold text-foreground">Your resume link</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">Bookmark this to pick up on any device.</p>
+          <code className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600">{resumeUrl}</code>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Accepting routes through payment. The buy-in is charged now — Stripe embedded
 // Checkout when keys are set, a no-charge fallback otherwise.
-function PaymentModal({ onClose, onPaid, payment }: { onClose: () => void; onPaid: () => void; payment?: LivePayment }) {
+function PaymentModal({ onClose, onPaid, payment, identity }: { onClose: () => void; onPaid: () => void; payment?: LivePayment; identity: Identity }) {
   const amount = `${PRICE.currency}${PRICE.perPerson}`;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -946,7 +967,7 @@ function PaymentModal({ onClose, onPaid, payment }: { onClose: () => void; onPai
 
         {payment ? (
           <div className="mt-4">
-            <StripeCheckout payment={payment} onPaid={onPaid} />
+            <StripeCheckout payment={payment} onPaid={onPaid} identity={identity} />
             <button onClick={onClose} className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
           </div>
         ) : (
@@ -970,7 +991,7 @@ function PaymentModal({ onClose, onPaid, payment }: { onClose: () => void; onPai
 
 // Inline real payment: Stripe embedded Checkout (charges the buy-in now). On
 // completion we server-verify via onConfirmPayment before accepting.
-function StripeCheckout({ payment, onPaid }: { payment: LivePayment; onPaid: () => void }) {
+function StripeCheckout({ payment, onPaid, identity }: { payment: LivePayment; onPaid: () => void; identity: Identity }) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -984,7 +1005,7 @@ function StripeCheckout({ payment, onPaid }: { payment: LivePayment; onPaid: () 
   }, [payment]);
   const complete = async () => {
     if (!sessionId) return;
-    const ok = await payment.onConfirmPayment(sessionId);
+    const ok = await payment.onConfirmPayment(sessionId, identity);
     if (ok) onPaid();
     else setError("Payment wasn't completed.");
   };

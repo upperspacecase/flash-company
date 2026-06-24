@@ -224,6 +224,17 @@ export async function setMemberAccepted(memberId: string): Promise<void> {
   await sql`UPDATE members SET accepted = true WHERE id = ${memberId}`;
 }
 
+// Captured on the accept/pay gate so the member shows on the roster and can be
+// emailed when the team forms. COALESCE keeps any value already on file.
+export async function setMemberIdentity(memberId: string, identity: { name?: string; email?: string }): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  await sql`UPDATE members
+    SET name = COALESCE(${identity.name ?? null}, name),
+        email = COALESCE(${identity.email ?? null}, email)
+    WHERE id = ${memberId}`;
+}
+
 export async function upsertIntake(
   memberId: string,
   teamId: string,
