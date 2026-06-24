@@ -590,9 +590,10 @@ function FeedbackWidget({ screen, token, memberId }: { screen: string; token?: s
       <button
         onClick={() => setOpen(true)}
         aria-label="Send feedback"
-        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-orange px-4 py-3 text-sm font-bold text-white shadow-lg transition-colors hover:bg-orange-dark"
+        className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-orange p-4 text-sm font-bold text-white shadow-lg transition-colors hover:bg-orange-dark sm:left-auto sm:right-5 sm:px-4 sm:py-3"
       >
-        <Icon name="message" className="h-4 w-4" /> Feedback
+        <Icon name="message" className="h-5 w-5 sm:h-4 sm:w-4" />
+        <span className="hidden sm:inline">Feedback</span>
       </button>
 
       {open && (
