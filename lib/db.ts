@@ -491,3 +491,42 @@ export async function getRecentFeedback(limit = 50): Promise<FeedbackRow[]> {
     FROM feedback ORDER BY created_at DESC LIMIT ${limit}`;
   return (rows as FeedbackRow[]).map((r) => ({ ...r, created_at: String(r.created_at) }));
 }
+
+/* ------------------------------------------------ flashes overview (admin) */
+
+// One row per Flash (team) for the admin dashboard: the shareable token, how many
+// people joined/accepted, and which pipeline artifacts exist so the UI can derive
+// the stage each team has reached. Newest first.
+export type FlashRow = {
+  token: string;
+  plan: string;
+  created_at: string;
+  members: number; // anyone who opened the invite and got a member row
+  accepted: number; // accepted the invite — actually in the Flash
+  ready: number; // accepted AND finished their intake
+  has_synthesis: boolean;
+  has_opportunity: boolean;
+  has_ventures: boolean;
+  has_build: boolean; // venture build in progress (idea being generated)
+  signups: number; // emails captured on the published venture landing
+};
+
+export async function getFlashes(limit = 100): Promise<FlashRow[]> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      t.token, t.plan, t.created_at,
+      (SELECT count(*) FROM members m WHERE m.team_id = t.id)::int AS members,
+      (SELECT count(*) FROM members m WHERE m.team_id = t.id AND m.accepted)::int AS accepted,
+      (SELECT count(*) FROM members m WHERE m.team_id = t.id AND m.accepted AND m.intake_complete)::int AS ready,
+      EXISTS (SELECT 1 FROM synthesis s WHERE s.team_id = t.id) AS has_synthesis,
+      EXISTS (SELECT 1 FROM opportunity o WHERE o.team_id = t.id) AS has_opportunity,
+      EXISTS (SELECT 1 FROM ventures v WHERE v.team_id = t.id) AS has_ventures,
+      EXISTS (SELECT 1 FROM venture_build vb WHERE vb.team_id = t.id) AS has_build,
+      (SELECT count(*) FROM venture_signups vs WHERE vs.team_id = t.id)::int AS signups
+    FROM teams t
+    ORDER BY t.created_at DESC
+    LIMIT ${limit}`;
+  return (rows as FlashRow[]).map((r) => ({ ...r, created_at: String(r.created_at) }));
+}

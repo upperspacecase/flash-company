@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import type { PromptView } from "@/lib/prompts";
-import type { FeedbackRow } from "@/lib/db";
+import type { FeedbackRow, FlashRow } from "@/lib/db";
 
-// Admin tabs: the existing signups analytics, an editor for every LLM step's
-// system prompt (edited live, saved to the DB, used on the next run), and the
-// in-app feedback users have submitted.
-export function DashboardTabs({ analytics, prompts, feedback }: { analytics: React.ReactNode; prompts: PromptView[]; feedback: FeedbackRow[] }) {
-  const [tab, setTab] = useState<"signups" | "prompts" | "feedback">("signups");
-  const tabs: [typeof tab, string][] = [["signups", "Signups"], ["feedback", `Feedback${feedback.length ? ` (${feedback.length})` : ""}`], ["prompts", "LLM prompts"]];
+// Admin tabs: the Flashes started (teams + stage), the existing signups analytics,
+// an editor for every LLM step's system prompt (edited live, saved to the DB, used
+// on the next run), and the in-app feedback users have submitted.
+export function DashboardTabs({ analytics, prompts, feedback, flashes }: { analytics: React.ReactNode; prompts: PromptView[]; feedback: FeedbackRow[]; flashes: FlashRow[] }) {
+  const [tab, setTab] = useState<"flashes" | "signups" | "prompts" | "feedback">("flashes");
+  const tabs: [typeof tab, string][] = [["flashes", `Flashes${flashes.length ? ` (${flashes.length})` : ""}`], ["signups", "Signups"], ["feedback", `Feedback${feedback.length ? ` (${feedback.length})` : ""}`], ["prompts", "LLM prompts"]];
   return (
     <div className="mt-8">
       <div className="flex gap-1 border-b border-white/10">
@@ -23,10 +23,75 @@ export function DashboardTabs({ analytics, prompts, feedback }: { analytics: Rea
           </button>
         ))}
       </div>
+      {tab === "flashes" && <FlashesTable items={flashes} />}
       {tab === "signups" && <div className="mt-6">{analytics}</div>}
       {tab === "feedback" && <FeedbackList items={feedback} />}
       {tab === "prompts" && <Prompts initial={prompts} />}
     </div>
+  );
+}
+
+// The six pipeline stages, mirroring the product's STEPS (app/demo/data.ts).
+const STAGES = ["Invite", "Input", "Synthesis", "Opportunities", "Idea", "Validation"] as const;
+
+// Furthest stage a Flash has reached, derived from which artifacts exist. The
+// venture build is an intermediate of the Idea step, so it counts as Idea.
+function flashStage(f: FlashRow): number {
+  if (f.signups > 0) return 5; // Validation — landing live, capturing signups
+  if (f.has_ventures || f.has_build) return 4; // Idea (done or generating)
+  if (f.has_opportunity) return 3;
+  if (f.has_synthesis) return 2;
+  if (f.accepted >= 2) return 1; // Input — team formed, intake underway
+  return 0; // Invite — still forming
+}
+
+function FlashesTable({ items }: { items: FlashRow[] }) {
+  if (items.length === 0) {
+    return <p className="mt-6 rounded-xl border border-white/10 bg-white/5 px-5 py-8 text-sm text-white/40">No Flashes started yet.</p>;
+  }
+  return (
+    <section className="mt-6 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-xs uppercase tracking-wide text-white/40">
+            <th className="px-5 py-3 font-medium">Flash</th>
+            <th className="px-5 py-3 font-medium">Team</th>
+            <th className="px-5 py-3 font-medium">Progress</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((f) => {
+            const stage = flashStage(f);
+            const pending = f.members - f.accepted;
+            return (
+              <tr key={f.token} className="border-t border-white/5 align-top">
+                <td className="px-5 py-3">
+                  <a href={`/s/${f.token}`} target="_blank" rel="noreferrer" className="font-mono text-white/80 transition-colors hover:text-orange">/s/{f.token}</a>
+                  <p className="mt-1 text-xs text-white/40">{new Date(f.created_at).toLocaleDateString()}{f.plan === "free" ? " · free" : ""}</p>
+                </td>
+                <td className="px-5 py-3">
+                  <span className="font-semibold tabular-nums text-white/80">{f.accepted}</span>
+                  <span className="text-white/40"> in</span>
+                  {pending > 0 && <span className="text-white/30"> · {pending} pending</span>}
+                </td>
+                <td className="px-5 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-orange px-2 py-0.5 text-[11px] font-bold text-white">{STAGES[stage]}</span>
+                    <span className="text-[11px] text-white/40">step {stage + 1}/{STAGES.length}</span>
+                    {f.signups > 0 && <span className="text-[11px] text-emerald-400">{f.signups} signup{f.signups === 1 ? "" : "s"}</span>}
+                  </div>
+                  <div className="mt-2 flex gap-1">
+                    {STAGES.map((label, i) => (
+                      <span key={label} className={`h-1.5 w-6 rounded-full ${i <= stage ? "bg-orange" : "bg-white/10"}`} />
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
   );
 }
 
