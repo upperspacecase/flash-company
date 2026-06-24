@@ -252,11 +252,6 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   const isFree = plan === "free";
   const youId = live ? live.meId : YOU;
 
-  // Build shareable links off the real serving origin so the invite/resume URLs
-  // work on whatever domain the app is deployed on (not a hardcoded one).
-  const [origin, setOrigin] = useState<string | null>(null);
-  useEffect(() => { setOrigin(window.location.origin); }, []);
-
   const [phase, setPhase] = useState(0);
   // Demo: assume the full flow already ran — every step unlocked and navigable so
   // you can click around and see it all. Live: gated step by step as before.
@@ -425,7 +420,10 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       ? (status?.find((s) => s.id === id)?.intakeComplete ? INTAKE_TOTAL : 0)
       : id === "alex" ? INTAKE_TOTAL : id === "priya" ? 19 : 0;
 
-  const base = origin ?? "https://flashco.org";
+  // Shareable invite/resume links always point at flashco.org, the canonical
+  // public domain (matches lib/email.ts and the published /v URL), not whatever
+  // host happens to be serving the app.
+  const base = "https://flashco.org";
   const inviteUrl = live ? `${base}/s/${live.token}` : INVITE.url;
   const resumeUrl = live ? `${base}/s/${live.token}/r/${live.meId}` : undefined;
 
