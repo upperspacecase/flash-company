@@ -769,6 +769,9 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
   const handleStart = () => { if (!identityValid) return; isFree ? onAccept(identity) : setPayOpen(true); };
   const acceptedCount = members.filter((m) => m.accepted).length;
   const teamFormed = acceptedCount >= 2; // the first other person has accepted
+  // The host (first user) is the first member created — their name personalises
+  // the invite a teammate sees.
+  const inviterName = members[0]?.name;
   const copyLink = () => {
     const full = inviteUrl.startsWith("http") ? inviteUrl : `https://${inviteUrl}`;
     navigator.clipboard.writeText(full).then(() => {
@@ -784,8 +787,8 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
       <div className="mx-auto max-w-xl space-y-8 py-4">
         <section>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
-          <h1 className="mt-3 text-3xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-4xl">{isHost ? "You started this Flash" : "You’re invited to a Flash"}</h1>
-          <p className="mt-3 text-slate-600">{isHost ? `Add your details and your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Add your details to join — free to start." : `Add your details and your ${PRICE.currency}${PRICE.perPerson} buy-in books your spot on the team.`)}</p>
+          <h1 className="mt-3 text-3xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-4xl">{isHost ? "You started this Flash" : (inviterName ? `${inviterName} invited you to Join a Flash` : "You’re invited to a Flash")}</h1>
+          <p className="mt-3 text-slate-600">{isHost ? `Add your details and your ${PRICE.currency}${PRICE.perPerson} buy-in kicks off the ${SPRINT.windowHours}-hour sprint.` : (isFree ? "Add your details to join — free to start." : `Everyone contributes ${PRICE.currency}${PRICE.perPerson} and 90 minutes over a ${SPRINT.windowHours}-hour period.`)}</p>
         </section>
         <section className="rounded-2xl border border-orange bg-white/5 p-6">
           {!isFree && <p className="mb-4 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
@@ -803,8 +806,8 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
                 <span className="mt-1 block text-xs text-slate-400">We’ll email you the moment your team forms.</span>
               </label>
               <button onClick={handleStart} disabled={!identityValid} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange px-6 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:cursor-not-allowed disabled:opacity-50">
-                {isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : (isFree ? "Accept & start" : `Pay ${PRICE.currency}${PRICE.perPerson} & accept`)}
-                <Icon name={isFree ? "bolt" : "coins"} className="h-4 w-4" />
+                {isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept the Invite"}
+                <Icon name={isHost && !isFree ? "coins" : "bolt"} className="h-4 w-4" />
               </button>
             </div>
           )}
