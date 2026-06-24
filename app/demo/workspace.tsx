@@ -2481,12 +2481,12 @@ function PaidGate({ unlocked, onUnlock, teamSize, children }: { unlocked: boolea
   const features = ["Hypothesis Scorecard", "Landing Page", "Pitch Deck", "Extended Social Media assets", "Analytics Dashboard", "Weekly AI feedback synthesis"];
   return (
     <div className="relative">
-      <div className="pointer-events-none select-none opacity-40 blur-[2px]" aria-hidden>{children}</div>
+      <div className="pointer-events-none select-none opacity-40" aria-hidden>{children}</div>
       <div className="absolute inset-0 flex items-start justify-center">
         <div className="sticky top-24 mt-20 w-full max-w-md rounded-2xl border border-orange/30 bg-white p-6 shadow-xl">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-tint text-orange-dark"><Icon name="lock" className="h-5 w-5" /></span>
-            <p className="text-base font-bold tracking-tight text-foreground">Give your idea the best chance over the next 30 days with:</p>
+            <p className="text-base font-bold tracking-tight text-black">Give your idea the best chance over the next 30 days with:</p>
           </div>
           <ul className="mt-4 space-y-1.5 text-sm text-slate-600">
             {features.map((f) => (
