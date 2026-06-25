@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { joinTeam } from "../actions";
+import { joinTeam, requestResumeLink } from "../actions";
 import { FlashFull } from "./flash-full";
 import { Icon, emailValid, type Identity } from "@/app/demo/workspace";
 import { PRICE, SPRINT } from "@/app/demo/data";
@@ -16,6 +16,9 @@ export function JoinGate({ token, plan, inviterName }: { token: string; plan: "f
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [full, setFull] = useState(false);
+  const [resumeEmail, setResumeEmail] = useState("");
+  const [resumeBusy, setResumeBusy] = useState(false);
+  const [resumeSent, setResumeSent] = useState(false);
   const isFree = plan === "free";
   const identity: Identity = { name: name.trim(), email: email.trim() };
   const identityValid = identity.name.length > 0 && emailValid(identity.email);
@@ -26,6 +29,16 @@ export function JoinGate({ token, plan, inviterName }: { token: string; plan: "f
     const r = await joinTeam(token, identity);
     if (r === "full") { setFull(true); setBusy(false); return; }
     window.location.replace(`/s/${token}`);
+  };
+
+  // Returning on a new browser/device: email the link back to whoever joined
+  // with this address. Always confirm the same way, whether or not it matched.
+  const sendResume = async () => {
+    if (!emailValid(resumeEmail) || resumeBusy) return;
+    setResumeBusy(true);
+    await requestResumeLink(token, resumeEmail.trim());
+    setResumeSent(true);
+    setResumeBusy(false);
   };
 
   if (full) return <FlashFull />;
@@ -56,6 +69,22 @@ export function JoinGate({ token, plan, inviterName }: { token: string; plan: "f
               {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : <Icon name="bolt" className="h-4 w-4" />}
             </button>
           </div>
+        </section>
+        <section className="rounded-2xl border border-slate-200/10 bg-white/5 p-6">
+          {resumeSent ? (
+            <p className="text-sm text-slate-300">Check your inbox — if <span className="font-semibold text-foreground">{resumeEmail.trim()}</span> is already in this Flash, we’ve sent a link back to your progress.</p>
+          ) : (
+            <>
+              <p className="text-sm font-bold text-foreground">Already in this Flash?</p>
+              <p className="mt-1 text-xs text-slate-400">Switched devices, or lost your place? Enter the email you joined with and we’ll send a link straight back to your progress.</p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <input type="email" value={resumeEmail} onChange={(e) => setResumeEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendResume(); }} placeholder="you@email.com" className="h-12 w-full rounded-xl border border-slate-200 bg-white/5 px-4 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:outline-none" />
+                <button onClick={sendResume} disabled={!emailValid(resumeEmail) || resumeBusy} className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-orange px-5 text-sm font-bold text-foreground transition-colors hover:bg-orange/10 disabled:cursor-not-allowed disabled:opacity-50">
+                  {resumeBusy ? "Sending…" : "Email me my link"}
+                </button>
+              </div>
+            </>
+          )}
         </section>
       </div>
     </div>

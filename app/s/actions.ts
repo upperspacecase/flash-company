@@ -33,7 +33,7 @@ import { consensusItems, ratingOrder } from "@/lib/consensus";
 import { synthesizeTeam } from "@/lib/synthesis";
 import { generateOpportunity } from "@/lib/opportunity";
 import { advanceVenture, type VentureBuildState } from "@/lib/ventures";
-import { emailConfigured, sendEmail, invitedToStartInputEmail, synthesisReadyEmail, teammateFinishedEmail } from "@/lib/email";
+import { emailConfigured, sendEmail, invitedToStartInputEmail, resumeLinkEmail, synthesisReadyEmail, teammateFinishedEmail } from "@/lib/email";
 import { getStripe, paymentConfigured } from "@/lib/stripe";
 import { PRICE, type OpportunityData, type SynthesisData, type Venture, type VentureDraft } from "@/app/demo/data";
 
@@ -119,6 +119,24 @@ async function acceptMember(member: MemberRow, identity?: Identity): Promise<voi
     await setMemberAccepted(member.id);
     await maybeNotifyTeamFormed(member.team_id);
   }
+}
+
+// Returning on a new browser/device: the shared invite link is the only link,
+// so re-entering the email you joined with is how you get back. We email that
+// person (host or teammate) their personal resume link rather than binding the
+// seat on the spot — only the inbox owner can resume, so no one can grab a seat
+// (or the host's) just by typing an email on the shared link. Always resolves
+// the same way so it can't be used to probe who's in a Flash.
+export async function requestResumeLink(token: string, email: string): Promise<void> {
+  const target = email.trim().toLowerCase();
+  if (!target) return;
+  const team = await getTeamByToken(token);
+  if (!team) return;
+  const roster = await getTeamMembers(team.id);
+  const member = roster.find((m) => (m.email ?? "").toLowerCase() === target);
+  if (!member?.email) return;
+  const { subject, html } = resumeLinkEmail(team.token, member.id);
+  await sendEmail(member.email, subject, html);
 }
 
 // In-app accept (the host's gate, and the paid plan's pre-payment gate).

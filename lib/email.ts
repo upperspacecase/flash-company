@@ -35,6 +35,20 @@ function shell(body: string, cta: { href: string; label: string }): string {
   </div>`;
 }
 
+// Requested from the invite page: someone entered the email they joined with to
+// get back in on a new browser/device. We email that person (host or teammate)
+// their personal link in, so only their inbox can resume the seat.
+export function resumeLinkEmail(token: string, memberId: string): { subject: string; html: string } {
+  return {
+    subject: "Your link back into your Flash",
+    html: shell(
+      `<p>Here's your link back into your Flash — it drops you right where you left off, on this device or any other.</p>
+       <p>It's just for you, so no need to enter your email again.</p>`,
+      { href: resumeUrl(token, memberId), label: "Back to my Flash" },
+    ),
+  };
+}
+
 export function synthesisReadyEmail(token: string, memberId: string): { subject: string; html: string } {
   return {
     subject: "Your Flash synthesis is ready",
