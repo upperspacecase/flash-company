@@ -72,15 +72,15 @@ type Identity = { name?: string; email?: string };
 
 // A Flash holds three people: the host (seat one) plus up to two teammates.
 const TEAM_CAP = 3;
-export type JoinResult = "ok" | "full" | "notfound";
+export type JoinResult = "ok" | "full" | "notfound" | "exists";
 
-// A real person opens the invite link and enters their name + email. A seat is
-// keyed to the email, not the click: re-entering the same email re-binds to the
-// existing row (any device, lost cookie), so the link stays the one working link
-// for the whole Flash and repeat clicks never burn seats. When no buy-in will be
-// charged (free plan, or Stripe not configured), entering the email is the
-// acceptance — claim and accept in one step; otherwise the seat is held and the
-// teammate pays at the in-app gate.
+// A real person opens the shared invite link and enters their name + email. One
+// seat per email: if this address is already in the Flash — host or teammate — we
+// never add a second row, we email that person their link back in and report
+// "exists". Returning is always by emailed link, so a seat (or the host's) can't
+// be taken just by typing someone's address here. A genuinely new email claims a
+// seat; on the free plan (or with Stripe off) entering it also accepts, so it's
+// one screen — otherwise the seat is held and they pay at the in-app gate.
 export async function joinTeam(token: string, identity: { name: string; email: string }): Promise<JoinResult> {
   const team = await getTeamByToken(token);
   if (!team) return "notfound";
@@ -88,21 +88,19 @@ export async function joinTeam(token: string, identity: { name: string; email: s
   if (existing && existing.team_id === team.id) return "ok"; // already in this team
   const roster = await getTeamMembers(team.id);
   const email = identity.email.trim().toLowerCase();
-  const noCharge = team.plan === "free" || !paymentConfigured();
 
-  // Reclaim the seat for this email if it's already in the Flash.
-  const mine = roster.find((m) => !m.is_host && (m.email ?? "").toLowerCase() === email);
-  if (mine) {
-    await setMemberCookie(mine.id);
-    if (noCharge) await acceptMember(mine, identity);
-    return "ok";
+  // Already in this Flash → email them their link back; never duplicate the seat.
+  const present = roster.find((m) => (m.email ?? "").toLowerCase() === email);
+  if (present?.email) {
+    await sendResumeLink(team.token, present);
+    return "exists";
   }
 
-  // Capacity is counted by people, not rows: the host holds one seat and
-  // teammates are counted by distinct email. Full only at TEAM_CAP-1 teammates.
+  // New person. Capacity counts distinct teammate emails; the host holds seat one.
   const teammateEmails = new Set(roster.filter((m) => !m.is_host && m.email).map((m) => m.email!.toLowerCase()));
   if (teammateEmails.size >= TEAM_CAP - 1) return "full";
 
+  const noCharge = team.plan === "free" || !paymentConfigured();
   const member = await createMemberRow(team.id, false);
   await setMemberIdentity(member.id, identity);
   await setMemberCookie(member.id);
@@ -121,6 +119,13 @@ async function acceptMember(member: MemberRow, identity?: Identity): Promise<voi
   }
 }
 
+// Email a member their personal link back into their seat — the one way back in.
+async function sendResumeLink(token: string, member: MemberRow): Promise<void> {
+  if (!member.email) return;
+  const { subject, html } = resumeLinkEmail(token, member.id);
+  await sendEmail(member.email, subject, html);
+}
+
 // Returning on a new browser/device: the shared invite link is the only link,
 // so re-entering the email you joined with is how you get back. We email that
 // person (host or teammate) their personal resume link rather than binding the
@@ -134,9 +139,7 @@ export async function requestResumeLink(token: string, email: string): Promise<v
   if (!team) return;
   const roster = await getTeamMembers(team.id);
   const member = roster.find((m) => (m.email ?? "").toLowerCase() === target);
-  if (!member?.email) return;
-  const { subject, html } = resumeLinkEmail(team.token, member.id);
-  await sendEmail(member.email, subject, html);
+  if (member) await sendResumeLink(team.token, member);
 }
 
 // In-app accept (the host's gate, and the paid plan's pre-payment gate).

@@ -43,7 +43,7 @@ export function resumeLinkEmail(token: string, memberId: string): { subject: str
     subject: "Your link back into your Flash",
     html: shell(
       `<p>Here's your link back into your Flash — it drops you right where you left off, on this device or any other.</p>
-       <p>It's just for you, so no need to enter your email again.</p>`,
+       <p style="margin:16px 0 0;font-size:13px;color:#64748b">Keep this email — it's your link back in any time, no need to enter your email again.</p>`,
       { href: resumeUrl(token, memberId), label: "Back to my Flash" },
     ),
   };
@@ -67,7 +67,8 @@ export function invitedToStartInputEmail(token: string, memberId: string): { sub
     subject: "Your Flash team is forming — start your input",
     html: shell(
       `<p>Someone just accepted your invite — your Flash is live.</p>
-       <p>Add your input now. It takes about 90 minutes, and synthesis runs the moment everyone's input is in.</p>`,
+       <p>Add your input now. It takes about 90 minutes, and synthesis runs the moment everyone's input is in.</p>
+       <p style="margin:16px 0 0;font-size:13px;color:#64748b">Keep this email — the button below is your private link back into your Flash, on any device. Tap it any time to pick up where you left off.</p>`,
       { href: resumeUrl(token, memberId), label: "Start your input" },
     ),
   };
