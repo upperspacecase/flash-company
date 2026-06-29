@@ -11,11 +11,12 @@ import { PRICE, SPRINT } from "@/app/demo/data";
 // after so the new cookie is sent on the next request. An email already in the
 // Flash isn't re-joined — we email that person their link back ("exists"), the same
 // path as the "Already in this Flash?" field below, so a seat is never duplicated.
-export function JoinGate({ token, plan, inviterName }: { token: string; plan: "free" | "full"; inviterName: string | null }) {
+export function JoinGate({ token, plan, inviterName, expired = false }: { token: string; plan: "free" | "full"; inviterName: string | null; expired?: boolean }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [full, setFull] = useState(false);
+  const [closed, setClosed] = useState(expired);
   const [resumeEmail, setResumeEmail] = useState("");
   const [resumeBusy, setResumeBusy] = useState(false);
   const [resumeSent, setResumeSent] = useState(false);
@@ -28,6 +29,8 @@ export function JoinGate({ token, plan, inviterName }: { token: string; plan: "f
     setBusy(true);
     const r = await joinTeam(token, identity);
     if (r === "full") { setFull(true); setBusy(false); return; }
+    // Window closed between page load and submit → fall back to the expired view.
+    if (r === "expired") { setClosed(true); setBusy(false); return; }
     // Already in this Flash → we emailed their link back instead of re-joining.
     if (r === "exists") { setResumeEmail(identity.email); setResumeSent(true); setBusy(false); return; }
     window.location.replace(`/s/${token}`);
@@ -52,7 +55,7 @@ export function JoinGate({ token, plan, inviterName }: { token: string; plan: "f
         <section>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
           <h1 className="mt-3 text-3xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-4xl">{inviterName ? `${inviterName} invited you to Join a Flash` : "You’re invited to a Flash"}</h1>
-          <p className="mt-3 text-slate-600">{isFree ? "Add your details to join — free to start." : `Everyone contributes ${PRICE.currency}${PRICE.perPerson} and 90 minutes over a ${SPRINT.windowHours}-hour period.`}</p>
+          <p className="mt-3 text-slate-600">{closed ? `This Flash’s ${SPRINT.windowHours}-hour window has closed.` : isFree ? "Add your details to join — free to start." : `Everyone contributes ${PRICE.currency}${PRICE.perPerson} and 90 minutes over a ${SPRINT.windowHours}-hour period.`}</p>
         </section>
         {resumeSent ? (
           <section className="rounded-2xl border border-orange bg-white/5 p-6">
@@ -61,6 +64,12 @@ export function JoinGate({ token, plan, inviterName }: { token: string; plan: "f
           </section>
         ) : (
           <>
+            {closed ? (
+              <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+                <p className="text-sm font-bold text-amber-800">This invite has expired</p>
+                <p className="mt-2 text-sm text-amber-700">The {SPRINT.windowHours}-hour window for joining has closed, so new teammates can no longer join. If you’re already in this Flash, get your link back below to review what your team built.</p>
+              </section>
+            ) : (
             <section className="rounded-2xl border border-orange bg-white/5 p-6">
               {!isFree && <p className="mb-4 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
               <div className="space-y-4">
@@ -79,6 +88,7 @@ export function JoinGate({ token, plan, inviterName }: { token: string; plan: "f
                 </button>
               </div>
             </section>
+            )}
             <section className="rounded-2xl border border-slate-200/10 bg-white/5 p-6">
               <p className="text-sm font-bold text-foreground">Already in this Flash?</p>
               <p className="mt-1 text-xs text-slate-400">Switched devices, or lost your place? Enter the email you joined with and we’ll send a link straight back to your progress.</p>

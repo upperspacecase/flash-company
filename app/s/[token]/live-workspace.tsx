@@ -2,7 +2,7 @@
 
 import { DemoWorkspace, type LiveCtx } from "@/app/demo/workspace";
 import type { OpportunityData, SynthesisData, Venture, VentureDraft } from "@/app/demo/data";
-import { acceptInvite, confirmSynthesis, createAcceptCheckout, confirmAccept, runOpportunity, runSynthesis, runVentureStep, saveIntake, saveDraft, saveRatings } from "../actions";
+import { acceptInvite, confirmSynthesis, createAcceptCheckout, confirmAccept, runOpportunity, runSynthesis, runVentureStep, saveIntake, saveDraft, saveRatings, requestResumeLink } from "../actions";
 
 export type LiveProps = {
   token: string;
@@ -48,6 +48,7 @@ export function LiveWorkspace(props: LiveProps) {
     onRunVentureStep: async () => runVentureStep(),
     onSubmitRatings: async (ratings) => { await saveRatings(ratings); },
     onSaveDraft: async (draft) => { await saveDraft(draft); },
+    onRequestResume: async (email) => { await requestResumeLink(props.token, email); },
   };
   return <DemoWorkspace plan={props.plan} live={live} />;
 }

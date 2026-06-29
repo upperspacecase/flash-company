@@ -29,13 +29,18 @@ export default async function Page({ params }: { params: Promise<{ token: string
   const meId = c.get("fc_member")?.value;
   const me = meId ? await getMemberRow(meId) : null;
 
+  // The 48-hour window runs from when the host starts the Flash. Once it's closed,
+  // new people can no longer join — but existing seat-holders can still get back
+  // in (resume link) to review what the team built.
+  const windowExpired = Date.now() >= new Date(team.created_at).getTime() + SPRINT.windowHours * 3_600_000;
+
   // No member for this browser+team yet → show the join gate. It claims a seat by
   // email (reclaiming an existing one if this person already joined), so the cap
   // is enforced there, per person, rather than per click.
   if (!me || me.team_id !== team.id) {
     const roster = await getTeamMembers(team.id);
     const inviterName = roster.find((m) => m.is_host)?.name ?? null;
-    return <JoinGate token={token} plan={team.plan === "free" ? "free" : "full"} inviterName={inviterName} />;
+    return <JoinGate token={token} plan={team.plan === "free" ? "free" : "full"} inviterName={inviterName} expired={windowExpired} />;
   }
 
   const [members, myIntake, synth, opp, vents, draft] = await Promise.all([
@@ -48,7 +53,6 @@ export default async function Page({ params }: { params: Promise<{ token: string
   ]);
   const accepted = members.filter((m) => m.accepted);
   const allComplete = accepted.length >= 2 && accepted.every((m) => m.intake_complete);
-  // The 48-hour window runs from when the host starts the Flash.
   const windowEndsAt = new Date(new Date(team.created_at).getTime() + SPRINT.windowHours * 3_600_000).toISOString();
 
   return (

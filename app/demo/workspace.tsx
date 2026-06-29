@@ -100,6 +100,9 @@ export type LiveCtx = {
   onRunVentureStep: () => Promise<{ stage: string; done: boolean; ventures?: Venture[] }>;
   onSubmitRatings: (ratings: Record<string, number>) => void | Promise<void>;
   onSaveDraft: (draft: VentureDraft) => void | Promise<void>;
+  // Email a seat-holder their personal link back in — the way to return on a new
+  // device, and the only path forward once the window has closed.
+  onRequestResume: (email: string) => Promise<void>;
 };
 
 // A real, pipeline-generated sprint persisted under the demo team — feeds /demo.
@@ -267,6 +270,12 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   const [ventError, setVentError] = useState(false);
   const [ventStage, setVentStage] = useState("");
 
+  // Once the 48-hour window closes the agent is frozen: no new joins, no
+  // contributions. A seat-holder who never accepted in time can still get back in
+  // to review what the team built — read-only — but can't change anything.
+  const windowExpired = useExpired(live?.windowEndsAt);
+  const reviewOnly = !!live && windowExpired && !accepted;
+
   const cohort: Member[] = live ? liveCohort(status ?? live.status, youId) : COHORT;
 
   const [name, setName] = useState<string>(() => seed?.ventures?.[0]?.name ?? VENTURE_DETAILS.name);
@@ -359,17 +368,24 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
     else if (ventData && ventData[0]) { setVenture(draftFromVenture(ventData[0], cohort)); setName(ventData[0].name); seededRef.current = true; }
   }, [live, ventData, cohort]);
   useEffect(() => {
-    if (!liveRef.current || !seededRef.current) return;
+    if (!liveRef.current || !seededRef.current || reviewOnly) return;
     const t = setTimeout(() => { void liveRef.current?.onSaveDraft(venture); }, 1200);
     return () => clearTimeout(t);
-  }, [venture]);
+  }, [venture, reviewOnly]);
 
   // Gating. Invite (0) is always open. Later steps open once you've accepted AND
   // reached them; Synthesis (2) additionally waits for the whole team's intake;
   // Validation is fully click-through for everyone (the preview is built live from
   // the venture); only the publish / go-live action inside it is gated on free.
-  const unlocked = (i: number) =>
-    i === 0 || (accepted && i <= reached && (i !== 2 || teamReady));
+  // The furthest step the team actually produced — how far a read-only reviewer
+  // (a seat-holder returning after the window closed) can navigate. Skips Input,
+  // which is a personal contribution step, not team output.
+  const reviewReached = ventData ? 5 : oppData ? 3 : synthData ? 2 : 0;
+  const unlocked = (i: number) => {
+    if (i === 0) return true;
+    if (reviewOnly) return i >= 2 && i <= reviewReached;
+    return accepted && i <= reached && (i !== 2 || teamReady);
+  };
   const advance = (i: number) => { setReached((r) => Math.max(r, i)); setPhase(i); };
 
   const accept = async (identity: Identity) => {
@@ -380,6 +396,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
 
   // Called when the user finishes their own intake.
   const submitIntake = async (answers: Record<string, unknown>) => {
+    if (reviewOnly) return; // frozen after the window closes — review only
     if (live) {
       await live.onSaveIntake(answers, true);
       // the status poll will flip teamReady once everyone is in
@@ -391,7 +408,6 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
 
   const synthesisData = useMemo(() => synthData ?? mockSynthesisData(), [synthData]);
   const opportunityData = useMemo(() => oppData ?? mockOpportunityData(), [oppData]);
-  const windowExpired = useExpired(live?.windowEndsAt);
 
   // Host control: once the minimum team has finished but a teammate is lagging,
   // the host can run synthesis without them.
@@ -410,6 +426,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
 
   // The team confirmed/edited Synthesis — persist it (live) then move to Opportunity.
   const confirmSynthesis = async (confirmed: SynthesisData) => {
+    if (reviewOnly) return; // frozen after the window closes — review only
     if (live) await live.onConfirmSynthesis(confirmed);
     advance(3);
   };
@@ -430,7 +447,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
   const content = (i: number) => {
     switch (i) {
       case 0:
-        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} resumeUrl={resumeUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} isHost={live ? live.isHost : true} windowEndsAt={live?.windowEndsAt} />;
+        return <InvitePhase plan={plan} accepted={accepted} onAccept={accept} onStart={() => advance(1)} members={inviteMembers} youId={youId} inviteUrl={inviteUrl} resumeUrl={resumeUrl} payment={live && live.paymentEnabled ? live.payment : undefined} expired={windowExpired} isHost={live ? live.isHost : true} windowEndsAt={live?.windowEndsAt} onRequestResume={live?.onRequestResume} canReview={reviewOnly && reviewReached >= 2} onReview={() => setPhase(2)} />;
       case 1:
         return <InputPhase onNext={() => advance(2)} onSubmit={submitIntake} initialAnswers={live ? live.initialAnswers : undefined} cohort={cohort} youId={youId} othersProgress={othersProgress} windowEndsAt={live?.windowEndsAt} persist={!live} />;
       case 2:
@@ -438,7 +455,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
       case 3:
         if (live && !oppData)
           return <GeneratingState title="Finding your opportunities" sub={rankingsReady ? "Researching the directions your team ranked highest and shaping them into opportunities to choose from." : "Waiting for everyone to lock in their ranking — then Flash builds your options from the team's consensus."} progress={!rankingsReady ? rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.ranked })) : undefined} />;
-        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} youId={youId} persist={!live} windowEndsAt={live?.windowEndsAt} />;
+        return <OpportunityPhase onNext={() => advance(4)} data={opportunityData} onSubmitRatings={live && !reviewOnly ? live.onSubmitRatings : undefined} status={live ? status : null} cohort={cohort} youId={youId} persist={!live} windowEndsAt={live?.windowEndsAt} />;
       case 4:
         if (live && !ventData && !ratingsReady)
           return <GeneratingState title="Choosing your idea" sub="Waiting for everyone to rate their excitement — then Flash builds the one the team is most excited to build." progress={rankedAccepted.map((s) => ({ name: s.name ?? "Teammate", done: !!s.rated }))} />;
@@ -450,6 +467,7 @@ export function DemoWorkspace({ plan, live, seed }: { plan: "free" | "full"; liv
 
   const lockReason = (i: number): { reason: string; cta: "invite" | "seed" | null } => {
     const seedLock = isFree && i >= 5;
+    if (reviewOnly) return { reason: `The ${SPRINT.windowHours}-hour window has closed. You can review the steps your team completed.`, cta: null };
     if (!accepted) return { reason: "Accept your invite to get started — then the sprint opens up, step by step.", cta: "invite" };
     if (seedLock) return { reason: "Validation is part of the Seed protocol.", cta: "seed" };
     if (i === 2) {
@@ -756,7 +774,41 @@ const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "target", title: "The venture only you can build", text: "Narrow to the one idea your team is uniquely placed to start, complete with the plan and the assets to share it openly with your network." },
 ];
 
-function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false, isHost = false, windowEndsAt }: { plan: "free" | "full"; accepted: boolean; onAccept: (identity: Identity) => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean; isHost?: boolean; windowEndsAt?: string }) {
+// Returning on a new device, or stranded by a closed window: email the link back
+// to whoever joined with this address. Mirrors the JoinGate resume field, and
+// always confirms the same way whether or not the address matched a seat.
+function ResumeBack({ onRequestResume }: { onRequestResume: (email: string) => Promise<void> }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const send = async () => {
+    if (!emailValid(email) || busy) return;
+    setBusy(true);
+    await onRequestResume(email.trim());
+    setSent(true);
+    setBusy(false);
+  };
+  if (sent) {
+    return (
+      <section className="rounded-2xl border border-orange bg-white/5 p-6">
+        <p className="text-sm font-bold text-foreground">Check your inbox</p>
+        <p className="mt-2 text-sm text-slate-300">If <span className="font-semibold text-foreground">{email.trim()}</span> is in this Flash, we’ve emailed you a link straight back to your progress. <span className="text-slate-400">Keep that email — it’s your link back in anytime, on any device.</span></p>
+      </section>
+    );
+  }
+  return (
+    <section className="rounded-2xl border border-slate-200/10 bg-white/5 p-6">
+      <p className="text-sm font-bold text-foreground">Already in this Flash?</p>
+      <p className="mt-1 text-xs text-slate-400">Enter the email you joined with and we’ll send a link straight back to your progress.</p>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="you@email.com" className="h-12 w-full rounded-xl border border-slate-200 bg-white/5 px-4 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:outline-none" />
+        <button onClick={send} disabled={!emailValid(email) || busy} className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-orange px-5 text-sm font-bold text-foreground transition-colors hover:bg-orange/10 disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Sending…" : "Email me my link"}</button>
+      </div>
+    </section>
+  );
+}
+
+function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youId = YOU, inviteUrl = INVITE.url, resumeUrl, payment, expired = false, isHost = false, windowEndsAt, onRequestResume, canReview = false, onReview }: { plan: "free" | "full"; accepted: boolean; onAccept: (identity: Identity) => void | Promise<void>; onStart: () => void; members?: Member[]; youId?: string; inviteUrl?: string; resumeUrl?: string; payment?: LivePayment; expired?: boolean; isHost?: boolean; windowEndsAt?: string; onRequestResume?: (email: string) => Promise<void>; canReview?: boolean; onReview?: () => void }) {
   const [payOpen, setPayOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [name, setName] = useState("");
@@ -778,6 +830,29 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
     });
   };
 
+  // Window closed before you accepted: no dead-end. Existing seat-holders can get
+  // their link back (resume) and review what the team built; brand-new people are
+  // told the window has closed.
+  if (!accepted && expired) {
+    return (
+      <div className="mx-auto max-w-xl space-y-8 py-4">
+        <section>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange">Kick-off</p>
+          <h1 className="mt-3 text-3xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-4xl">{isHost ? "You started this Flash" : (inviterName ? `${inviterName} invited you to Join a Flash` : "You’re invited to a Flash")}</h1>
+          <p className="mt-3 text-slate-600">This Flash’s {SPRINT.windowHours}-hour window has closed.</p>
+        </section>
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+          <p className="text-sm font-bold text-amber-800">This invite has expired</p>
+          <p className="mt-2 text-sm text-amber-700">The {SPRINT.windowHours}-hour window for joining has closed, so new teammates can no longer join.{canReview ? " You can still review what your team built." : ""}</p>
+          {canReview && onReview && (
+            <button onClick={onReview} className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-orange px-5 text-sm font-bold text-white transition-colors hover:bg-orange-dark"><Icon name="sparkle" className="h-4 w-4" /> Review what your team built</button>
+          )}
+        </section>
+        {onRequestResume && <ResumeBack onRequestResume={onRequestResume} />}
+      </div>
+    );
+  }
+
   // Pre-payment gate: enter your name + email, then pay. Nothing else of the
   // invite page shows until you're in.
   if (!accepted) {
@@ -790,25 +865,21 @@ function InvitePhase({ plan, accepted, onAccept, onStart, members = COHORT, youI
         </section>
         <section className="rounded-2xl border border-orange bg-white/5 p-6">
           {!isFree && <p className="mb-4 text-right"><span className="text-3xl font-extrabold text-foreground">{PRICE.currency}{PRICE.perPerson}</span> <span className="text-xs text-slate-400">/ person</span></p>}
-          {expired ? (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">This invite has expired — the {SPRINT.windowHours}-hour window has closed.</p>
-          ) : (
-            <div className="space-y-4">
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">Your name</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="h-12 w-full rounded-xl border border-slate-200 bg-white/5 px-4 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:outline-none" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">Your email</span>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="h-12 w-full rounded-xl border border-slate-200 bg-white/5 px-4 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:outline-none" />
-                <span className="mt-1 block text-xs text-slate-400">We’ll email you the moment your team forms.</span>
-              </label>
-              <button onClick={handleStart} disabled={!identityValid} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange px-6 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:cursor-not-allowed disabled:opacity-50">
-                {isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept the Invite"}
-                <Icon name={isHost && !isFree ? "coins" : "bolt"} className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+          <div className="space-y-4">
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">Your name</span>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="h-12 w-full rounded-xl border border-slate-200 bg-white/5 px-4 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:outline-none" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">Your email</span>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="h-12 w-full rounded-xl border border-slate-200 bg-white/5 px-4 text-sm text-foreground placeholder:text-slate-400 focus:border-orange focus:outline-none" />
+              <span className="mt-1 block text-xs text-slate-400">We’ll email you the moment your team forms.</span>
+            </label>
+            <button onClick={handleStart} disabled={!identityValid} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange px-6 text-sm font-bold text-white transition-colors hover:bg-orange-dark disabled:cursor-not-allowed disabled:opacity-50">
+              {isHost ? (isFree ? "Start the sprint" : `Pay ${PRICE.currency}${PRICE.perPerson} & start`) : "Accept the Invite"}
+              <Icon name={isHost && !isFree ? "coins" : "bolt"} className="h-4 w-4" />
+            </button>
+          </div>
         </section>
         {payOpen && <PaymentModal onClose={() => setPayOpen(false)} onPaid={() => { setPayOpen(false); onAccept(identity); }} payment={payment} identity={identity} />}
       </div>

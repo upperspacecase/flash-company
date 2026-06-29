@@ -35,11 +35,17 @@ import { generateOpportunity } from "@/lib/opportunity";
 import { advanceVenture, type VentureBuildState } from "@/lib/ventures";
 import { emailConfigured, sendEmail, invitedToStartInputEmail, resumeLinkEmail, synthesisReadyEmail, teammateFinishedEmail } from "@/lib/email";
 import { getStripe, paymentConfigured } from "@/lib/stripe";
-import { PRICE, type OpportunityData, type SynthesisData, type Venture, type VentureDraft } from "@/app/demo/data";
+import { PRICE, SPRINT, type OpportunityData, type SynthesisData, type Venture, type VentureDraft } from "@/app/demo/data";
 
 const COOKIE = "fc_member";
 // Smallest real team (the product is "you and up to two others").
 const MIN_TEAM = 2;
+
+// The join window runs for SPRINT.windowHours from when the host started the Flash.
+// Once it's closed, no new seats can be claimed (existing members still resume).
+function windowClosed(team: { created_at: string }): boolean {
+  return Date.now() >= new Date(team.created_at).getTime() + SPRINT.windowHours * 3_600_000;
+}
 
 async function setMemberCookie(id: string) {
   const c = await cookies();
@@ -72,7 +78,7 @@ type Identity = { name?: string; email?: string };
 
 // A Flash holds three people: the host (seat one) plus up to two teammates.
 const TEAM_CAP = 3;
-export type JoinResult = "ok" | "full" | "notfound" | "exists";
+export type JoinResult = "ok" | "full" | "notfound" | "exists" | "expired";
 
 // A real person opens the shared invite link and enters their name + email. One
 // seat per email: if this address is already in the Flash — host or teammate — we
@@ -90,11 +96,16 @@ export async function joinTeam(token: string, identity: { name: string; email: s
   const email = identity.email.trim().toLowerCase();
 
   // Already in this Flash → email them their link back; never duplicate the seat.
+  // Returning is allowed even after the window closes — it's how a member gets
+  // back in to review.
   const present = roster.find((m) => (m.email ?? "").toLowerCase() === email);
   if (present?.email) {
     await sendResumeLink(team.token, present);
     return "exists";
   }
+
+  // A genuinely new person can't claim a seat once the window has closed.
+  if (windowClosed(team)) return "expired";
 
   // New person. Capacity counts distinct teammate emails; the host holds seat one.
   const teammateEmails = new Set(roster.filter((m) => !m.is_host && m.email).map((m) => m.email!.toLowerCase()));
